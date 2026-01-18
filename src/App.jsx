@@ -1,29 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════════
-// STORAGE WRAPPER — localStorage fallback for production
-// ═══════════════════════════════════════════════════════════════════════
-
-const storage = {
-  async get(key) {
-    try {
-      const value = localStorage.getItem(key);
-      return value ? { value } : null;
-    } catch {
-      return null;
-    }
-  },
-  async set(key, value) {
-    try {
-      localStorage.setItem(key, value);
-      return { key, value };
-    } catch {
-      return null;
-    }
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════════════
 // TIMELINE DATA — Eras of Sethael
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -91,9 +68,6 @@ const TIMELINE_ERAS = [
 function HomeTimeline({ theme, onEraSelect }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const containerRef = useRef(null);
-  const accumulatedDelta = useRef(0);
-  const lastScrollTime = useRef(0);
   
   const c = theme === 'dark' ? {
     bg: '#0a0a0a',
@@ -120,40 +94,6 @@ function HomeTimeline({ theme, onEraSelect }) {
   const goPrev = () => goTo(currentIndex - 1);
   const goNext = () => goTo(currentIndex + 1);
 
-  // Scroll/wheel handler on the timeline container
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      // Prevent default page scroll when over timeline
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const now = Date.now();
-      if (now - lastScrollTime.current > 200) {
-        accumulatedDelta.current = 0;
-      }
-      lastScrollTime.current = now;
-      
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      accumulatedDelta.current += delta;
-      
-      const threshold = 40;
-      
-      if (accumulatedDelta.current > threshold && !isAnimating) {
-        accumulatedDelta.current = 0;
-        goNext();
-      } else if (accumulatedDelta.current < -threshold && !isAnimating) {
-        accumulatedDelta.current = 0;
-        goPrev();
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, [currentIndex, isAnimating]);
-
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e) => {
@@ -168,50 +108,119 @@ function HomeTimeline({ theme, onEraSelect }) {
   const progress = currentIndex / (TIMELINE_ERAS.length - 1);
 
   return (
-    <div ref={containerRef} style={{ borderTop: `1px solid ${c.border}` }}>
+    <div style={{ borderTop: `1px solid ${c.border}` }}>
       {/* Header */}
-      <div style={{ padding: '32px 48px 24px 48px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-          <span style={{ fontSize: '13px', color: c.muted }}>Timeline</span>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: c.muted }}>
-              The Six Eras ⌐
-            </span>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button
-                onClick={goPrev}
-                disabled={currentIndex === 0}
-                style={{
-                  background: 'none',
-                  border: `1px solid ${c.border}`,
-                  color: currentIndex === 0 ? c.border : c.muted,
-                  padding: '6px 14px',
-                  cursor: currentIndex === 0 ? 'default' : 'pointer',
-                  fontSize: '14px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                ←
-              </button>
-              <span style={{ fontSize: '12px', color: c.muted, minWidth: '50px', textAlign: 'center' }}>
-                {currentIndex + 1} / {TIMELINE_ERAS.length}
+      <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'var(--label-col) 1fr auto', 
+          gap: 'var(--gap-md)',
+          alignItems: 'center'
+        }}>
+          <span style={{ 
+            fontSize: 'var(--type-small)', 
+            color: c.muted,
+            lineHeight: 'var(--row-height)',
+            height: 'var(--row-height)',
+            display: 'flex',
+            alignItems: 'center'
+          }}>Timeline</span>
+          <span style={{ 
+            fontSize: 'var(--type-small)', 
+            color: c.muted,
+            lineHeight: 'var(--row-height)',
+            height: 'var(--row-height)',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            The Six Eras ⌐
+          </span>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* Prev arrow - metro style */}
+            <button
+              onClick={goPrev}
+              disabled={currentIndex === 0}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: currentIndex === 0 ? 'default' : 'pointer',
+                opacity: currentIndex === 0 ? 0.3 : 1,
+                transition: 'opacity 0.2s ease'
+              }}
+            >
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                border: `1.5px solid ${c.muted}`,
+                borderRadius: '50%',
+                transition: 'all 0.2s ease'
+              }}>
+                <svg 
+                  width="12" 
+                  height="12" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke={c.muted}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
               </span>
-              <button
-                onClick={goNext}
-                disabled={currentIndex === TIMELINE_ERAS.length - 1}
-                style={{
-                  background: 'none',
-                  border: `1px solid ${c.border}`,
-                  color: currentIndex === TIMELINE_ERAS.length - 1 ? c.border : c.muted,
-                  padding: '6px 14px',
-                  cursor: currentIndex === TIMELINE_ERAS.length - 1 ? 'default' : 'pointer',
-                  fontSize: '14px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                →
-              </button>
-            </div>
+            </button>
+            
+            <span style={{ 
+              fontSize: 'var(--type-caption)', 
+              color: c.muted, 
+              minWidth: '40px', 
+              textAlign: 'center',
+              lineHeight: 'var(--row-height)'
+            }}>
+              {currentIndex + 1} / {TIMELINE_ERAS.length}
+            </span>
+            
+            {/* Next arrow - metro style */}
+            <button
+              onClick={goNext}
+              disabled={currentIndex === TIMELINE_ERAS.length - 1}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: currentIndex === TIMELINE_ERAS.length - 1 ? 'default' : 'pointer',
+                opacity: currentIndex === TIMELINE_ERAS.length - 1 ? 0.3 : 1,
+                transition: 'opacity 0.2s ease'
+              }}
+            >
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                border: `1.5px solid ${c.muted}`,
+                borderRadius: '50%',
+                transition: 'all 0.2s ease'
+              }}>
+                <svg 
+                  width="12" 
+                  height="12" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke={c.muted}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -220,7 +229,7 @@ function HomeTimeline({ theme, onEraSelect }) {
       <div style={{ 
         height: '1px', 
         background: c.border,
-        margin: '0 48px 0 48px',
+        margin: '0 var(--space-page) 0 var(--space-page)',
         position: 'relative'
       }}>
         <div style={{ 
@@ -257,7 +266,7 @@ function HomeTimeline({ theme, onEraSelect }) {
 
       {/* Era content */}
       <div style={{ 
-        padding: '48px',
+        padding: 'var(--space-page)',
         minHeight: '320px',
         position: 'relative',
         overflow: 'hidden'
@@ -266,23 +275,24 @@ function HomeTimeline({ theme, onEraSelect }) {
           key={currentIndex}
           style={{
             display: 'grid',
-            gridTemplateColumns: '160px 1fr 1fr',
-            gap: '48px',
+            gridTemplateColumns: 'var(--label-col) 1fr 1fr',
+            gap: 'var(--gap-lg)',
             animation: 'fadeSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
           {/* Era number column */}
           <div>
             <div style={{ 
-              fontSize: '11px', 
+              fontSize: 'var(--type-caption)', 
               color: c.muted,
               letterSpacing: '0.1em',
-              marginBottom: '8px'
+              marginBottom: '8px',
+              lineHeight: 1
             }}>
               ERA
             </div>
             <div style={{ 
-              fontSize: '64px', 
+              fontSize: 'clamp(48px, 6vw, 72px)', 
               fontWeight: 200, 
               color: c.text,
               lineHeight: 1,
@@ -295,32 +305,33 @@ function HomeTimeline({ theme, onEraSelect }) {
           {/* Main content column */}
           <div>
             <div style={{ 
-              fontSize: '28px', 
+              fontSize: 'var(--type-h2)', 
               fontWeight: 400, 
               color: c.text,
-              marginBottom: '8px'
+              marginBottom: '8px',
+              lineHeight: 1.2
             }}>
               {era.title}
             </div>
             <div style={{ 
-              fontSize: '14px', 
+              fontSize: 'var(--type-nav)', 
               color: c.muted,
               fontStyle: 'italic',
-              marginBottom: '24px'
+              marginBottom: 'var(--space-section)'
             }}>
               {era.subtitle}
             </div>
             <div style={{
-              fontSize: '12px',
+              fontSize: 'var(--type-caption)',
               color: c.muted,
-              marginBottom: '24px',
+              marginBottom: 'var(--space-section)',
               letterSpacing: '0.05em',
               textTransform: 'uppercase'
             }}>
               {era.duration}
             </div>
             <p style={{ 
-              fontSize: '15px', 
+              fontSize: 'var(--type-body)', 
               color: c.text, 
               lineHeight: 1.7,
               maxWidth: '400px'
@@ -332,11 +343,11 @@ function HomeTimeline({ theme, onEraSelect }) {
             <button
               onClick={() => onEraSelect && onEraSelect('cosmology', `era-${currentIndex}`)}
               style={{
-                marginTop: '24px',
+                marginTop: 'var(--space-section)',
                 background: 'none',
                 border: 'none',
                 color: c.muted,
-                fontSize: '12px',
+                fontSize: 'var(--type-caption)',
                 cursor: 'pointer',
                 padding: 0,
                 textDecoration: 'underline',
@@ -348,13 +359,14 @@ function HomeTimeline({ theme, onEraSelect }) {
           </div>
 
           {/* Events column */}
-          <div style={{ borderLeft: `1px solid ${c.border}`, paddingLeft: '32px' }}>
+          <div style={{ borderLeft: `1px solid ${c.border}`, paddingLeft: 'var(--gap-md)' }}>
             <div style={{ 
-              fontSize: '11px', 
+              fontSize: 'var(--type-caption)', 
               color: c.muted,
               letterSpacing: '0.1em',
-              marginBottom: '16px',
-              textTransform: 'uppercase'
+              marginBottom: 'var(--space-element)',
+              textTransform: 'uppercase',
+              lineHeight: 1
             }}>
               Key Events
             </div>
@@ -379,7 +391,7 @@ function HomeTimeline({ theme, onEraSelect }) {
                   flexShrink: 0
                 }} />
                 <span style={{ 
-                  fontSize: '14px', 
+                  fontSize: 'var(--type-nav)', 
                   color: c.muted,
                   lineHeight: 1.5
                 }}>
@@ -499,8 +511,8 @@ The first mortal language emerges. Unique characteristic: has no bilabial sounds
 The TauTek emerge — origin unknown. They look at the IULDAR and see resources.
 
 **The Hunt**
-| IULDAR | Destino |
-|--------|---------|
+| IULDAR | Fate |
+|--------|------|
 | Kraeth | Hunted; bodies transformed into metal |
 | Thul'Kar | Toppled; became dead mountains |
 | Veluth | Dispersed in purposeless winds |
@@ -516,13 +528,13 @@ The Axiom is relentless. Their empire collapses in a generation. Civil wars. Pla
         title: "Era IV — The Great Silence",
         content: `**Duration:** ~1,000,000 years
 
-**IMPORTANTE: NOT FOI EXTINCTION — FOI DISPERSION**
+**IMPORTANT: IT WAS NOT EXTINCTION — IT WAS DISPERSION**
 
 The Great Silence is not a void. The peoples DO NOT regress to an animal state. They **migrate, fragment, forget**.
 
 **Migration Waves**
-| Onda | Quando | Characteristic |
-|------|--------|----------------|
+| Wave | When | Characteristic |
+|------|------|----------------|
 | First | ~800,000 years | Warm climate, easy passages |
 | Second | ~500,000 years | Refugees, brought bronze |
 | Third | ~200,000 years | Cold climate, strong survivors |
@@ -534,7 +546,7 @@ The Great Silence is not a void. The peoples DO NOT regress to an animal state. 
 
 **What Was Preserved**
 - Fragments in myths (Sthendur = echo of Thul'Kar)
-- Roots linguistic (DUR, KRAV, THUL, VEL, NAKH)
+- Linguistic roots (DUR, KRAV, THUL, VEL, NAKH)
 - Rituals (cremation, offerings)`,
         tags: ["era", "silence", "migration", "dispersion"]
       },
@@ -708,7 +720,7 @@ Ends when peoples reinvent writing and begin to record history.
 | 653-704 AF | "The Beloved" — loved without boundaries | Vaelan Vael |
 | 654 AF | Vaelan contrai NAKH-IS (the Depletion) | — |
 | 704 AF | Suicide — threw himself from Tower of Kings | Torn XVII |
-| 704-740 AF | Instabilidade | Various |
+| 704-740 AF | Instabilidade — rei financeiramente fraco | Aldaran Vael |
 | 740-778 AF | "The Expansionist" — prepares war | Tornael |
 | 762 AF | Beginning of chronic trade deficit | — |
 | 777 AF | Infrastructure for campaign ready | — |
@@ -741,6 +753,601 @@ Ends when peoples reinvent writing and begin to record history.
 | "In the time of Tribal Lords" | ~800-1 BF |
 | "Since the Foundation" | 1 AF onward |`,
         tags: ["cronologia", "timeline", "referencia", "datas"]
+      },
+      "nomenclatura": {
+        group: "referencia",
+        title: "Naming System — Complete Guide",
+        content: `**NAMING IN SETHAEL**
+*A Guide to Creating Rich, Varied Names*
+
+---
+
+## THE PROBLEM WITH MONOTONY
+
+Duratheon is a 778-year-old empire built on conquest, migration, and trade. Names should reflect:
+- **Historical layers** — different eras left different linguistic sediments
+- **Social stratification** — nobles, merchants, artisans, laborers sound different
+- **Regional origins** — coastal, mountain, plains, foreign
+- **Ethnic backgrounds** — conquerors, conquered, immigrants, outsiders
+
+**Rule:** If all names sound the same, the world feels flat.
+
+---
+
+## THE SEVEN PHONETIC FAMILIES
+
+### 1. ARCHAIC NOBILITY (Pre-Kravorn Era)
+**Sound:** Soft, flowing, Latin/Romance influence
+**Who uses it:** Ancient houses, old aristocracy, traditional families
+**Characteristics:** Vowel-heavy, melodic, dignified
+
+| First Names | Surnames |
+|-------------|----------|
+| Cassian | Aldaran |
+| Severin | Coravel |
+| Aldric | Melloren |
+| Miren | Valantis |
+| Corin | Sevanar |
+| Lucien | Dorienne |
+| Elowen | Amareth |
+| Theron | Calissian |
+
+**Sounds to use:** soft C, L, R, N, vowel clusters (ae, ie, ou)
+**Avoid:** harsh K, hard G, consonant clusters
+
+---
+
+### 2. MILITARY/KRAVORN ERA
+**Sound:** Hard, Germanic/Norse influence
+**Who uses it:** Military houses, generals, warriors, northern provinces
+**Characteristics:** Consonant-heavy, abrupt, powerful
+
+| First Names | Surnames |
+|-------------|----------|
+| Sigmar | Gravorn |
+| Ragnor | Stennvik |
+| Gundar | Kolrath |
+| Bjorn | Thurgard |
+| Hrothgar | Ironmark |
+| Valdis | Kraggen |
+| Tormund | Steinholt |
+| Grimwald | Ashburn |
+
+**Sounds to use:** hard G, K, TH, R, -orn, -ard, -vik, -mark
+**Avoid:** soft vowels, flowing syllables
+
+---
+
+### 3. MERCANTILE/COASTAL (Mediterranean)
+**Sound:** Greek/Italian influence, merchant class
+**Who uses it:** Traders, shipowners, port administrators, new money
+**Characteristics:** Musical, practical, cosmopolitan
+
+| First Names | Surnames |
+|-------------|----------|
+| Demos | Kyrian |
+| Kyros | Thessalon |
+| Nikos | Pelagios |
+| Theron | Andreou |
+| Stavros | Karamanlis |
+| Alexios | Mavros |
+| Panos | Kallistos |
+| Demetrios | Nikolaides |
+
+**Sounds to use:** -os, -is, -ou, K, TH, soft vowels
+**Avoid:** harsh consonant clusters
+
+---
+
+### 4. VETHURIM (Immigrants/Outsiders)
+**Sound:** Arabic/Persian/Moorish influence
+**Who uses it:** Craftsmen, textile workers, shipbuilders, scholars from the coast
+**Characteristics:** Liquid consonants, flowing, exotic to Duratheon ears
+
+| First Names | Surnames |
+|-------------|----------|
+| Tariq | Bashani |
+| Zuhair | Khaledi |
+| Kamil | Rashidi |
+| Nasir | Almani |
+| Farid | Sadouri |
+| Jamal | Harrouzi |
+| Rashid | Kassani |
+| Omar | Benfarid |
+
+**Sounds to use:** -iq, -ir, -id, -ani, -idi, soft H, liquid L/R
+**Note:** Vethurim build the best ships and weave the finest textiles. Duratheon depends on them but despises them.
+
+---
+
+### 5. COMMON/WORKING CLASS
+**Sound:** Short, practical, Anglo-Saxon influence
+**Who uses it:** Soldiers, servants, artisans, farmers, laborers
+**Characteristics:** One or two syllables, no pretension, functional
+
+| First Names | Surnames |
+|-------------|----------|
+| Bren | Thatcher |
+| Mak | Smithson |
+| Stenn | Warden |
+| Venner | Cooper |
+| Coll | Fletcher |
+| Tam | Miller |
+| Renn | Stone |
+| Garth | Marsh |
+
+**Sounds to use:** single syllables, occupational surnames, -er, -son, -man
+**Avoid:** elaborate suffixes, multiple syllables
+
+---
+
+### 6. EASTERN/KAELDUR (Mountain People)
+**Sound:** Celtic/Gaelic influence with harsh edges
+**Who uses it:** The Kaeldur (People of Fire), mountain dwellers, northern resistance
+**Characteristics:** Consonant clusters, guttural, rhythmic
+
+| First Names | Surnames |
+|-------------|----------|
+| Brennan | Kaelrath |
+| Cormac | Dunmore |
+| Fintan | Blackthorn |
+| Seamus | Ironforge |
+| Ronan | Stormhold |
+| Declan | Ashwood |
+| Niall | Fireborn |
+| Ciaran | Coldheart |
+
+**Sounds to use:** -an, -ac, -in, compound surnames, nature references
+**Note:** Kaeldur names often reference fire, iron, or mountains — their survival elements.
+
+---
+
+### 7. CLERICAL/RELIGIOUS
+**Sound:** Latinized, formal, ritualistic
+**Who uses it:** Priests, scholars, librarians, temple officials
+**Characteristics:** Three syllables common, -us/-ar endings, solemn
+
+| First Names | Surnames |
+|-------------|----------|
+| Verathar | Senthek |
+| Justinian | Ecclesius |
+| Septimus | Canonar |
+| Aurelius | Scriptoris |
+| Benedictus | Sacreval |
+| Ignatius | Templum |
+| Cornelius | Archivum |
+| Theodorus | Sanctar |
+
+**Sounds to use:** -us, -ar, -ius, Latin roots
+**Note:** Religious names often become surnames over generations.
+
+---
+
+## MIXING AND MATCHING
+
+Real societies don't have clean categories. Use combinations:
+
+| Character | Origin Mix | Name | Meaning |
+|-----------|-----------|------|---------|
+| Noble with military ancestor | Archaic + Kravorn | Lucien Gravorn | Soft first name, hard surname |
+| Merchant's daughter married to noble | Mercantile + Archaic | Thessa Aldaran | Coastal wife in old family |
+| Vethurim scholar in court | Vethurim + Clerical | Tariq Senthek | Immigrant in religious role |
+| Common soldier knighted | Common + Military | Stenn Ironmark | Elevated but roots show |
+| Coastal noble | Archaic + Mercantile | Severin Pelagios | Old blood, sea money |
+
+---
+
+## GEOGRAPHICAL SOUND PATTERNS
+
+| Region | Dominant Sound | Example Names |
+|--------|---------------|---------------|
+| **Vaelhem Thel (Capital)** | Archaic + Mixed | All types mingle here |
+| **Northern Provinces** | Kravorn Era | Sigmar, Ragnor, Gundar |
+| **Veluthaar (South Coast)** | Mercantile + Vethurim | Kyros, Tariq, Demos |
+| **Western Plains** | Common | Bren, Mak, Tam |
+| **Eastern Mountains** | Kaeldur | Cormac, Brennan, Fintan |
+| **Temple Districts** | Clerical | Verathar, Justinian |
+
+---
+
+## HOUSE NAMES VS PERSONAL NAMES
+
+**Old Houses** (founded pre-Kravorn):
+- Surnames sound archaic: Aldaran, Coravel, Sevanar
+- Members may have modern first names
+
+**Military Houses** (founded during expansion):
+- Surnames sound hard: Gravorn, Kolrath, Stennvik
+- Often compound words (Iron+mark, Storm+hold)
+
+**Mercantile Houses** (new money):
+- Surnames may be occupational origins: Tessalon (textile), Pelagios (sea)
+- First names trend cosmopolitan
+
+**Immigrant Families**:
+- Keep ethnic surnames: Bashani, Khaledi, Rashidi
+- May adopt local first names for assimilation: "Corin Bashani"
+
+---
+
+## QUICK REFERENCE TABLE
+
+| Need a name for... | Use family... | Sound like... |
+|-------------------|---------------|---------------|
+| Ancient noble | 1 (Archaic) | Cassian Aldaran |
+| General | 2 (Military) | Ragnor Kolrath |
+| Merchant | 3 (Mercantile) | Nikos Thessalon |
+| Shipbuilder | 4 (Vethurim) | Tariq Bashani |
+| Soldier | 5 (Common) | Bren Thatcher |
+| Kaeldur warrior | 6 (Eastern) | Cormac Dunmore |
+| Priest | 7 (Clerical) | Verathar Senthek |
+| Mixed origin | Combine 2 families | Lucien Ironmark |
+
+---
+
+## AVOIDING REPETITION
+
+**The -avel/-orn/-eth Trap:**
+We overuse certain suffixes. Solutions:
+
+| Instead of | Try |
+|-----------|-----|
+| -avel | -aran, -ien, -os, -ani |
+| -orn | -vik, -mark, -gard, -hold |
+| -eth | -ic, -ian, -ar, -id |
+| -ar | -ius, -on, -ou, -en |
+
+**Sound Diversity Checklist:**
+Before finalizing a name, ask:
+1. Does it sound like other names in the same scene?
+2. Does it fit the character's social class?
+3. Does it reflect their regional/ethnic origin?
+4. Would it be memorable to readers?
+
+---
+
+## EXISTING CANON NAMES (For Reference)
+
+| Name | Family Type | Notes |
+|------|-------------|-------|
+| Tornael Vael | Archaic | Royal house |
+| Senthara | Noble | Queen, diplomatic |
+| Aelara | Archaic | Princess |
+| Kravorn | Military | The Subjugator |
+| Vaethor Zumax | Mixed | Vethurim in clerical role |
+| Luxaren Thalorn | Mercantile + Naval | New money naval house |
+| Velira Sethak | Mercantile | Merchant family |
+| Vreth Kaeldur | Eastern | Mountain king |
+| Kethvar Kethnar | Military | Mining administrator |
+
+---
+
+## CREATING NEW NAMES: ALGORITHM
+
+1. **Determine social position** → Pick primary family
+2. **Check regional origin** → Modify or add secondary family
+3. **Consider era of founding** → Older = softer sounds
+4. **Check for repetition** → Avoid same suffix as nearby characters
+5. **Say it aloud** → Does it flow? Is it memorable?
+
+**Example:**
+- Need: Naval shipbuilder, high skill, Vethurim origin
+- Primary: Vethurim (4)
+- Secondary: Mercantile (3) for coastal trade
+- Result: **Tariq Bashani** or **Farid Pelagios**
+
+**Example:**
+- Need: Old noble, mineral wealth, now poor
+- Primary: Archaic (1)
+- Secondary: Military (2) for northern mines
+- Result: **Aldric Stennvik** or **Severin Kolrath**`,
+        tags: ["nomenclatura", "nomes", "referencia", "worldbuilding", "guide"]
+      },
+      "casas-duratheon": {
+        group: "referencia",
+        title: "Houses of Duratheon — Complete Guide",
+        content: `**THE NOBLE HOUSES OF DURATHEON**
+*A Guide to Power, Wealth, and Influence*
+
+---
+
+## STRUCTURE OF POWER
+
+\`\`\`
+                    CASA VAEL
+                   (Casa Real)
+                        │
+        ┌───────────────┼───────────────┐
+        │               │               │
+   CASAS MAIORES   CASAS MENORES   CASAS MERCANTIS
+   (Conselho Real)  (Nobreza)      (Sem título)
+\`\`\`
+
+**Casas Maiores:** Têm assento no Conselho Real, controlam esferas de poder essenciais.
+**Casas Menores:** Nobreza sem assento no Conselho, mas com títulos e terras.
+**Casas Mercantis:** Riqueza sem título formal — comerciantes, artesãos, intermediários.
+
+---
+
+## A CASA REAL
+
+### HOUSE VAEL — Os Acumuladores
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Significado | De VAEL- (acumular, possuir) |
+| Fundação | Ano 1 AF — Duratheon Vael I |
+| Sede | Palácio de Vaelhem Thel |
+| Cores | Branco e Dourado |
+| Símbolo | Seis pilares sob um sol |
+| Lema | "Dürärōm" — "Duraremos para sempre" |
+
+**Padrão de nomes:**
+- Masculinos: terminam em -ael ou -orn (sagrado/nobre)
+- Femininos: terminam em -ela ou -ara
+- Raízes preferidas: TORN-, KRAV-, DUR-, VAEL-
+
+**Membros conhecidos:**
+| Nome | Posição | Era |
+|------|---------|-----|
+| Torn Vael | Fundador da linhagem | ~800 BF |
+| Duratheon Vael I | Primeiro rei | 1-44 AF |
+| Kravorn Vael II | "O Subjugador" | 315-385 AF |
+| Vaelan Vael | "O Amado" | 653-704 AF |
+| Aldaran Vael | Rei da instabilidade | 704-740 AF |
+| Tornael Vael | "O Expansionista" | 740-778 AF |
+| Krav Vael (XIX) | Príncipe, depois rei | 778 AF |
+| Senthara | Rainha consorte | 778 AF |
+| Aelara Vael | Princesa, 12 anos | 778 AF |
+
+---
+
+## AS CASAS MAIORES
+
+### HOUSE THALORN — Os do Profundo
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Naval — portos, frota, comércio marítimo |
+| Significado | THAL- (profundo) + -orn (nobre) |
+| Sede | Kravethorn (porto militar), Veluthaar (porto comercial) |
+| Cores | Azul-marinho e Prata |
+| Lema | "Thalōm säbärōm" — "Conhecemos o profundo" |
+
+**Poder:** Controlam a frota mercante e os portos do reino. Administram o comércio marítimo, as taxas portuárias, e a logística naval.
+
+**Membro conhecido:**
+- **Luxaren Thalorn** — Administrador dos portos de Veluthaar. Homem de ~35 anos, rosto estreito, nariz pontudo. Casado com Velira Sethak. Inseguro, controlador. "Um bom marido — se chamarmos assim quem provê conforto e posição."
+
+---
+
+### HOUSE CORVAIN — Os Processadores
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Contratos — justiça, transações, disputas legais |
+| Significado | CORV- (corvo, observador) + -ain (agente) |
+| Sede | Tribunal de Vaelhem Thel |
+| Cores | Preto e Branco |
+| Lema | "Toda transação tem seu preço" |
+
+**Poder:** Controlam os contratos. Toda transação comercial em Duratheon precisa do selo Corvain para ter validade legal. Heranças, disputas de terra, acordos mercantis — tudo passa por eles. Cada selo, uma taxa. Cada disputa, uma porcentagem. A família não conquista territórios — cobra para que outros conquistem legalmente.
+
+**Riqueza:** Provavelmente a família mais rica do reino depois dos Vael. Séculos de acumulação silenciosa.
+
+**Membro conhecido:**
+- **Regulus Corvain** — ~50 anos. Famoso por seu pragmatismo. Não usa roupas coloridas — sempre preto, sempre a mesma roupa. Diz que pensar em vestimenta é perda de tempo que poderia ser gasto revisando contratos. Sorri sem mostrar os dentes.
+
+---
+
+### HOUSE STENNVIK — Os das Montanhas de Ferro
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Mineração — ferro, metais, recursos do subsolo |
+| Significado | STENN- (pedra/aço) + -vik (fortaleza) |
+| Sede | Minas do Leste (esgotadas) |
+| Cores | Cinza e Ferrugem |
+| Lema | "Do fundo, a força" |
+
+**Poder:** Administram as minas do leste — que já foram a maior fonte de ferro do reino. As minas estão praticamente esgotadas desde ~650 AF. A casa declina junto com seus recursos.
+
+**Membro conhecido:**
+- **Aldric Stennvik** — 72 anos, sem filhos, sem herdeiros diretos. Era sábio, ou tinha sido. Já não se importa com o destino do império. "Estou velho. Honra, reino, legado — tudo besteira e vaidade." Quer apenas garantir que viverá bem os anos que lhe restam.
+
+---
+
+### HOUSE KRAVETH — Os Conquistadores
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Militar — comando dos exércitos |
+| Fundação | ~50 AF — generais de Duratheon Vael I |
+| Sede | Fortaleza de Kravaal (norte) |
+| Cores | Vermelho e Preto |
+| Símbolo | Espada sobre escudo |
+| Lema | "Krävärōm" — "Conquistaremos" |
+
+**Poder:** Comando militar tradicional. Os generais do reino vêm desta casa há gerações.
+
+**Membro conhecido:**
+- **General Kraveth Vaelmar** — Comanda a campanha de 778 AF. Autor da carta do norte após a derrota.
+
+---
+
+### HOUSE DURAVEL — Os Construtores
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Arquitetura — construções, templos, obras públicas |
+| Fundação | ~80 AF — construtores do primeiro templo |
+| Sede | Guilda dos Construtores, Vaelhem Thel |
+| Cores | Cinza e Marrom |
+| Símbolo | Martelo e esquadro |
+| Lema | "Dür trē dür" — "Pedra é pedra" |
+
+**Poder:** Constroem tudo que é permanente no reino — templos, palácios, muralhas, monumentos.
+
+**Membro conhecido:**
+- **Sthenmar Duravel** — Mestre construtor responsável pela reforma do Grande Templo de Sthendur.
+
+---
+
+### HOUSE SENTHOR — Os Guardiões do Saber
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Conhecimento — bibliotecas, escribas, arquivos |
+| Fundação | ~200 AF — sob Senara Senvarak |
+| Sede | Grande Biblioteca de Vaelhem Thel |
+| Cores | Cinza e Dourado |
+| Símbolo | Livro aberto com pena |
+| Lema | "Sënthäräk, dürärōm" — "Preservamos, duramos" |
+
+**Poder:** Guardam os arquivos, mantêm os registros, preservam o conhecimento.
+
+**Nota:** Vaethor Zumax serve como Mestre da Biblioteca, mas não é da Casa Senthor — é Vethurim.
+
+---
+
+## AS CASAS MENORES
+
+### HOUSE AGRIAS — Os Senhores dos Mercados
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Mercados — abastecimento urbano |
+| Origem | Concessão de Aldaran Vael (~720 AF) |
+| Sede | Mercados de Vaelhem Thel |
+| Cores | Verde e Bronze |
+
+**Poder:** Controlam os dezessete mercados de Vaelhem Thel — onde 900.000 pessoas compram comida. Controlam licenças (cada banca paga taxa semanal), balanças oficiais, e o fluxo de intermediários. Em cada etapa, uma margem. Em cada margem, uma fração para os Agrias.
+
+**Origem da riqueza:** O monopólio foi concessão de Aldaran Vael ao avô de Theron, em troca de um empréstimo que nunca foi cobrado. Uma tarefa considerada menor pelas casas maiores — nobres não pisam em mercados. Mas 900.000 pessoas comprando comida todos os dias gera renda considerável.
+
+**Membro conhecido:**
+- **Theron Agrias** — ~40 anos, boa aparência, ama a família. Sente necessidade de estar perto das casas maiores, mesmo sabendo que sua fortuna vem do povo. "Alguns dizem que ele ri para ouvir. Que não fala para observar. Que não usa as roupas mais nobres para ser intencionalmente subestimado. É o que dizem. Mas talvez ele seja apenas uma pessoa simples, que quer fazer parte da corte."
+
+---
+
+### HOUSE THORNAVEL — Os Diplomatas
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Diplomacia — relações externas |
+| Sede | Vaelhem Thel |
+
+**Membro mencionado:**
+- **Lady Thornavel** — Nobre da corte, mencionada por usar tecidos supostamente de Vethurack (provavelmente imitação de Veluthaar).
+
+---
+
+## AS CASAS MERCANTIS (Sem Título de Nobreza)
+
+### HOUSE SETHAK — Os Senhores do Trigo
+
+| Aspecto | Detalhe |
+|---------|---------|
+| Esfera | Comércio de grãos — trigo, cereais |
+| Sede | Portos do sul |
+
+**Poder:** A frota de Dureth Sethak carrega metade do trigo que alimenta a capital.
+
+**Membros conhecidos:**
+- **Dureth Sethak** — Mestre mercador, pai de Velira.
+- **Velira Sethak (Thalorn)** — Filha, casada com Luxaren Thalorn. Amiga próxima da rainha Senthara.
+
+---
+
+### ARTESÃOS E CONSTRUTORES VETHURIM
+
+Não são uma "casa" no sentido formal, mas os Vethurim dominam certos ofícios essenciais:
+
+| Ofício | Reputação | Ironia |
+|--------|-----------|--------|
+| Tecelagem | Os melhores tapetes do mundo | O tapete do Thul-Vaelhem é Vethurim |
+| Construção naval | Os melhores navios | A frota de Tornael foi construída por eles |
+| Têxteis | "Curiosidades exóticas" | A nobreza compra sem admitir a origem |
+
+**Membro conhecido:**
+- **Tariq Bashani** — Construtor-chefe da frota real. Tolerado porque indispensável. Jamais seria bem-vindo no salão do palácio.
+
+---
+
+## DINÂMICAS DE PODER
+
+### Riqueza vs. Prestígio
+
+| Casa | Riqueza | Prestígio | Tensão |
+|------|---------|-----------|--------|
+| Vael | Imensa | Máximo | O trono esvazia o tesouro |
+| Corvain | Imensa | Alto | Dinheiro de "papelada" |
+| Thalorn | Alta | Médio | Novos ricos do comércio |
+| Agrias | Alta | Baixo | Fortuna vem do povo |
+| Stennvik | Declinante | Alto (histórico) | Minas esgotadas |
+| Sethak | Alta | Nenhum (mercantil) | Alimentam o reino sem título |
+
+### Dependências Ocultas
+
+O reino depende de pessoas que despreza:
+
+| Dependência | Quem fornece | Status social |
+|-------------|--------------|---------------|
+| Navios | Vethurim (Tariq Bashani) | Imigrantes desprezados |
+| Tapetes, têxteis | Vethurim | "Curiosidades exóticas" |
+| Trigo | Casa Sethak | Mercadores sem título |
+| Comida urbana | Casa Agrias | "Tarefa menor" |
+
+**Frase definidora:**
+"O Vethurim? Impressionante como dependemos dessa gente."
+"Impressionante como fingimos que não."
+
+---
+
+## GEOGRAFIA DO PODER
+
+| Região | Casas dominantes | Recursos |
+|--------|------------------|----------|
+| Vaelhem Thel (capital) | Vael, Corvain, Agrias | Administração, contratos, mercados |
+| Veluthaar (sul) | Thalorn, Sethak | Portos, comércio, trigo |
+| Minas do Leste | Stennvik | Ferro (esgotado) |
+| Kravethorn (norte) | Kraveth, Thalorn | Porto militar, exército |
+| Vel-Zumarakh (bairro pobre) | Ninguém | Miséria, 900.000 bocas |
+
+---
+
+## CASAMENTOS E ALIANÇAS
+
+Os casamentos raramente são por amor:
+
+| União | Motivo | Resultado |
+|-------|--------|-----------|
+| Luxaren Thalorn + Velira Sethak | Naval + Grãos = controle de abastecimento | Casamento funcional, sem afeto |
+| Tornael Vael + Senthara | Aliança política (casa de origem de Senthara desconhecida) | Ela é mais inteligente que ele |
+
+**Padrão:** Casas maiores casam entre si ou absorvem casas menores ricas. Casas mercantis compram entrada na nobreza através de dotes e empréstimos.
+
+---
+
+## A CORTE NO DUATHEL
+
+O Duathel (quarto dia da semana) revela a hierarquia:
+
+| Posição no salão | Quem ocupa |
+|------------------|------------|
+| Trono norte | Rei (ou vazio) |
+| Ao lado do trono | Rainha, herdeiros |
+| Mesa principal | Casas maiores |
+| Entre as colunas | Casas menores |
+| Junto às paredes | Casas mercantis com convite |
+| Servindo | Criados (alguns Vethurim) |
+
+**O que não se vê:** Os mercados onde Agrias lucra. Os portos onde Thalorn cobra. As minas vazias de Stennvik. O bairro Vel-Zumarakh onde 900.000 pessoas sobrevivem.
+
+**O que se discute:** Tecidos. Música. Escândalos. A campanha (quando o rei está presente).
+
+**O que não se discute:** A dívida do reino. O esgotamento das minas. A dependência dos Vethurim. Os mendigos que "embelezam" as ruas sendo removidos.`,
+        tags: ["casas", "nobreza", "duratheon", "referencia", "worldbuilding", "politica"]
       },
       "iuldar": {
         group: "seres",
@@ -908,23 +1515,23 @@ The history of Duratheon mirrors that of the TauTek — rise, consumption, deple
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Circumference | ~40.000 km (igual à Terra) |
-| Cobertura oceanic | ~68% |
-| Cobertura terrestre | ~32% |
-| Continentes/Regions | 5 principais |
-| Polos | Skelnakh (norte), Thel'Kanum (sul) |
+| Circumference | ~40,000 km (same as Earth) |
+| Ocean coverage | ~68% |
+| Land coverage | ~32% |
+| Continents/Regions | 5 main |
+| Poles | Skelnakh (north), Thel'Kanum (south) |
 
-**As Grandes Massas Terrestres**
-| # | Region | Área | Pop. |
+**The Great Landmasses**
+| # | Region | Area | Pop. |
 |---|--------|------|------|
 | 1 | Lands Beyond + The Spine | 28M km² | 35-40M |
 | 2 | Thal'Murak (archipelago) | — | 12M |
 | 3 | Vaelthum (archipelago) | — | 8M |
 | 4 | Nakh'Sethar | 15M km² | 10-11M |
-| 5 | **Duratheon** (massa separada) | 1.5M km² | 10M |
+| 5 | **Duratheon** (separate landmass) | 1.5M km² | 10M |
 
 **Duratheon is a SEPARATE LANDMASS from Lands Beyond. A CHANNEL (arm of the sea, similar to the English Channel) separates Duratheon from Lands Beyond. The Spine is on the OTHER SIDE of the channel, already in Lands Beyond. The only way to leave Duratheon is by SEA CROSSING via Kravethorn. Land route through the frozen north is theoretically possible in winter, but temperatures of -50°C to -70°C make it IMPOSSIBLE.**`,
-        tags: ["planeta", "continentes", "geografia"]
+        tags: ["planet", "continents", "geography"]
       },
       "lands-beyond": {
         title: "Lands Beyond",
@@ -932,20 +1539,20 @@ The history of Duratheon mirrors that of the TauTek — rise, consumption, deple
 
 | Data | Value |
 |------|-------|
-| Área | ~28.000.000 km² |
-| Population | 35-40 millions |
+| Area | ~28,000,000 km² |
+| Population | 35-40 million |
 
-**Povos Principais**
+**Main Peoples**
 | Region | People | Pop. |
-|--------|------|------|
-| Costa Leste | Setharim | 8M |
-| Plains | Diversos reinos | 15M |
-| Planalto | Vaelkurim | 3M |
-| Florestas | Thurnathi | 5M |
-| Deserto | Kael'Thurni | 2M |
+|--------|--------|------|
+| East Coast | Setharim | 8M |
+| Plains | Various kingdoms | 15M |
+| Plateau | Vaelkurim | 3M |
+| Forests | Thurnathi | 5M |
+| Desert | Kael'Thurni | 2M |
 
 **NONE of these peoples know that Duratheon exists.**`,
-        tags: ["lands beyond", "oriente", "continente"]
+        tags: ["lands beyond", "east", "continent"]
       },
       "the-spine": {
         title: "The Spine",
@@ -956,21 +1563,21 @@ The history of Duratheon mirrors that of the TauTek — rise, consumption, deple
 | Parameter | Value |
 |-----------|-------|
 | Location | WEST coast of Lands Beyond |
-| Extension total | ~3.500 km (N-S) |
-| Largura average | 150-300 km |
-| Altitude average | 3.500 m |
-| Pico maximum | ~6.200 m |
-| Passagens passable | **1 (Kaelthrek Holds)** |
+| Total extension | ~3,500 km (N-S) |
+| Average width | 150-300 km |
+| Average altitude | 3,500 m |
+| Maximum peak | ~6,200 m |
+| Passable passages | **1 (Kaelthrek Holds)** |
 
 **Why it is Impassable**
 1. Altitude: Peaks above 6,000m
-2. Glaciares: Fendas ocultas, gelo unstable
+2. Glaciers: Hidden crevasses, unstable ice
 3. Avalanches: Constant
 4. Precipitation: 3-5m of snow/year
 
 **Relationship with Duratheon**
 Between Duratheon and The Spine there is a **CHANNEL** (arm of the sea). To reach The Spine, sea crossing via Kravethorn is required.`,
-        tags: ["the spine", "montanha", "lands beyond"]
+        tags: ["the spine", "mountain", "lands beyond"]
       },
       "o-canal": {
         title: "The Channel (Arm of Sea)",
@@ -979,17 +1586,17 @@ Between Duratheon and The Spine there is a **CHANNEL** (arm of the sea). To reac
 | Parameter | Value |
 |-----------|-------|
 | Type | Arm of sea (similar to English Channel) |
-| Travessia | Kravethorn → Costa Oposta |
+| Crossing | Kravethorn → Opposite Coast |
 
-**Importance Strategic**
+**Strategic Importance**
 The Channel is the natural barrier between Duratheon and the world:
 - Kravethorn is the only viable exit point
-- Toda expedition requer travessia maritime
+- Every expedition requires maritime crossing
 - The delay in port construction was CRITICAL
 
-**Alternativa Norte (IMPOSSIBLE)**
+**Northern Alternative (IMPOSSIBLE)**
 In the far north, the channel freezes in winter. Theoretically passable. But temperatures of **-50°C to -70°C** make this impossible.`,
-        tags: ["canal", "geografia", "travessia"]
+        tags: ["channel", "geography", "crossing"]
       },
       "kaelthrek-holds": {
         title: "Kaelthrek Holds",
@@ -999,10 +1606,10 @@ In the far north, the channel freezes in winter. Theoretically passable. But tem
 |-----------|-------|
 | Latitude | ~52°N |
 | Extension | **85 km** |
-| Largura | **20-40 m** (average 30 m) |
-| Altitude entrada | 2.800 m |
-| Altitude maximum | 4.200 m |
-| Altitude exit | 3.100 m |
+| Width | **20-40 m** (average 30 m) |
+| Entrance altitude | 2,800 m |
+| Maximum altitude | 4,200 m |
+| Exit altitude | 3,100 m |
 | Winter temperature | **-20°C to -35°C** |
 | Walls | 500-1,200 m height |
 
@@ -1010,35 +1617,35 @@ In the far north, the channel freezes in winter. Theoretically passable. But tem
 With 30m width and 280,000 soldiers:
 - 15 men side by side
 - 18,667 rows necessary
-- **COLUNA DE 37,3 km**
+- **37.3 km COLUMN**
 
 Impossible to defend. Impossible to maneuver. Impossible to retreat.`,
-        tags: ["kaelthrek", "passagem", "campanha", "desastre"]
+        tags: ["kaelthrek", "passage", "campaign", "disaster"]
       },
       "distancias": {
         title: "Distance Matrix",
-        content: `**ABSOLUTE STANDARD: Vaelhem Thel → Kravethorn = 1.000 km**
+        content: `**ABSOLUTE STANDARD: Vaelhem Thel → Kravethorn = 1,000 km**
 
 **Road Distances (km)**
-| Rota | Distance |
-|------|-----------|
-| Vaelhem → Kravethorn | **1.000** |
+| Route | Distance |
+|-------|----------|
+| Vaelhem → Kravethorn | **1,000** |
 | Vaelhem → Veluthaar | 800 |
 | Vaelhem → Kravaal | 625 |
 | Vaelhem → Zumarak | 500 |
 | Kravethorn → Kravaal | 500 |
 
 **Travel Time (infantry: 25 km/day)**
-| Rota | Time |
-|------|-------|
-| Vaelhem → Kravethorn | **40 dias** |
-| Vaelhem → Veluthaar | 32 dias |
+| Route | Time |
+|-------|------|
+| Vaelhem → Kravethorn | **40 days** |
+| Vaelhem → Veluthaar | 32 days |
 
-**Rotas Maritime**
-| Rota | Distance | Time |
-|------|-----------|-------|
-| Veluthaar → Lands Beyond | 12.000-15.000 km | 170-215 dias |`,
-        tags: ["distances", "viagem", "tempo"]
+**Maritime Routes**
+| Route | Distance | Time |
+|-------|----------|------|
+| Veluthaar → Lands Beyond | 12,000-15,000 km | 170-215 days |`,
+        tags: ["distances", "travel", "time"]
       }
     }
   },
@@ -1058,19 +1665,19 @@ Impossible to defend. Impossible to maneuver. Impossible to retreat.`,
         content: `**Global Distribution (~778 AF)**
 
 | Region | Population | % |
-|--------|-----------|---|
-| Lands Beyond | 35-40 millions | 45% |
-| Thal'Murak | 12 millions | 15% |
-| Nakh'Sethar | 10-11 millions | 13% |
-| Duratheon | 8 millions | 10% |
-| Vaelthum | 8 millions | 10% |
-| Orvainê | 800 mil | ~1% |
-| Vethurak | 500 mil | <1% |
-| Kaeldur | 40-45 mil | <0.1% |
-| **TOTAL** | **~80-90 millions** | 100% |
+|--------|------------|---|
+| Lands Beyond | 35-40 million | 45% |
+| Thal'Murak | 12 million | 15% |
+| Nakh'Sethar | 10-11 million | 13% |
+| Duratheon | 8 million | 10% |
+| Vaelthum | 8 million | 10% |
+| Orvainê | 800 thousand | ~1% |
+| Vethurak | 500 thousand | <1% |
+| Kaeldur | 40-45 thousand | <0.1% |
+| **TOTAL** | **~80-90 million** | 100% |
 
 Duratheon represents ~10% of the world population. It is an isolated landmass, separated from Lands Beyond by a maritime channel.`,
-        tags: ["population", "mundo", "demografia"]
+        tags: ["population", "world", "demographics"]
       },
       "kaeldur-visao-geral": {
         group: "kaeldur",
@@ -1080,26 +1687,26 @@ Duratheon represents ~10% of the world population. It is an isolated landmass, s
 
 ---
 
-**REFERENCE FAST**
+**QUICK REFERENCE**
 
 | Element | Value |
-|----------|-------|
+|---------|-------|
 | **Own name** | Kaeldur ("Fire-Stone People") |
 | **Name in Duratheon** | Durtek (ironically, means "hollow stone") |
-| **Terra natal** | Vrethkaeldur (cordilheira, norte profundo) |
+| **Homeland** | Vrethkaeldur (mountain range, deep north) |
 | **Language** | Kaeldrek |
-| **Population** | ~40.000-45.000 |
+| **Population** | ~40,000-45,000 |
 | **Government** | Elected King (Kaelnar), chosen by Council of Elders |
 | **Religion** | Polytheist (fragmented memory of IULDAR) |
-| **Capital** | Kaelthrek (o Grande Bunker) |
-| **Governante atual** | Vreth Kaeldur III (778 AF) |
+| **Capital** | Kaelthrek (the Great Bunker) |
+| **Current ruler** | Vreth Kaeldur III (778 AF) |
 
 ---
 
-**A IRONIA DE "DURTEK"**
+**THE IRONY OF "DURTEK"**
 
 When the ancestors of the Kaeldur encountered the peoples of the south — the tribes that would become Duratheon — they called them **DURTEK**:
-- **DUR** = pedra, resistance (raiz TAELUN compartilhada)
+- **DUR** = stone, resistance (shared TAELUN root)
 - **TEK** = corruption of archaic *TEKEL*, meaning "hollow" or "false"
 
 **DURTEK** = "Hollow Stone" or "False Resistance"
@@ -1112,24 +1719,24 @@ When Kravorn II led his armies north (~315 AF), his soldiers heard the northern 
 
 ---
 
-**PRINCIPLES FUNDAMENTAIS**
+**FUNDAMENTAL PRINCIPLES**
 
 | Principle | Expression |
-|-----------|-----------|
+|-----------|------------|
 | **Survival** | "Kael-skar, vel-skar" — Without fire, without life |
 | **Community** | "Khen-skar, nakh-skar" — Without community, not even the dignity of slow death |
 | **The Fire** | The central fire can NEVER die |
-| **O Rei** | Dorme na BORDA EXTERNA (prova de strength) |
+| **The King** | Sleeps on the OUTER EDGE (proof of strength) |
 | **Wealth** | Accumulating is shameful |
 
 ---
 
-**O QUE OS DEFINE**
+**WHAT DEFINES THEM**
 
 The Kaeldur are what Duratheon could never understand: a people who survived not through conquest, but through community. They have no marble palaces, gold ornaments, elaborate titles. They have fire, stone, and each other.
 
-E resistem.`,
-        tags: ["kaeldur", "overview", "povo"]
+And they endure.`,
+        tags: ["kaeldur", "overview", "people"]
       },
       "kaeldur-historia": {
         group: "kaeldur",
@@ -1138,7 +1745,7 @@ E resistem.`,
 
 ---
 
-**ANTES DO MASSACRE (~Pré-315 AF)**
+**BEFORE THE MASSACRE (~Pre-315 AF)**
 
 The ancestors of the Kaeldur lived in the northern hills, south of the great mountain range. They were one of several northern peoples — hunters, herders, metalworkers. They had contact with the expanding western kingdoms, but remained independent — their lands too cold and resource-poor to attract conquest.
 
@@ -1146,32 +1753,32 @@ They called the western peoples **Durtek** — "hollow stone" — an insult sugg
 
 ---
 
-**O MASSACRE DE KRAVORN (~315-350 AF)**
+**KRAVORN'S MASSACRE (~315-350 AF)**
 
 When Kravorn Vael II rose to power in Duratheon, he sought to exterminate the Thurnavel usurpers and demonstrate absolute dominion. His campaigns extended north — not for conquest, but for terror.
 
-**O que Kravorn fez:**
+**What Kravorn did:**
 - Burned villages as "demonstrations"
-- Matou children diante de seus pais
-- Destruiu traditions orais — o que chamou de "memory didactic"
-- Buscou eliminar qualquer possibilidade de resistance futura
+- Killed children before their parents
+- Destroyed oral traditions — what he called "didactic memory"
+- Sought to eliminate any possibility of future resistance
 
-**O custo:**
-- Estimativa de 60-70% da population do norte morta
-- Centros culturais destroyeds
-- Elders (guardians da tradition) especificamente alvejados
+**The cost:**
+- Estimated 60-70% of the northern population killed
+- Cultural centers destroyed
+- Elders (guardians of tradition) specifically targeted
 
 Kravorn's chroniclers recorded the survivors as "Durtek" — not knowing that this was the northerners' insult for *them*.
 
 ---
 
-**A MIGRATION (~350-400 AF)**
+**THE MIGRATION (~350-400 AF)**
 
 The survivors fled further north, to the mountains where Duratheon's armies could not follow. The cold that had always been their challenge became their shield.
 
-**O que aprenderam:**
+**What they learned:**
 - The cold kills faster than any army
-- Survival requer cooperaction absoluta
+- Survival requires absolute cooperation
 - Individual dwellings are death sentences
 - Fire is the only god that responds
 
@@ -1179,35 +1786,35 @@ They built the first bunkers. Developed the chimney systems. Learned to sleep to
 
 ---
 
-**A PREPARATION (~400-777 AF)**
+**THE PREPARATION (~400-777 AF)**
 
-Por quatrocentos anos, os Kaeldur fizeram three coisas:
+For four hundred years, the Kaeldur did three things:
 
-1. **Sobreviveram** — Dominaram a tecnologia de viver no frio
-2. **Lembraram** — Mantiveram viva a memory do que Kravorn fez
+1. **Survived** — Mastered the technology of living in the cold
+2. **Remembered** — Kept alive the memory of what Kravorn did
 3. **Observed** — Sent travelers (Kaelvreth) to the world to learn
 
 They did not plan revenge. They planned to never be caught off guard again.
 
-**Desenvolvimentos chave:**
-- Metalurgia advanced (ligas desconhecidas em Duratheon)
+**Key developments:**
+- Advanced metallurgy (alloys unknown in Duratheon)
 - Thermal engineering (networks of chimneys through the mountains)
-- Doutrina militar (tactics de guerrilha, vantagem de terreno)
+- Military doctrine (guerrilla tactics, terrain advantage)
 - Intelligence network (generations of travelers observing the south)
 
 ---
 
-**A REVENGE (778 AF)**
+**THE REVENGE (778 AF)**
 
-Quando o army de Krav XIX marchou ao norte, os Kaeldur estavam prontos.
+When Krav XIX's army marched north, the Kaeldur were ready.
 
 They did not meet Duratheon in open battle. They let the cold do the first slaughter. They watched half the army freeze, starve and die in the passes. Then destroyed what remained.
 
-**O resultado:**
+**The result:**
 - ~150,000 Duratheon soldiers killed (half by cold, half in combat)
-- King Krav XIX capturado
-- General Kraveth Vaelmar capturado
-- Capacidade militar de Duratheon eliminada
+- King Krav XIX captured
+- General Kraveth Vaelmar captured
+- Duratheon's military capacity eliminated
 - No Kaeldur invasion necessary — Duratheon will collapse on its own`,
         tags: ["kaeldur", "history", "massacre", "migration"]
       },
@@ -1216,111 +1823,111 @@ They did not meet Duratheon in open battle. They let the cold do the first slaug
         title: "KAELDUR — Architecture & Bunkers",
         content: `*"Vrethak-thul, kael-khen, na-skar."*
 *"Deep stone, fire together, not-cold."*
-— Inscription na entrada de Kaelthrek
+— Inscription at the entrance of Kaelthrek
 
 ---
 
-**PRINCIPLES DE DESIGN**
+**DESIGN PRINCIPLES**
 
 Kaeldur architecture exists for one purpose: **survival**.
 
-| Lei | Kaeldrek | Principle | Implementaction |
-|-----|----------|-----------|---------------|
+| Law | Kaeldrek | Principle | Implementation |
+|-----|----------|-----------|----------------|
 | **I** | Kael-thul | Fire at center | All spaces organized around central hearth |
 | **II** | Dur-vreth | Stone resists | Massive walls, no wood in structure |
 | **III** | Aelv-thal | Breathing must pass | Ventilation without heat loss |
-| **IV** | Khen-laer | Juntos dormimos | Sem quartos privados; space comunal |
-| **V** | Skar-skel | Fechar contra o frio | Aberturas minimum; construction selada |
+| **IV** | Khen-laer | We sleep together | No private rooms; communal space |
+| **V** | Skar-skel | Close against the cold | Minimum openings; sealed construction |
 
 ---
 
-**O SISTEMA DE BUNKERS**
+**THE BUNKER SYSTEM**
 
-| Tipo | Capacidade | Number | Population Total |
-|------|------------|--------|-----------------|
-| **Kaelthrek (Real)** | 5.000-8.000 | 1 | ~6.000 |
-| **Bunkers Maiores** | 2.000-4.000 | 4 | ~12.000 |
-| **Bunkers Pattern** | 800-1.500 | 12 | ~15.000 |
-| **Bunkers Menores** | 200-400 | 25+ | ~8.000 |
-| **TOTAL** | — | ~42 | ~41.000 |
+| Type | Capacity | Number | Total Population |
+|------|----------|--------|------------------|
+| **Kaelthrek (Royal)** | 5,000-8,000 | 1 | ~6,000 |
+| **Major Bunkers** | 2,000-4,000 | 4 | ~12,000 |
+| **Standard Bunkers** | 800-1,500 | 12 | ~15,000 |
+| **Minor Bunkers** | 200-400 | 25+ | ~8,000 |
+| **TOTAL** | — | ~42 | ~41,000 |
 
 ---
 
 **EXTERIOR**
 
-| Characteristic | Especificaction |
+| Characteristic | Specification |
 |----------------|---------------|
-| **Walls** | 2-3 metros de espessura na base |
-| **Material** | Blocos de pedra precisamente encaixados |
-| **Windows** | Fendas horizontais: ~2m largura × ~20cm altura |
-| **Entrada** | 5-10m tunnel with curve (works as air chamber) |
-| **Perfil** | Low, blends with the mountain |
-| **Appearance** | Brutal, utilitarian, parece formaction rochosa natural |
+| **Walls** | 2-3 meters thick at the base |
+| **Material** | Precisely fitted stone blocks |
+| **Windows** | Horizontal slits: ~2m width × ~20cm height |
+| **Entrance** | 5-10m tunnel with curve (works as air chamber) |
+| **Profile** | Low, blends with the mountain |
+| **Appearance** | Brutal, utilitarian, looks like natural rock formation |
 
 ---
 
-**INTERIOR — O HALL CENTRAL**
+**INTERIOR — THE CENTRAL HALL**
 
-| Tipo de Bunker | Diameter | Altura do Teto |
-|----------------|----------|----------------|
-| Menor | 15-20m | 3-4m |
-| Pattern | 25-35m | 4-5m |
-| Maior | 40-50m | 5-7m |
-| Kaelthrek (Real) | 50-60m | 7-10m |
+| Bunker Type | Diameter | Ceiling Height |
+|-------------|----------|----------------|
+| Minor | 15-20m | 3-4m |
+| Standard | 25-35m | 4-5m |
+| Major | 40-50m | 5-7m |
+| Kaelthrek (Royal) | 50-60m | 7-10m |
 
 **The Fire Pit (Kaelthrek):**
-- Position: Centro exato do hall
-- Tamanho: 3-5m de diameter
-- Maintenance: Rotaction 24 horas; NUNCA permitido morrer
+- Position: Exact center of the hall
+- Size: 3-5m in diameter
+- Maintenance: 24-hour rotation; NEVER allowed to die
 
 ---
 
-**ARRANJO PARA DORMIR — Rings Concentric**
+**SLEEPING ARRANGEMENT — Concentric Rings**
 
-| Position | Quem Dorme Aqui | Por Quê |
-|---------|-----------------|---------|
-| **Closer to fire** | Children, elderly, sick, pregnant | Need more warmth |
+| Position | Who Sleeps Here | Why |
+|----------|-----------------|-----|
+| **Closest to fire** | Children, elderly, sick, pregnant | Need more warmth |
 | **Middle ring** | Families with small children | Protection and warmth |
 | **Outer ring** | Healthy adults, warriors | Can withstand more cold |
-| **Farther from fire** | Young adults, returned Kaelvreth | Prove their strength |
+| **Farthest from fire** | Young adults, returned Kaelvreth | Prove their strength |
 
 **THE KING SLEEPS IN THE OUTER RING.** This is not humility — it is proof of strength. A king who needs the center of the fire is too weak to lead.
 
 ---
 
-**GRADIENTE DE TEMPERATURA**
+**TEMPERATURE GRADIENT**
 
 | Ring | Distance from Fire | Who Sleeps |
 |------|-------------------|------------|
-| Interno | 2-5m | Children, idosos, doentes |
-| Medium | 5-10m | Families, mothers amamentando |
-| Externo | 10-20m | Healthy adults, warriors |
-| Parede | 20m+ | Storage, not dormitory |
+| Inner | 2-5m | Children, elderly, sick |
+| Middle | 5-10m | Families, nursing mothers |
+| Outer | 10-20m | Healthy adults, warriors |
+| Wall | 20m+ | Storage, not dormitory |
 
 ---
 
-**COMPARISON COM DURATHEON**
+**COMPARISON WITH DURATHEON**
 
 | Characteristic | Duratheon | Kaeldur |
 |----------------|-----------|---------|
-| **Purpose** | Exhibition, administraction | Survival |
-| **Walls** | 0.5-1m (deheart) | 2-3m (isolamento) |
-| **Windows** | Grandes, ornamentais | Fendas minuscule |
-| **Aquecimento** | Fireplaces in rooms | Central fire, radiant system |
-| **Layout** | Quartos individuais | Hall comunal |
-| **Privacidade** | Expected, valued | Nonexistent, not valued |
+| **Purpose** | Exhibition, administration | Survival |
+| **Walls** | 0.5-1m (decoration) | 2-3m (insulation) |
+| **Windows** | Large, ornamental | Minuscule slits |
+| **Heating** | Fireplaces in rooms | Central fire, radiant system |
+| **Layout** | Individual rooms | Communal hall |
+| **Privacy** | Expected, valued | Nonexistent, not valued |
 
-**Reaction de um soldado de Duratheon:**
+**Reaction of a Duratheon soldier:**
 
 *"No cities. No walls to breach. No towers to topple. Just... rock. Rock that happened to have people inside. People who came out of the rock and killed us, then disappeared back into it."*`,
-        tags: ["kaeldur", "arquitetura", "bunkers", "construction"]
+        tags: ["kaeldur", "architecture", "bunkers", "construction"]
       },
       "kaeldur-religiao": {
         group: "kaeldur",
         title: "KAELDUR — Religion",
         content: `*"Kaelthur vel. Vrethak dur. Skarveth tau."*
-*"Kaelthur vive. Vrethak resiste. Skarveth observa."*
-— As Three Verdades
+*"Kaelthur lives. Vrethak resists. Skarveth observes."*
+— The Three Truths
 
 ---
 
@@ -1330,36 +1937,36 @@ The Kaeldur are **polytheists** — they recognize multiple gods, each governing
 
 - **Decentralized** — No single orthodoxy; variations between bunkers
 - **Practical** — Gods understood by their effects, not abstract theology
-- **Comunal** — Adoraction coletiva, centrada no fogo
+- **Communal** — Collective worship, centered on fire
 - **Unwritten** — Oral tradition, no sacred texts
 
-**A IRONIA CENTRAL (para o leitor):**
+**THE CENTRAL IRONY (for the reader):**
 
 The Kaeldur gods are fragmented memories of the **IULDAR** — the cosmic beings who sustained creation before the Great Silence. The Kaeldur do not know this. They worship echoes of beings their distant ancestors encountered, transformed by time and trauma into something unrecognizable.
 
 ---
 
-**O PANTHEON**
+**THE PANTHEON**
 
-| Deus | Domain | Adoraction | Eco IULDAR |
-|------|---------|----------|------------|
+| God | Domain | Worship | IULDAR Echo |
+|-----|--------|---------|-------------|
 | **Kaelthur** | Fire, warmth, life | Central; daily | Kraeth (dragons, fire) |
 | **Vrethak** | Stone, mountain, shelter | Construction, oaths | Thul'Kar (stone giants) |
-| **Threknar** | Metal, forja, transformation | Rituals de metalurgia | — (desenvolvido independentemente) |
-| **Aelveth** | Ar, respiraction, passagem | Ritos de morte, chimneys | Veluth (atmospheric) |
+| **Threknar** | Metal, forge, transformation | Metallurgy rituals | — (developed independently) |
+| **Aelveth** | Air, breath, passage | Death rites, chimneys | Veluth (atmospheric) |
 | **Skarveth** | Cold, death, end | Recognized, not worshipped | — (the enemy) |
 
 ---
 
-**KAELTHUR — O FOGO**
+**KAELTHUR — THE FIRE**
 
 Kaelthur is not a being that *controls* fire — Kaelthur **IS** fire. Every flame contains the presence of Kaelthur. The central fire of a bunker is not a symbol of the god; it is the god manifest.
 
-**O Pacto de Kaelthur:**
+**The Pact of Kaelthur:**
 - Kaelthur gives heat (life)
 - The people give fuel (sacrifice)
-- Se o povo negligenciar Kaelthur, Kaelthur morre
-- Se Kaelthur morrer, o povo morre
+- If the people neglect Kaelthur, Kaelthur dies
+- If Kaelthur dies, the people die
 
 This is not metaphor. It is literal truth. A bunker whose fire dies in deep winter is a bunker of corpses.
 
@@ -1369,7 +1976,7 @@ This is not metaphor. It is literal truth. A bunker whose fire dies in deep wint
 
 ---
 
-**VRETHAK — A PEDRA**
+**VRETHAK — THE STONE**
 
 Vrethak is the mountain itself — the stone that shelters, the rock that resists, the foundation under all things. Where Kaelthur is active and hungry, Vrethak is passive and eternal.
 
@@ -1378,50 +1985,50 @@ Vrethak is the mountain itself — the stone that shelters, the rock that resist
 
 **Touch on Stone (before important decisions):**
 > *"Vrethak dur. Ek dur-ul."*
-> *"Vrethak resiste. Eu resistirei."*
+> *"Vrethak resists. I will resist."*
 
 ---
 
-**MORTE E POST-VIDA**
+**DEATH AND AFTERLIFE**
 
 The Kaeldur **have no clear doctrine of afterlife**. What happens after death is unknown. But they believe:
 
 | Belief | Expression |
-|--------|-----------|
+|--------|------------|
 | Body returns to elements | Flesh to fire (Kaelthur), bone to stone (Vrethak) |
 | Breath rises | Soul carried by Aelveth with the smoke |
-| A pessoa permanece na comunidade | Memory preservada; nome falado |
+| The person remains in the community | Memory preserved; name spoken |
 | Death is not the end | But what comes after is unknown |
 
-**Rito de Cremaction:**
+**Cremation Rite:**
 1. Body prepared — wrapped in leather, placed on fuel
 2. Veth-ek speaks the words
 3. Fire lit — from central fire (continuity)
-4. Comunidade observa a smoke subir
+4. Community watches the smoke rise
 5. Names spoken — each person speaks the name of the deceased once
-6. Ossos coletados — colocados na montanha (Vrethak)
+6. Bones collected — placed in the mountain (Vrethak)
 7. Feast — celebration of life; stories told
 
 ---
 
-**COMPARISON COM DURATHEON**
+**COMPARISON WITH DURATHEON**
 
-| Aspect | Fé de Sthendur | Religion Kaeldur |
-|---------|----------------|------------------|
-| **Deuses** | Um (Sthendur) | Cinco (quatro adorados, um reconhecido) |
+| Aspect | Faith of Sthendur | Kaeldur Religion |
+|--------|-------------------|------------------|
+| **Gods** | One (Sthendur) | Five (four worshipped, one recognized) |
 | **Texts** | Book of Stone | None (oral tradition) |
 | **Priesthood** | Formal (High Reader, Readers) | Informal (roles, not class) |
 | **Temples** | Seven Great Temples | None (bunker is sacred) |
-| **Post-vida** | A Descida (julgamento) | Desconhecido |
-| **Purpose** | Expansion, conquista | Survival, comunidade |`,
-        tags: ["kaeldur", "religion", "deuses", "kaelthur", "vrethak"]
+| **Afterlife** | The Descent (judgment) | Unknown |
+| **Purpose** | Expansion, conquest | Survival, community |`,
+        tags: ["kaeldur", "religion", "gods", "kaelthur", "vrethak"]
       },
       "kaeldur-metalurgia": {
         group: "kaeldur",
         title: "KAELDUR — Metallurgy & Oaths",
         content: `*"Vrakh threk, vrakh kael, vrakh dur."*
 *"I swear by metal, by fire, by stone."*
-— Abertura da ceremony Vrakhthrek
+— Opening of the Vrakhthrek ceremony
 
 ---
 
@@ -1433,110 +2040,110 @@ Every significant piece of metalwork carries an oath. The blade remembers. The t
 
 ---
 
-**O TRIANGLE SAGRADO**
+**THE SACRED TRIANGLE**
 
-| Stage | Element | Deus | State |
-|---------|----------|------|--------|
-| **Origem** | Ore in the mountain | Vrethak | Raw, formless |
+| Stage | Element | God | State |
+|-------|---------|-----|-------|
+| **Origin** | Ore in the mountain | Vrethak | Raw, formless |
 | **Transformation** | Fire in forge | Kaelthur | Melting, changing |
-| **Resultado** | Metal acabado | Threknar | Moldado, jurado |
+| **Result** | Finished metal | Threknar | Shaped, sworn |
 
 ---
 
-**O MESTRE-FORJADOR (THREKNAR)**
+**THE MASTER-FORGER (THREKNAR)**
 
 | Aspect | Description |
-|---------|-----------|
-| **Autoridade de office** | Maior habilidade em metalurgia |
-| **Autoridade ritual** | Lidera ceremonies Vrakhthrek |
-| **Dever de ensino** | Treina aprendizes |
+|--------|-------------|
+| **Authority of office** | Greatest skill in metallurgy |
+| **Ritual authority** | Leads Vrakhthrek ceremonies |
+| **Teaching duty** | Trains apprentices |
 | **Quality control** | Declares items worthy or defective |
 | **Voice in community** | Respected in Elders councils |
 
 **Path to Threknar:**
 
-| Stage | Age | Duration | Foco |
-|---------|-------|---------|------|
-| Observaction | 8-12 | 4 anos | Observar, aprender nomes |
-| Aprendiz (Threk-el) | 12-18 | 6 anos | Habilidades basic |
-| Artificer (Threk-ek) | 18-25 | 7 anos | Trabalho advanced, falar juramentos |
-| Master (Threknar) | 25+ | Life | Autoridade completa, ensino |
+| Stage | Age | Duration | Focus |
+|-------|-----|----------|-------|
+| Observation | 8-12 | 4 years | Observe, learn names |
+| Apprentice (Threk-el) | 12-18 | 6 years | Basic skills |
+| Artificer (Threk-ek) | 18-25 | 7 years | Advanced work, speak oaths |
+| Master (Threknar) | 25+ | Life | Full authority, teaching |
 
 ---
 
-**AS LIGAS SECRETAS**
+**THE SECRET ALLOYS**
 
-Os Kaeldur desenvolveram ligas desconhecidas em Duratheon during seus quatro centuries de isolamento:
+The Kaeldur developed alloys unknown in Duratheon during their four centuries of isolation:
 
-| Liga | Nome Kaeldrek | Propriedades | Segredo |
-|------|---------------|--------------|---------|
-| **Steel-Skarvreth** | Skarvreth-threk | Resistente à ferrugem | Aditivos desconhecidos ao ferro |
-| **Steel-Leve** | Aelvdur-threk | Mais leve, forte | Processo de foundry refinado |
-| **Fio-Duro** | Suthvreth-threk | Holds edge longer | Controlled cooling |
-| **Metal-Flex** | Veldur-threk | Flexible, forte | Forjamento em camadas |
+| Alloy | Kaeldrek Name | Properties | Secret |
+|-------|---------------|------------|--------|
+| **Rust-Proof Steel** | Skarvreth-threk | Rust resistant | Unknown additives to iron |
+| **Light Steel** | Aelvdur-threk | Lighter, strong | Refined foundry process |
+| **Hard-Edge** | Suthvreth-threk | Holds edge longer | Controlled cooling |
+| **Flex-Metal** | Veldur-threk | Flexible, strong | Layered forging |
 
-**Sigilo:**
+**Secrecy:**
 > *"Metal is our life. Secrets are our survival. To share them is to weaken the community. The oath forbids."*
 
 ---
 
-**O VRAKHTHREK — O JURAMENTO DO METAL**
+**THE VRAKHTHREK — THE OATH OF METAL**
 
-**Abertura do Juramento Completo:**
+**Opening of the Full Oath:**
 
 > **"Vrakh threk, vrakh kael, vrakh dur.**
 > **Ek-ir suth, ek-ir vreth, ek-ir khen.**
 > **Skarlaer na-vel. Kaellaer vel."**
 
-> *"Juro pelo metal, pelo fogo, pela pedra.*
-> *Minha blade, minha strength, meu povo.*
+> *"I swear by metal, by fire, by stone.*
+> *My blade, my strength, my people.*
 > *In winter it will not fail. In the day it will resist."*
 
-**Juramento de Comunidade (Vrakhkhen):**
+**Community Oath (Vrakhkhen):**
 
 > **"Ekkhen kael. Ekkhen dur. Ekkhen khen.**
 > **Ek-skar, ekkhen-skar.**
 > **Ek-kael, ekkhen-kael."**
 
-> *"Somos fogo. Somos pedra. Somos juntos.*
-> *Eu sozinho not sou nada. We sozinhos not somos nada.*
-> *Eu com fogo estou vivo. We com fogo estamos vivos."*
+> *"We are fire. We are stone. We are together.*
+> *I alone am nothing. We alone are nothing.*
+> *I with fire am alive. We with fire are alive."*
 
 ---
 
-**QUEBRA DE JURAMENTOS**
+**BREAKING OF OATHS**
 
 The Kaeldur believe that oaths can be broken — by the person, and consequently by the metal.
 
-| Causa | Consequence |
-|-------|--------------|
-| Betrayal da comunidade | Arma torna-se not reliable |
-| Covardia em batalha | Armadura falha em proteger |
+| Cause | Consequence |
+|-------|-------------|
+| Betrayal of community | Weapon becomes unreliable |
+| Cowardice in battle | Armor fails to protect |
 | Breaking of sworn promise | Tool fails at crucial moment |
 
-**Sinais de Juramento Quebrado:**
-- Blade lasca inesperadamente
+**Signs of Broken Oath:**
+- Blade chips unexpectedly
 - Tool breaks under normal use
-- Armadura not encaixa direito
+- Armor does not fit right
 - Metal rusts despite care
 
-> *"Metal lembra. Pode perdoar. Nunca esquece."*
+> *"Metal remembers. It may forgive. It never forgets."*
 
 ---
 
-**POR QUE DURATHEON FALHOU**
+**WHY DURATHEON FAILED**
 
 | Duratheon | Kaeldur | Result |
-|-----------|---------|-----------|
-| Steel pattern | Steel-Skarvreth | Blades de Duratheon enferrujam no frio úmido |
-| Armadura pesada | Armadura leve flexible | Soldados de Duratheon cansam more fast |
-| Pattern threads | Suthvreth-steel threads | Kaeldur blades stay sharp longer |
-| Production em massa | Juramentos individuais | Guerreiros Kaeldur confiam em suas armas |
+|-----------|---------|--------|
+| Standard steel | Rust-Proof Steel | Duratheon blades rust in wet cold |
+| Heavy armor | Light flexible armor | Duratheon soldiers tire faster |
+| Standard edges | Hard-Edge steel | Kaeldur blades stay sharp longer |
+| Mass production | Individual oaths | Kaeldur warriors trust their weapons |
 
-**Relato de um sobrevivente de Duratheon:**
+**Account of a Duratheon survivor:**
 
 > *"Their blades cut our armor as if it were leather. Our swords chipped against their shields. We had three times their number and they killed us as if we were children with sticks."*`,
-        tags: ["kaeldur", "metalurgia", "forja", "juramentos", "vrakhthrek"]
+        tags: ["kaeldur", "metallurgy", "forge", "oaths", "vrakhthrek"]
       },
       "kaeldur-reis": {
         group: "kaeldur",
@@ -1547,93 +2154,93 @@ The Kaeldur believe that oaths can be broken — by the person, and consequently
 
 ---
 
-**SISTEMA DE GOVERNO**
+**SYSTEM OF GOVERNMENT**
 
 The Kaeldur do not have hereditary kings. Their rulers — titled **Kaelnar** (fire-master) — are **elected by the Council of Elders** from among those who have proven themselves through the Kaelvreth tradition.
 
 **Principles:**
 
-| Principle | Implementaction |
-|-----------|---------------|
+| Principle | Implementation |
+|-----------|----------------|
 | **Merit over birth** | Any Kaelvreth graduate is eligible |
 | **Selection by Council** | Elders choose; community affirms |
 | **Removable** | King can be removed for just cause |
-| **Service, not domain** | King serve a comunidade, not o inverso |
+| **Service, not domain** | King serves the community, not the reverse |
 | **Outer ring** | King sleeps with warriors, not at fire center |
 
 ---
 
-**REQUISITOS PARA REALEZA**
+**REQUIREMENTS FOR ROYALTY**
 
-| Requisito | Verificaction |
-|-----------|-------------|
-| Completar Kaelvreth | Jornada completa de 3-7 anos no exterior |
+| Requirement | Verification |
+|-------------|--------------|
+| Complete Kaelvreth | Full journey of 3-7 years abroad |
 | Return every winter | Witnessed by bunker elders |
 | Bring valuable knowledge | Reported to Council |
-| Demonstrar sabedoria | Reputaction between pares |
-| Demonstrar strength | Resistance physical e mental |
+| Demonstrate wisdom | Reputation among peers |
+| Demonstrate strength | Physical and mental resistance |
 | No breaking of oaths | Clean record |
-| Idade 30+ | Experience suficiente |
+| Age 30+ | Sufficient experience |
 
 ---
 
-**PODERES E LIMITES**
+**POWERS AND LIMITS**
 
 | Powers | Limits |
-|---------|---------|
+|--------|--------|
 | Military command | Cannot declare war alone |
 | Emergency decisions | Cannot change fundamental laws |
 | External relations | Cannot accumulate resources |
 | Dispute resolution | Cannot exempt self from duties |
 | Direction of Kaelvreth | Cannot name successor |
-| Alocaction de recursos (emergence) | Pode ser removido (voto 2/3) |
+| Resource allocation (emergency) | Can be removed (2/3 vote) |
 
 ---
 
-**ERAS DA REALEZA KAELDUR**
+**ERAS OF KAELDUR ROYALTY**
 
 | Era | Period | Character |
-|-----|---------|---------|
+|-----|--------|-----------|
 | **Migration** | ~350-450 AF | Survival; construction of first bunkers |
-| **Foundation** | ~450-550 AF | Estabelecimento de traditions |
-| **Crescimento** | ~550-700 AF | Expansion; desenvolvimento da metalurgia |
-| **Preparaction** | ~700-777 AF | Observaction de Duratheon; preparaction para conflito |
-| **Revenge** | 778 AF - present | Victory; futuro incerto |
+| **Foundation** | ~450-550 AF | Establishment of traditions |
+| **Growth** | ~550-700 AF | Expansion; development of metallurgy |
+| **Preparation** | ~700-777 AF | Observation of Duratheon; preparation for conflict |
+| **Revenge** | 778 AF - present | Victory; uncertain future |
 
 ---
 
-**REIS NOTABLE**
+**NOTABLE KINGS**
 
-| King | Reign | Epithet | Feito Principal |
-|-----|---------|---------|-----------------|
+| King | Reign | Epithet | Main Achievement |
+|------|-------|---------|------------------|
 | **Kaelthrek I** | ~350-382 AF | The First Fire | Led survivors; founded Kaelthrek |
-| **Durvreth I** | ~382-424 AF | O Construtor | Designed the bunker system |
-| **Kaelveth I** | ~424-461 AF | A Guardiã | Primeira Kaelnar feminina; estabeleceu rituais do fogo |
-| **Threknar I** | ~489-531 AF | O Forjador | Transformou a metalurgia Kaeldur |
+| **Durvreth I** | ~382-424 AF | The Builder | Designed the bunker system |
+| **Kaelveth I** | ~424-461 AF | The Guardian | First female Kaelnar; established fire rituals |
+| **Threknar I** | ~489-531 AF | The Forger | Transformed Kaeldur metallurgy |
 | **Vreth Kaeldur I** | ~700-735 AF | The Observer | Formalized Kaelvreth tradition |
-| **Vreth Kaeldur II** | ~735-770 AF | A Sombra | Expandiu rede de intelligence |
-| **Vreth Kaeldur III** | 770 AF - present | O Vingador | **Derrotou Duratheon (778 AF)** |
+| **Vreth Kaeldur II** | ~735-770 AF | The Shadow | Expanded intelligence network |
+| **Vreth Kaeldur III** | 770 AF - present | The Avenger | **Defeated Duratheon (778 AF)** |
 
 ---
 
-**VRETH KAELDUR III — REI ATUAL**
+**VRETH KAELDUR III — CURRENT KING**
 
-| Atributo | Detalhe |
-|----------|---------|
-| **Nome de nascimento** | Vrethkhen |
-| **Idade (778 AF)** | ~55 anos |
-| **Anos Kaelvreth** | 7 (viajou por Duratheon, Leste, Sul) |
-| **Eleito** | 770 AF |
+| Attribute | Detail |
+|-----------|--------|
+| **Birth name** | Vrethkhen |
+| **Age (778 AF)** | ~55 years |
+| **Kaelvreth years** | 7 (traveled through Duratheon, East, South) |
+| **Elected** | 770 AF |
 | **Character** | Patient, observant, relentless when necessary |
 
 **What he knew before the war:**
-- O layout de Vaelhem Thel (caminhou por suas ruas)
-- As tactics do army de Duratheon (observou-os treinar)
-- As fraquezas de suas formations (antiquadas)
-- O character de Tornael (obsessivo, surdo a conselhos)
-- A rota exata que o army tomaria (única passable)
+- The layout of Vaelhem Thel (walked its streets)
+- The tactics of Duratheon's army (observed them training)
+- The weaknesses of their formations (antiquated)
+- The character of Tornael (obsessive, deaf to counsel)
+- The exact route the army would take (the only passable one)
 
-**O que ele disse a Krav XIX capturado:**
+**What he said to captured Krav XIX:**
 > *"The irony was watching his father raise an army so vast. So unprepared. So archaic. So... foolish."*
 
 > *"We do not want war. But it is important to understand how things work."*
@@ -1643,25 +2250,25 @@ The Kaeldur do not have hereditary kings. Their rulers — titled **Kaelnar** (f
 **COMPARISON: KAELNAR vs. VAELOR THEL**
 
 | Aspect | Kaelnar (Kaeldur) | Vaelor Thel (Duratheon) |
-|---------|-------------------|------------------------|
+|--------|-------------------|-------------------------|
 | **Selection** | Elected by Elders | Hereditary |
-| **Significado do title** | "Master-do-fogo" | "Supremo Acumulador" |
+| **Title meaning** | "Fire-Master" | "Supreme Accumulator" |
 | **Qualification** | Proven through journey | Born in right family |
-| **Remotion** | Voto do Conselho | Assassinato ou morte |
-| **Position para dormir** | Anel externo (borda fria) | Melhores aposentos |
-| **Wealth** | Nenhuma pessoal | Vasto tesouro pessoal |
+| **Removal** | Council vote | Assassination or death |
+| **Sleeping position** | Outer ring (cold edge) | Best chambers |
+| **Wealth** | None personal | Vast personal treasury |
 | **Succession** | New election | Eldest son |
 
-**A difference fundamental:**
-> *"Em Duratheon, o rei possui o povo. Em Kaeldur, o povo possui o rei."*`,
-        tags: ["kaeldur", "reis", "kaelnar", "vreth", "governo"]
+**The fundamental difference:**
+> *"In Duratheon, the king owns the people. In Kaeldur, the people own the king."*`,
+        tags: ["kaeldur", "kings", "kaelnar", "vreth", "government"]
       },
       "kaeldur-idioma": {
         group: "kaeldur",
         title: "KAELDUR — Kaeldrek Language",
         content: `*"Kael-khen. Vreth-dur. Vrakh threk."*
 *"Fire together. Strength resists. The metal is sworn."*
-— Saudaction tradicional Kaeldur
+— Traditional Kaeldur greeting
 
 ---
 
@@ -1669,106 +2276,106 @@ The Kaeldur do not have hereditary kings. Their rulers — titled **Kaelnar** (f
 
 **Kaeldrek** is the language of the Kaeldur people, spoken in the mountain fortresses of northern Vrethkaeldur. It descends from **Archaic TAELUN** through a northern branch that diverged before the linguistic softening that produced ZANUAX in the western lands.
 
-Onde ZANUAX evoluiu para ornamentaction e precision bureaucratic, Kaeldrek permaneceu more next de suas roots TAELUN: áspero, direto, practical.
+Where ZANUAX evolved toward ornamentation and bureaucratic precision, Kaeldrek remained closer to its TAELUN roots: harsh, direct, practical.
 
 ---
 
-**ÁRVORE LINGUISTIC**
+**LINGUISTIC TREE**
 
-             TAELUN ARCAICO (Era I-IV)
+             ARCHAIC TAELUN (Era I-IV)
                      │
       ┌──────────────┴──────────────┐
       │                             │
- TAELUN TARDIO              TAELUN DO NORTE
-(Povos ocidentais)          (Povos do norte)
+ LATE TAELUN                NORTHERN TAELUN
+(Western peoples)           (Northern peoples)
       │                             │
  PROTO-ZANUAX               PROTO-KAELDREK
       │                             │
    ZANUAX                      KAELDREK
-(Ornamental, elaborado)     (Practical, gutural)
+(Ornamental, elaborate)     (Practical, guttural)
 
 ---
 
-**ROOTS COMPARTILHADAS COM ZANUAX**
+**SHARED ROOTS WITH ZANUAX**
 
-| Root | Meaning | Exemplo ZANUAX | Exemplo Kaeldrek |
-|------|-------------|----------------|------------------|
+| Root | Meaning | ZANUAX Example | Kaeldrek Example |
+|------|---------|----------------|------------------|
 | **DUR** | Stone, resist | Duratheon | Kaeldur |
-| **KRAV** | Conquistar | Kravorn | Kraveth |
-| **THUL** | Profundo, antigo | Thul'Kar | Thulvrek |
+| **KRAV** | Conquer | Kravorn | Kraveth |
+| **THUL** | Deep, ancient | Thul'Kar | Thulvrek |
 | **VEL** | Balance | Velaren | Velkhen |
-| **NAKH** | Esgotar, morrer | Nakh-is | Nakhskar |
-| **TORN** | Virar, observar | Tornael | Tornvrek |
+| **NAKH** | Deplete, die | Nakh-is | Nakhskar |
+| **TORN** | Turn, observe | Tornael | Tornvrek |
 
 ---
 
-**ROOTS ÚNICAS DO KAELDREK**
+**UNIQUE KAELDREK ROOTS**
 
 **Fire and Heat (Central Concept):**
 
 | Root | Meaning | Notes |
-|------|-------------|-------|
+|------|---------|-------|
 | **KAEL** | Fire, warmth, life | Most sacred root |
-| **AELV** | Ar, respiraction, smoke | Relacionada à tecnologia de chimneys |
-| **THREK** | Forja, fogo sagrado | Metallurgic |
-| **LAER** | Descanso, sono, noite | O tempo perto do fogo |
+| **AELV** | Air, breath, smoke | Related to chimney technology |
+| **THREK** | Forge, sacred fire | Metallurgic |
+| **LAER** | Rest, sleep, night | The time near the fire |
 
-**Frio e Morte (Conceito Oposto):**
-
-| Root | Meaning | Notes |
-|------|-------------|-------|
-| **SKAR** | Gelo, frio, morte | O inimigo |
-| **VRETH** | Strength, resistance | Contra o frio |
-| **KHEL** | Congelar, parar | Imobilidade absoluta |
-
-**Comunidade (Conceito de Survival):**
+**Cold and Death (Opposite Concept):**
 
 | Root | Meaning | Notes |
-|------|-------------|-------|
+|------|---------|-------|
+| **SKAR** | Ice, cold, death | The enemy |
+| **VRETH** | Strength, resistance | Against the cold |
+| **KHEL** | Freeze, stop | Absolute immobility |
+
+**Community (Survival Concept):**
+
+| Root | Meaning | Notes |
+|------|---------|-------|
 | **KHEN** | Together, with | Cannot survive alone |
 | **VRAKH** | Oath, promise | Bond with community |
-| **THAEL** | Compartilhar, dar | Oposto de acumular |
+| **THAEL** | Share, give | Opposite of accumulate |
 
 ---
 
-**SUFIXOS**
+**SUFFIXES**
 
 | Suffix | Meaning | Example | Translation |
-|--------|-------------|---------|----------|
-| **-ur** | Povo, coletivo | Kaeld-ur | Povo-do-fogo |
+|--------|---------|---------|-------------|
+| **-ur** | People, collective | Kaeld-ur | Fire-people |
 | **-ek** | One who does | Threkn-ek | One who forges |
-| **-nar** | Master de | Threk-nar | Master-forjador |
-| **-vrek** | Caminhante, viajante | Kael-vrek | Caminhante-do-fogo |
-| **-khen** | Com, junto | Kael-khen | Com fogo |
-| **-skar** | Sem, faltando | Khen-skar | Sem comunidade |
-| **-threk** | Lugar de fogo/forja | Kael-threk | Lugar-do-fogo (bunker) |
+| **-nar** | Master of | Threk-nar | Master-forger |
+| **-vrek** | Walker, traveler | Kael-vrek | Fire-walker |
+| **-khen** | With, together | Kael-khen | With fire |
+| **-skar** | Without, lacking | Khen-skar | Without community |
+| **-threk** | Place of fire/forge | Kael-threk | Fire-place (bunker) |
 
 ---
 
-**FRASES ESSENCIAIS**
+**ESSENTIAL PHRASES**
 
 **Greetings:**
 
 | Kaeldrek | Literal | Meaning |
-|----------|---------|-------------|
+|----------|---------|---------|
 | **Kael-khen.** | Fire-together. | Welcome (to warmth). |
-| **Vreth-dur.** | Strength-resiste. | Resposta / despedida. |
-| **Ke kael?** | Há fogo? | Como você está? |
+| **Vreth-dur.** | Strength-resists. | Response / farewell. |
+| **Ke kael?** | Is there fire? | How are you? |
 | **Kael.** | Fire. | I am well. |
 
-**Despedidas:**
+**Farewells:**
 
 | Kaeldrek | Meaning |
-|----------|-------------|
-| **Vreth-dur.** | Despedida pattern. |
-| **Na-skar.** | Mantenha-se quente. |
+|----------|---------|
+| **Vreth-dur.** | Standard farewell. |
+| **Na-skar.** | Stay warm. |
 | **Kael-ul.** | The fire will be here (when you return). |
 
-**Expressions de Afeto:**
+**Expressions of Affection:**
 
 | Kaeldrek | Meaning |
-|----------|-------------|
-| **Ek-kael, thu-kael.** | Meu fogo, seu fogo. (Eu te amo.) |
+|----------|---------|
+| **Ek-kael, thu-kael.** | My fire, your fire. (I love you.) |
 | **Ekkhen-ir kael, thu-ir kael.** | Our fire is your fire. |
 
 ---
@@ -1776,154 +2383,154 @@ Onde ZANUAX evoluiu para ornamentaction e precision bureaucratic, Kaeldrek perma
 **PROVERBS**
 
 | Kaeldrek | Literal | Meaning |
-|----------|---------|-------------|
+|----------|---------|---------|
 | **Kael-skar, vel-skar.** | Without fire, without life. | Fire is life. |
 | **Khen-skar, nakh-skar.** | Without community, without depletion. | Alone, you do not even have the dignity of dying slowly — you just die. |
-| **Durtek thul-skar.** | Os sulistas are without profundidade. | Eles are rasos. |
+| **Durtek thul-skar.** | The southerners are without depth. | They are shallow. |
 | **Threknar vrakh-el, threk vrakh-eth.** | The smith swears, the metal is sworn. | The oath binds both. |
 | **Ek-kael, thu-kael, ekkhen-kael.** | My fire, your fire, our fire. | What is mine is yours. |
 
 ---
 
-**NOMES**
+**NAMES**
 
-**Nomes Masculinos (Tradicionais):**
-
-| Name | Meaning |
-|------|-------------|
-| Vrethek | Forte |
-| Kaelnar | Master-do-fogo |
-| Threkur | Da forja |
-| Durvreth | Strength-da-pedra |
-| Tornvrek | Observador-caminhante |
-
-**Nomes Femininos (Tradicionais):**
+**Male Names (Traditional):**
 
 | Name | Meaning |
-|------|-------------|
-| Kaelveth | Sopro-do-fogo |
-| Vrethael | Strength-do-ar |
-| Thaelkhen | Compartilhar-juntos |
-| Laerkael | Descanso-do-fogo |
+|------|---------|
+| Vrethek | Strong |
+| Kaelnar | Fire-master |
+| Threkur | Of the forge |
+| Durvreth | Stone-strength |
+| Tornvrek | Observer-walker |
+
+**Female Names (Traditional):**
+
+| Name | Meaning |
+|------|---------|
+| Kaelveth | Fire-breath |
+| Vrethael | Strength-of-air |
+| Thaelkhen | Share-together |
+| Laerkael | Rest-of-fire |
 
 ---
 
-**COMPARISON: "EU TE AMO"**
+**COMPARISON: "I LOVE YOU"**
 
-| Language | Frase | Literal |
-|--------|-------|---------|
-| ZANUAX | *Ek sentharel thu.* | Eu preservo-aprecio você. |
-| KAELDREK | *Ek-kael, thu-kael.* | Meu fogo, seu fogo. (Compartilhamos calor.) |
+| Language | Phrase | Literal |
+|----------|--------|---------|
+| ZANUAX | *Ek sentharel thu.* | I preserve-appreciate you. |
+| KAELDREK | *Ek-kael, thu-kael.* | My fire, your fire. (We share warmth.) |
 
-**COMPARISON: "ADEUS"**
+**COMPARISON: "GOODBYE"**
 
-| Language | Frase | Literal |
-|--------|-------|---------|
-| ZANUAX | *Sthendur tauvar.* | Sthendur observa. |
-| KAELDREK | *Vreth-dur.* | Strength resiste. |`,
-        tags: ["kaeldur", "idioma", "kaeldrek", "language", "vocabulary"]
+| Language | Phrase | Literal |
+|----------|--------|---------|
+| ZANUAX | *Sthendur tauvar.* | Sthendur observes. |
+| KAELDREK | *Vreth-dur.* | Strength resists. |`,
+        tags: ["kaeldur", "language", "kaeldrek", "vocabulary"]
       },
       "kaeldur-sociedade": {
         group: "kaeldur",
         title: "KAELDUR — Society & Culture",
-        content: `**Estrutura Social e Modo de Vida**
+        content: `**Social Structure and Way of Life**
 
 ---
 
-**ESTRUTURA POPULACIONAL**
+**POPULATION STRUCTURE**
 
-| Categoria | Number | Notes |
-|-----------|--------|-------|
-| **Population total** | ~40.000-45.000 | Sustainable em ambiente hostil |
-| **Guerreiros (potencial)** | ~8.000-10.000 | 1 em 4-5 adultos |
-| **Militares ativos** | ~3.000-4.000 | Defensores profissionais |
-| **Masters-forjadores** | ~200-300 | Papel sagrado, altamente treinados |
-| **Elders (eligible ao Conselho)** | ~500-800 | Idade 50+, Kaelvreth completado |
+| Category | Number | Notes |
+|----------|--------|-------|
+| **Total population** | ~40,000-45,000 | Sustainable in hostile environment |
+| **Warriors (potential)** | ~8,000-10,000 | 1 in 4-5 adults |
+| **Active military** | ~3,000-4,000 | Professional defenders |
+| **Master-forgers** | ~200-300 | Sacred role, highly trained |
+| **Elders (Council eligible)** | ~500-800 | Age 50+, Kaelvreth completed |
 | **Kaelvreth (active travelers)** | ~300-500 | Currently abroad |
 
 ---
 
-**HIERARQUIA ESPACIAL (Bunker)**
+**SPATIAL HIERARCHY (Bunker)**
 
-Proximidade ao fogo central determina status — mas not da forma que estrangeiros esperariam:
+Proximity to the central fire determines status — but not in the way foreigners would expect:
 
-| Position | Quem Dorme | Por Quê |
-|---------|------------|---------|
-| **Closer to fire** | Children, elderly, sick, pregnant | Need more warmth |
-| **Middle ring** | Families com children | Protection and warmth |
+| Position | Who Sleeps | Why |
+|----------|------------|-----|
+| **Closest to fire** | Children, elderly, sick, pregnant | Need more warmth |
+| **Middle ring** | Families with children | Protection and warmth |
 | **Outer ring** | Healthy adults, warriors | Can withstand more cold |
-| **Mais longe** | Young adults, returned Kaelvreth | Prove their strength |
+| **Farthest** | Young adults, returned Kaelvreth | Prove their strength |
 
 **THE KING SLEEPS IN THE OUTER RING.** This is proof of strength. A king who needs the center of the fire is too weak to lead.
 
 ---
 
-**A TRADITION KAELVRETH**
+**THE KAELVRETH TRADITION**
 
 The Kaelvreth is the travel tradition — young adults spend 3-7 years traveling the world, observing other peoples, collecting knowledge.
 
-**Requisitos:**
-- Partir after atingir maturidade (~18-22 anos)
-- **Retornar TODO inverno** (obrigaction absoluta)
-- Trazer conhecimento útil
-- No revelar segredos Kaeldur
+**Requirements:**
+- Depart after reaching maturity (~18-22 years)
+- **Return EVERY winter** (absolute obligation)
+- Bring useful knowledge
+- Do not reveal Kaeldur secrets
 
-**O Retorno:**
+**The Return:**
 > "Before the first snow, all Kaelvreth must return."
 
 This is absolute. A traveler who fails to return for winter either died or abandoned their people. Both are mourned the same way.
 
 ---
 
-**ECONOMIA**
+**ECONOMY**
 
 The Kaeldur economy is based on survival, not profit.
 
 **Subsistence:**
 
-| Recurso | Fonte | Estaction |
-|---------|-------|---------|
-| Carne | Hunt (cervos, alces, cabras) | Summer/outono |
-| Peixe | Pesca no gelo, rios | O ano all |
-| Carne preservada | Defumaction, congelamento | Estoques de inverno |
-| Dairy | Pequenos rebanhos (cabras) | Summer |
-| Grains | Limitado; importado/trocado | — |
-| Fuel | Coal, turfa, madeira limitada | Mineraction o ano all |
+| Resource | Source | Season |
+|----------|--------|--------|
+| Meat | Hunting (deer, elk, goats) | Summer/autumn |
+| Fish | Ice fishing, rivers | Year-round |
+| Preserved meat | Smoking, freezing | Winter stocks |
+| Dairy | Small herds (goats) | Summer |
+| Grains | Limited; imported/traded | — |
+| Fuel | Coal, peat, limited wood | Year-round mining |
 
 **Trade:**
 
 | Export | Value |
-|------------|-------|
-| Trabalho em metal | Muito alto |
-| Peles | Alto |
-| Minerais | Medium |
+|--------|-------|
+| Metalwork | Very high |
+| Furs | High |
+| Minerals | Medium |
 
-| Importaction | Necessidade |
-|------------|-------------|
-| Grains | Essencial |
-| Sal | Alta |
-| Bens de luxo | Baixa (not valorizados) |
+| Import | Necessity |
+|--------|-----------|
+| Grains | Essential |
+| Salt | High |
+| Luxury goods | Low (not valued) |
 
-**Principles de trade:**
-- Nunca trocar armas com inimigos potenciais
-- Nunca revelar segredos metallurgical
-- No construir dependencies de fonte única
+**Trade principles:**
+- Never trade weapons with potential enemies
+- Never reveal metallurgical secrets
+- Do not build dependencies on single source
 
 ---
 
-**RIQUEZA**
+**WEALTH**
 
 **Wealth is not valued.** Accumulating is shameful. Status comes from contribution, not accumulation.
 
-**Posses pessoais are minimum:**
-- Armas (frequentemente herdadas)
-- Roupas (practices, not decorativas)
-- Ferramentas (available comunalmente)
-- Itens pessoais pequenos (joias raras)
+**Personal possessions are minimal:**
+- Weapons (often inherited)
+- Clothing (practical, not decorative)
+- Tools (available communally)
+- Small personal items (rare jewelry)
 
-**Riqueza comunal:**
-- Estoques de comida pertencem ao bunker
-- Forjas pertencem à comunidade
+**Communal wealth:**
+- Food stores belong to the bunker
+- Forges belong to the community
 - Metal ore is common resource
 - Housing is communal (bunker)
 
@@ -1931,51 +2538,51 @@ The Kaeldur economy is based on survival, not profit.
 
 **CALENDAR**
 
-| Estaction | Kaeldrek | Duration | Character |
-|---------|----------|---------|---------|
+| Season | Kaeldrek | Duration | Character |
+|--------|----------|----------|-----------|
 | **Deep Winter** | Velkhen-laer | ~4 months | Long night; all in bunkers |
-| **Inverno Tardio** | Skar-laer | ~2 meses | Frio mas clareando |
-| **Degelo** | Kael-var | ~2 meses | Neve derrete; hunt begins |
-| **Summer** | Kael-thul | ~2-3 meses | Calor; atividade intensa |
-| **Outono** | Nakh-var | ~2 meses | Preparaction; últimas hunts |
+| **Late Winter** | Skar-laer | ~2 months | Cold but brightening |
+| **Thaw** | Kael-var | ~2 months | Snow melts; hunting begins |
+| **Summer** | Kael-thul | ~2-3 months | Warmth; intense activity |
+| **Autumn** | Nakh-var | ~2 months | Preparation; last hunts |
 
 ---
 
-**FESTIVAIS**
+**FESTIVALS**
 
-| Festival | Momento | Celebraction |
-|----------|---------|------------|
-| **Kael-khen** | Meio do inverno | Meeting no fogo central; juramentos renovados |
-| **Threk-thul** | Primeiro degelo | Forjas reacendidas em capacidade total |
-| **Kaelvreth-ul** | Final do outono | Viajantes partem; blessings dadas |
-| **Skarvreth** | Primeira neve | Viajantes retornam; histories compartilhadas |
+| Festival | Time | Celebration |
+|----------|------|-------------|
+| **Kael-khen** | Midwinter | Gathering at central fire; oaths renewed |
+| **Threk-thul** | First thaw | Forges reignited at full capacity |
+| **Kaelvreth-ul** | Late autumn | Travelers depart; blessings given |
+| **Skarvreth** | First snow | Travelers return; stories shared |
 
 ---
 
-**RELATIONS COM OUTROS POVOS**
+**RELATIONS WITH OTHER PEOPLES**
 
 **Duratheon:**
 
-| Aspect | Vision Kaeldur |
-|---------|---------------|
-| Historical | Assassinos; destroyed ancestrais |
-| Current | Ocos, decadentes, condenados |
-| Militar | Perigosos em numbers; predictable em tactics |
-| Cultural | Obcecados com appearances; without strength interior |
-| Futuro | Colapsará without intervention Kaeldur |
+| Aspect | Kaeldur View |
+|--------|--------------|
+| Historical | Murderers; destroyed ancestors |
+| Current | Hollow, decadent, doomed |
+| Military | Dangerous in numbers; predictable in tactics |
+| Cultural | Obsessed with appearances; without inner strength |
+| Future | Will collapse without Kaeldur intervention |
 
 The Kaeldur do not hate Duratheon with passion. They see with cold clarity. Kravorn was evil. His descendants are merely foolish.
 
-**Povos do Leste:**
+**Eastern Peoples:**
 
-| Aspect | Vision Kaeldur |
-|---------|---------------|
-| Conhecimento | Possuem armas-de-fogo (artilharia) |
-| Level de threat | Maior que Duratheon |
-| Abordagem | Observar cuidadosamente; not provocar |
+| Aspect | Kaeldur View |
+|--------|--------------|
+| Knowledge | Possess firearms (artillery) |
+| Threat level | Greater than Duratheon |
+| Approach | Observe carefully; do not provoke |
 
-Os Kaelvreth trouxeram reports de armas-de-fogo orientais. Os Kaeldur estudam esta tecnologia cuidadosamente.`,
-        tags: ["kaeldur", "sociedade", "cultura", "economia", "calendar"]
+The Kaelvreth brought reports of eastern firearms. The Kaeldur study this technology carefully.`,
+        tags: ["kaeldur", "society", "culture", "economy", "calendar"]
       },
       "duratheon-reino": {
         group: "duratheon",
@@ -2023,124 +2630,124 @@ Ano atual: **778 AF** (campanha de Krav XIX destroyed)
 
 ---
 
-**O SISTEMA DUODECIMAL**
+**THE DUODECIMAL SYSTEM**
 
 The calendar of Duratheon reflects the duodecimal numerical system (base 12) inherited from ancient traditions. The number **12** is considered sacred — product of 6 × 2, where 6 represents the Pillars of faith in Sthendur and 2 represents the fundamental duality (light/shadow, life/death, expansion/contraction).
 
-Por isso:
-- **6** dias na semana
-- **12** meses no ano
-- **5** dias sagrados (os 5 Pilares)
-- 30 dias por month (5 semanas × 6 dias)
+Therefore:
+- **6** days in the week
+- **12** months in the year
+- **5** sacred days (the 5 Pillars)
+- 30 days per month (5 weeks × 6 days)
 
 This structure is not coincidence — it is theology crystallized in mathematics.
 
 ---
 
-**ESTRUTURA BASIC**
+**BASIC STRUCTURE**
 
-| Unidade | Nome ZANUAX | Duration |
-|---------|-------------|---------|
-| Dia | ZUN | Nascer ao nascer (24h) |
-| Semana | ZUN-THOZ | 6 dias |
-| Month | THUL-ZUN | 30 dias (5 semanas) |
-| Ano | VAELOR-ZUN | 360 + 5 dias sagrados = **365 dias** |
+| Unit | ZANUAX Name | Duration |
+|------|-------------|----------|
+| Day | ZUN | Sunrise to sunrise (24h) |
+| Week | ZUN-THOZ | 6 days |
+| Month | THUL-ZUN | 30 days (5 weeks) |
+| Year | VAELOR-ZUN | 360 + 5 sacred days = **365 days** |
 
 ---
 
-**OS 6 DIAS DA SEMANA**
+**THE 6 DAYS OF THE WEEK**
 
 | # | Name | Meaning | Character |
-|---|------|-------------|---------|
+|---|------|---------|-----------|
 | 1 | THUL-ZUN | Day of Stone | Beginning, foundation |
-| 2 | SETHUL-ZUN | Dia da Creation | Trabalho, fazer |
-| 3 | KRAVUL-ZUN | Dia da Conquista | Effort, luta |
-| 4 | VELUL-ZUN | Dia do Balance | Trade, troca |
-| 5 | DURUL-ZUN | Dia da Resistance | Persistence, conclusion |
-| 6 | TAUVAR-ZUN | Dia da Vigil | **DESCANSO, culto** |
+| 2 | SETHUL-ZUN | Day of Creation | Work, making |
+| 3 | KRAVUL-ZUN | Day of Conquest | Effort, struggle |
+| 4 | VELUL-ZUN | Day of Balance | Trade, exchange |
+| 5 | DURUL-ZUN | Day of Resistance | Persistence, conclusion |
+| 6 | TAUVAR-ZUN | Day of Vigil | **REST, worship** |
 
-**TAUVAR-ZUN** — O Sexto Dia Sagrado:
-- Nenhum trabalho desnecessary
-- Presence no templo esperada
-- Mercados fechados
-- Treinos militares suspensos
+**TAUVAR-ZUN** — The Sacred Sixth Day:
+- No unnecessary work
+- Temple presence expected
+- Markets closed
+- Military training suspended
 - Cloud readings in temples
 
 ---
 
-**OS 12 MESES**
+**THE 12 MONTHS**
 
-| # | Month | Dias | Estaction | Meaning |
-|---|-----|------|---------|-------------|
-| 1 | **TORNAVEL** | 1-30 | Beginning Primavera | "Vigil Duradoura" |
-| 2 | **SETHAREM** | 31-60 | Meio Primavera | "Lugar da Creation" |
-| 3 | **VELUTHAAN** | 61-90 | Fim Primavera | "Despertar do Vento" |
-| 4 | **KRAVETHOR** | 91-120 | Beginning Summer | "Conquista Elevada" |
+| # | Month | Days | Season | Meaning |
+|---|-------|------|--------|---------|
+| 1 | **TORNAVEL** | 1-30 | Early Spring | "Enduring Vigil" |
+| 2 | **SETHAREM** | 31-60 | Mid Spring | "Place of Creation" |
+| 3 | **VELUTHAAN** | 61-90 | Late Spring | "Wind Awakening" |
+| 4 | **KRAVETHOR** | 91-120 | Early Summer | "Elevated Conquest" |
 | 5 | **THULVAREK** | 121-150 | Mid Summer | "Stone Change" |
-| 6 | **JAKENTHAL** | 151-180 | Fim Summer | "Hall do Sustento" |
-| 7 | **DURATHEM** | 181-210 | Beginning Outono | "Lugar da Resistance" |
-| 8 | **VELAKHEM** | 211-240 | Meio Outono | "Lar da Prosperidade" |
-| 9 | **SENTHAVAR** | 241-270 | Fim Outono | "Preservaction Elevada" |
-| 10 | **THURNAVEL** | 271-300 | Beginning Inverno | "Sombra Duradoura" |
-| 11 | **SKELETHAAN** | 301-330 | Meio Inverno | "Encerramento Elevado" |
-| 12 | **NETHRAVORN** | 331-360 | Fim Inverno | "Bond Proclamado" |
+| 6 | **JAKENTHAL** | 151-180 | Late Summer | "Hall of Sustenance" |
+| 7 | **DURATHEM** | 181-210 | Early Autumn | "Place of Resistance" |
+| 8 | **VELAKHEM** | 211-240 | Mid Autumn | "Home of Prosperity" |
+| 9 | **SENTHAVAR** | 241-270 | Late Autumn | "Elevated Preservation" |
+| 10 | **THURNAVEL** | 271-300 | Early Winter | "Enduring Shadow" |
+| 11 | **SKELETHAAN** | 301-330 | Mid Winter | "Elevated Closure" |
+| 12 | **NETHRAVORN** | 331-360 | Late Winter | "Proclaimed Bond" |
 
 ---
 
-**OS 5 DIAS SAGRADOS (Intercalares)**
+**THE 5 SACRED DAYS (Intercalary)**
 
-Entre dia 360 (fim de NETHRAVORN) e dia 1 (beginning de TORNAVEL):
+Between day 360 (end of NETHRAVORN) and day 1 (beginning of TORNAVEL):
 
-| Dia | Name | Pilar | Dedicaction |
-|-----|------|-------|-----------|
-| +1 | TORNAVEL-THUL | I | EXPANSION — Processions às fronteiras |
-| +2 | SETHARUL-THUL | II | PLANTIO — Blessings de sementes, casamentos |
-| +3 | NAKRAVEX-THUL | III | INCONQUISTADO — Paradas militares, juramentos |
-| +4 | VELAKUM-THUL | IV | PROSPERIDADE — Debts perdoadas, caridade |
-| +5 | IULTHUR-THUL | V | SUSTENTO — Memory dos mortos |
+| Day | Name | Pillar | Dedication |
+|-----|------|--------|------------|
+| +1 | TORNAVEL-THUL | I | EXPANSION — Processions to frontiers |
+| +2 | SETHARUL-THUL | II | PLANTING — Blessings of seeds, marriages |
+| +3 | NAKRAVEX-THUL | III | UNCONQUERED — Military parades, oaths |
+| +4 | VELAKUM-THUL | IV | PROSPERITY — Debts forgiven, charity |
+| +5 | IULTHUR-THUL | V | SUSTENANCE — Memory of the dead |
 
-Durante os 5 dias sagrados:
-- **TODO trabalho cessa** (not only reduzido)
-- Tribunais not funcionam
-- Mercados fechados (nenhum trade)
+During the 5 sacred days:
+- **ALL work ceases** (not only reduced)
+- Courts do not function
+- Markets closed (no trade)
 - Debts cannot be collected
-- Operations militares pausadas
-- Templos abertos continuamente
+- Military operations paused
+- Temples open continuously
 
 These days are "outside of time" — they belong to Sthendur, not to mortals.
 
-**A Noite de Transition — THUL-KRAVETH-UN**
+**The Night of Transition — THUL-KRAVETH-UN**
 The night between IULTHUR-THUL and 1 Tornavel. According to tradition, it is when Sthendur can descend to judge the world. The faithful remain awake, watching. Every year the sun rises and Sthendur has not come. But one day will.
 
 ---
 
-**FESTIVAIS PRINCIPAIS**
+**MAIN FESTIVALS**
 
-| Festival | Date | Dia# | Pilar |
-|----------|------|------|-------|
+| Festival | Date | Day# | Pillar |
+|----------|------|------|--------|
 | TORNAVEL-ZUN | 15 Tornavel | 15 | I - Expansion |
-| SETHARUL-ZUN | 15 Setharem | 45 | II - Plantio |
-| NAKRAVEX-ZUN | 15 Kravethor | 105 | III - Inconquistado |
-| VELAKUM-ZUN | 15 Velakhem | 225 | IV - Prosperidade |
-| IULTHUR-ZUN | 15 Thurnavel | 285 | V - Sustento |
+| SETHARUL-ZUN | 15 Setharem | 45 | II - Planting |
+| NAKRAVEX-ZUN | 15 Kravethor | 105 | III - Unconquered |
+| VELAKUM-ZUN | 15 Velakhem | 225 | IV - Prosperity |
+| IULTHUR-ZUN | 15 Thurnavel | 285 | V - Sustenance |
 
-**Outras Observances**
+**Other Observances**
 | Date | Name | Purpose |
-|------|------|-----------|
-| 1 Durathem (181) | VAELOR-ZUN | Dia do King — anniversary da coroaction de Duratheon Vael I |
-| 12 Kravethor (102) | KRAVORN-ZUN | Memory de Kravorn II e os Dez |
-| 30 Senthavar (270) | THUL-SENVAR | Dia da Preservaction |
-| 1 Skelethaan (301) | SKEL-ZUNAR | Beginning do Inverno — acendimento dos fogos longos |
-| 30 Nethravorn (360) | NETH-ZUNAR | Eve do Fim do Ano |
+|------|------|---------|
+| 1 Durathem (181) | VAELOR-ZUN | King's Day — anniversary of Duratheon Vael I's coronation |
+| 12 Kravethor (102) | KRAVORN-ZUN | Memory of Kravorn II and the Ten |
+| 30 Senthavar (270) | THUL-SENVAR | Day of Preservation |
+| 1 Skelethaan (301) | SKEL-ZUNAR | Beginning of Winter — lighting of long fires |
+| 30 Nethravorn (360) | NETH-ZUNAR | Eve of Year's End |
 
 ---
 
-**OBSERVANCES REAIS**
+**ROYAL OBSERVANCES**
 
-| Event | Data Tradicional |
-|--------|------------------|
-| Coronations | 1 Tornavel (1º dia do ano) |
-| Casamentos reais | SETHARUL-THUL (2º dia sagrado) |
+| Event | Traditional Date |
+|-------|------------------|
+| Coronations | 1 Tornavel (1st day of year) |
+| Royal weddings | SETHARUL-THUL (2nd sacred day) |
 | Campanhas militares | Apost 1 Kravethor (nunca before do summer) |
 | Tratados | 15 Velakhem (festival da prosperidade) |
 | Funerais reais | Dentro de 6 dias, memory em IULTHUR-THUL |
@@ -2224,56 +2831,56 @@ Anos com STHENDUR-THUL: 4, 8, 12... 776, 780, 784...
       "duratheon-doencas": {
         group: "duratheon",
         title: "DURATHEON — Diseases of Ungaar",
-        content: `**Nomenclatura Medical em ZANUAX**
+        content: `**Medical Nomenclature in ZANUAX**
 
 Medical terminology preserves archaic TAELUN roots lost in common speech.
 
 ---
 
-**DISEASES PRINCIPAIS**
+**MAIN DISEASES**
 
-| Name | Etimologia | Meaning | Nome Popular |
-|------|------------|-------------|--------------|
-| **NAKH-IS** | NAKH (depletar) + IS (estado) | Estado de depletion | A Depletion |
-| **THURNAKH** | THURN (sombra) + AKH (resultado) | Resultado-sombra | A Sombra |
-| **KRUVELAK** | KRUVEL (sangue) + AK (resultado) | Resultado-sangue | O Paro |
-| **SKEL-IS** | SKEL (fechar) + IS (estado) | Estado de fechamento | O Fechamento |
-| **RUSAKH** | RUS (erodir) + AKH (resultado) | Resultado-erosion | A Erosion |
+| Name | Etymology | Meaning | Popular Name |
+|------|-----------|---------|--------------|
+| **NAKH-IS** | NAKH (deplete) + IS (state) | State of depletion | The Depletion |
+| **THURNAKH** | THURN (shadow) + AKH (result) | Shadow-result | The Shadow |
+| **KRUVELAK** | KRUVEL (blood) + AK (result) | Blood-result | The Halt |
+| **SKEL-IS** | SKEL (close) + IS (state) | State of closure | The Closure |
+| **RUSAKH** | RUS (erode) + AKH (result) | Erosion-result | The Erosion |
 | **FEL-KRAEL** | FEL (fall) + KRAEL (fire) | Falling fire | The Fallen Fire |
-| **GRETH-IS** | GRETH (desespero) + IS (estado) | Estado de desespero | O Desespero |
-| **VETH-NAKH** | VETH (respirar) + NAKH (depletar) | Respiraction-depletion | Fim do Vento |
-| **THRAKEL-UN** | THRAKEL (instante) + UN (um) | O instante único | O Instante |
-| **ZER-SKEL** | ZER (êxtase) + SKEL (fechar) | Êxtase fechante | Êxtase Final |
-| **DUR-NAKH** | DUR (resistir) + NAKH (depletar) | Resistance depletada | O Fim Longo |
+| **GRETH-IS** | GRETH (despair) + IS (state) | State of despair | The Despair |
+| **VETH-NAKH** | VETH (breathe) + NAKH (deplete) | Breath-depletion | End of Wind |
+| **THRAKEL-UN** | THRAKEL (instant) + UN (one) | The single instant | The Instant |
+| **ZER-SKEL** | ZER (ecstasy) + SKEL (close) | Closing ecstasy | Final Ecstasy |
+| **DUR-NAKH** | DUR (resist) + NAKH (deplete) | Resistance depleted | The Long End |
 
 ---
 
-**DESCRIPTIONS DETALHADAS**
+**DETAILED DESCRIPTIONS**
 
-**NAKH-IS — A Depletion**
-A disease more temida de Ungaar. Transmitida por contato íntimo. Progride em three stages ao longo de anos ou decades: feridas iniciais que cicatrizam, dormancy, after o horror final — carne apodrecendo, features colapsando, cegueira, dementia. No há cura. Victims are isoladas na darkness para esconder sua vergonha.
+**NAKH-IS — The Depletion**
+The most feared disease of Ungaar. Transmitted by intimate contact. Progresses in three stages over years or decades: initial sores that heal, dormancy, then the final horror — flesh rotting, features collapsing, blindness, dementia. There is no cure. Victims are isolated in darkness to hide their shame.
 
-*Victim notable: Vaelan Vael, que infectou sua esposa without saber e morreu chamando por filhos já mortos.*
+*Notable victim: Vaelan Vael, who infected his wife unknowingly and died calling for children already dead.*
 
-**THURNAKH — A Sombra**
+**THURNAKH — The Shadow**
 Consumptive disease of the lungs. Victims cough blood, lose weight, become pale as shadows. Often spreads in crowded conditions or during epidemics. Can kill quickly or take years.
 
 *Theological interpretation: "The shadow consumes from within." Associated with hidden sins — the disease makes visible what was hidden.*
 
-**KRUVELAK — O Paro**
+**KRUVELAK — The Halt**
 When the heart seizes and stops. Often strikes without warning — a healthy man at breakfast may be dead at dinner. More common in those who carry great weight or great worry.
 
-*Interpretation theological: Ambiguous. Alguns dizem mercy fast (sem sofrimento); outros dizem julgamento fast (sem tempo para se arrepender).*
+*Theological interpretation: Ambiguous. Some say fast mercy (no suffering); others say fast judgment (no time to repent).*
 
-**GRETH-IS — O Desespero**
+**GRETH-IS — The Despair**
 It is not truly a disease of the body, but of the spirit. The afflicted lose the will to live — stop eating, speaking, moving. Some say it is Sthendur's punishment. Others say it is simply what happens when pain becomes unbearable.
 
-*Interpretation theological: Complexa. O Terceiro Pilar (NAKRAVEX) forbids surrender — GRETH-IS conta? A maioria dos sacerdotes now classifica as disease, not escolha.*
+*Theological interpretation: Complex. The Third Pillar (NAKRAVEX) forbids surrender — does GRETH-IS count? Most priests now classify it as disease, not choice.*
 
-**ZER-SKEL — O Êxtase Final**
+**ZER-SKEL — The Final Ecstasy**
 A poison, not a disease — but classified here because it mimics natural death perfectly. The victim feels euphoria, then sleep, then nothing. Favorite of assassins who need deaths to seem innocent.
 
-*Interpretation theological: Condenado absolutamente. "O assassinato do covarde." Aqueles que o usam violam o Terceiro Pilar.*
+*Theological interpretation: Absolutely condemned. "The coward's murder." Those who use it violate the Third Pillar.*
 
 **FEL-KRAEL — The Fallen Fire**
 Convulsions, spasms. The name preserves ancient memory of divine fire — KRAEL is corruption of KRAETH, the IULDAR-dragon of geology and flame.
@@ -2282,174 +2889,174 @@ Convulsions, spasms. The name preserves ancient memory of divine fire — KRAEL 
 
 ---
 
-**NOTA THEOLOGICAL SOBRE DISEASE**
+**THEOLOGICAL NOTE ON DISEASE**
 
 The Faith of Sthendur teaches that disease is Sthendur's sovereign will — not punishment for specific sins (usually), but the mystery of his choice. Those who die of DUR-NAKH (old age) are blessed; those struck by THRAKEL-UN (sudden death) may be blessed (taken quickly) or cursed (taken without warning to repent).`,
-        tags: ["diseases", "duratheon", "medicine", "zanuax", "teologia"]
+        tags: ["diseases", "duratheon", "medicine", "zanuax", "theology"]
       },
       "duratheon-dinastia": {
         group: "duratheon",
         title: "DURATHEON — Dynasty",
-        content: `**68 Governantes em ~1.891 Anos**
+        content: `**68 Rulers in ~1,891 Years**
 
 *"Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër."*
 
 ---
 
-**CASAS DYNASTICS**
+**DYNASTIC HOUSES**
 
-| House | Governantes | Anos | Status Religioso |
-|------|-------------|------|------------------|
-| **VAEL** | 58 | ~1.650 | Blessed — "casa escolhida de Sthendur" |
-| **KRAVETHAR** | 2 | ~45 | Acceptable — restaurou ordem |
-| **SENVARAK** | 2 | ~81 | Ambiguous — extirpada "pela vontade de Sthendur" |
-| **THURNAVEL** | 5 | ~97 | Condenada — usurpadores |
+| House | Rulers | Years | Religious Status |
+|-------|--------|-------|------------------|
+| **VAEL** | 58 | ~1,650 | Blessed — "house chosen by Sthendur" |
+| **KRAVETHAR** | 2 | ~45 | Acceptable — restored order |
+| **SENVARAK** | 2 | ~81 | Ambiguous — extirpated "by Sthendur's will" |
+| **THURNAVEL** | 5 | ~97 | Condemned — usurpers |
 
 ---
 
-**AS ERAS**
+**THE ERAS**
 
 | Era | Period | Name | Characteristic |
-|-----|---------|------|----------------|
-| I | ~800-250 BF | **Senhores Tribais** | Nomes arcaicos (Torn, Jak, Krav) |
-| II | ~250 BF - 1 AF | **Senhores Feudais** | Transition linguistic |
-| III | 1-44 AF | **Era do Fundador** | Duratheon Vael I |
-| IV | 45-137 AF | **Reino Inicial** | Consolidaction |
-| V | 138-218 AF | **Crise Senvarak** | Senara, a Iluminada |
-| VI | 218-315 AF | **Century das Sombras** | Usurpaction Thurnavel |
-| VII | 315-385 AF | **Era do Subjugador** | Kravorn II |
-| VIII | 494-777 AF | **Centuries Dourados** | Restauraction Vael |
-| IX | 778+ AF | **A Expansion** | Profetizada por Tornael |
+|-----|--------|------|----------------|
+| I | ~800-250 BF | **Tribal Lords** | Archaic names (Torn, Jak, Krav) |
+| II | ~250 BF - 1 AF | **Feudal Lords** | Linguistic transition |
+| III | 1-44 AF | **Era of the Founder** | Duratheon Vael I |
+| IV | 45-137 AF | **Early Kingdom** | Consolidation |
+| V | 138-218 AF | **Senvarak Crisis** | Senara, the Illuminated |
+| VI | 218-315 AF | **Century of Shadows** | Thurnavel usurpation |
+| VII | 315-385 AF | **Era of the Subjugator** | Kravorn II |
+| VIII | 494-777 AF | **Golden Centuries** | Vael restoration |
+| IX | 778+ AF | **The Expansion** | Prophesied by Tornael |
 
 ---
 
-**GOVERNANTES NOTABLE**
+**NOTABLE RULERS**
 
-| King | Reign | Epithet | Morte | Legado |
-|-----|---------|---------|-------|--------|
-| **Torn Vael** | ~800-732 BF | o Fundador | DUR-NAKH | Comprou uma tribo without derramar sangue |
-| **Duratheon Vael I** | 1-44 AF | o Nomeador | DUR-NAKH | FUNDOU O REINO |
-| **Tharel Vael** | 45-63 AF | o Prostrado | GRETH-IS | Construiu 7 Grandes Templos. Sem herdeiro. |
-| **Senara Senvarak** | 140-218 AF | a Iluminada | DUR-NAKH | Golpe em 137 AF, coroada 140 AF. 78 anos. 12.000 executions. 5 universidades. |
-| **Kravorn Vael II** | 315-385 AF | o Subjugador | Queda (escada) | 70 anos. 670.000 mortos. Terror do Oeste. |
-| **Vaelan Vael** | 653-704 AF | o Amado | NAKH-IS | Contraiu a disease em 654 AF. Amou without fronteiras. Apodreceu na darkness. |
-| **Torn XVII** | 704-717 AF | o Enlutado | Suicide | Atirou-se da Torre dos Reis. Negado enterro. |
-| **Tornael** | 740-778 AF | o Expansionista | Pneumonia | Morreu esperando o porto. No viu sua guerra. |
-| **Krav XIX** | 778 AF - | o Capturado | — | Launched a campanha; capturado pelos Kaeldur. |
+| King | Reign | Epithet | Death | Legacy |
+|------|-------|---------|-------|--------|
+| **Torn Vael** | ~800-732 BF | the Founder | DUR-NAKH | Bought a tribe without spilling blood |
+| **Duratheon Vael I** | 1-44 AF | the Namer | DUR-NAKH | FOUNDED THE KINGDOM |
+| **Tharel Vael** | 45-63 AF | the Prostrate | GRETH-IS | Built 7 Great Temples. No heir. |
+| **Senara Senvarak** | 140-218 AF | the Illuminated | DUR-NAKH | Coup in 137 AF, crowned 140 AF. 78 years. 12,000 executions. 5 universities. |
+| **Kravorn Vael II** | 315-385 AF | the Subjugator | Fall (stairs) | 70 years. 670,000 dead. Terror of the West. |
+| **Vaelan Vael** | 653-704 AF | the Beloved | NAKH-IS | Contracted disease in 654 AF. Loved without limits. Rotted in darkness. |
+| **Torn XVII** | 704-717 AF | the Mourner | Suicide | Threw himself from Tower of Kings. Denied burial. |
+| **Tornael** | 740-778 AF | the Expansionist | Pneumonia | Died waiting for the port. Never saw his war. |
+| **Krav XIX** | 778 AF - | the Captured | — | Launched campaign; captured by Kaeldur. |
 
 ---
 
-**CRISES DE SUCCESSION**
+**SUCCESSION CRISES**
 
 | # | Event | Date | Resolution |
-|---|--------|------|-----------|
+|---|-------|------|------------|
 | 1 | Cursed Generation | ~32 BF - 63 AF | Tharel dies without heir |
-| 2 | Interregno | 63-81 AF | 18 anos de guerra civil |
-| 3 | Casa Kravethar | 81-126 AF | General Garek pacifica |
-| 4 | Sem herdeiro masculino | 137 AF | Senvarak assume via casamento |
-| 5 | Extirpaction Senvarak | 218 AF | 4 filhos mortos em uma noite |
-| 6 | Casa Thurnavel | 218-315 AF | Usurpadores por 97 anos |
-| 7 | Restauraction Vael | 315 AF | Kravorn II extermina Thurnavel |
-| 8 | Crise post-Vaelan | 704-726 AF | Torn XVII suicida; assassinatos |
+| 2 | Interregnum | 63-81 AF | 18 years of civil war |
+| 3 | House Kravethar | 81-126 AF | General Garek pacifies |
+| 4 | No male heir | 137 AF | Senvarak assumes via marriage |
+| 5 | Senvarak Extirpation | 218 AF | 4 sons killed in one night |
+| 6 | House Thurnavel | 218-315 AF | Usurpers for 97 years |
+| 7 | Vael Restoration | 315 AF | Kravorn II exterminates Thurnavel |
+| 8 | Post-Vaelan Crisis | 704-726 AF | Torn XVII suicide; assassinations |
 
 ---
 
-**STATISTICS DE MORTE**
+**DEATH STATISTICS**
 
-| Causa | Contagem | % |
-|-------|----------|---|
-| DUR-NAKH (velhice) | 18 | 26% |
-| Disease (several) | 15 | 22% |
-| Assassinato/Execution | 12 | 18% |
-| Acidente | 10 | 15% |
-| Batalha | 6 | 9% |
+| Cause | Count | % |
+|-------|-------|---|
+| DUR-NAKH (old age) | 18 | 26% |
+| Disease (various) | 15 | 22% |
+| Murder/Execution | 12 | 18% |
+| Accident | 10 | 15% |
+| Battle | 6 | 9% |
 | Suicide | 2 | 3% |
-| Desaparecido | 1 | 1% |
+| Disappeared | 1 | 1% |
 
 ---
 
-**OS SETE GRANDES TEMPLOS DE THAREL**
+**THE SEVEN GREAT TEMPLES OF THAREL**
 
-| Templo | Local | Characteristic |
-|--------|-------|----------------|
-| **Pilar de Thurnavel** | Vaelhem (capital) | Contains pilar "petrificado" do profeta |
-| **Vault das Hands** | Kravaal | Teto esculpido as hands segurando a dome |
-| **Templo do Vento** | Costa | Aberto ao clima; leituras de nuvens em tempestades |
-| **Templo do Silence** | Passagem montanhosa | Nenhum sacerdote fala; meditaction pura |
-| **Assento do Julgamento** | Plains do sul | Built em torno de formations "de uma Descida anterior" |
-| **Primeiro Sanctuary** | Local tribal antigo | Local de culto more antigo, monumentalizado |
-| **Templo da Aurora** | Fronteira leste | Captura a first luz; importante para leituras |`,
-        tags: ["dinastia", "duratheon", "reis", "history", "cronologia"]
+| Temple | Location | Characteristic |
+|--------|----------|----------------|
+| **Pillar of Thurnavel** | Vaelhem (capital) | Contains "petrified" pillar of the prophet |
+| **Vault of Hands** | Kravaal | Ceiling sculpted as hands holding the dome |
+| **Temple of Wind** | Coast | Open to weather; cloud readings during storms |
+| **Temple of Silence** | Mountain pass | No priest speaks; pure meditation |
+| **Seat of Judgment** | Southern plains | Built around formations "from a previous Descent" |
+| **First Sanctuary** | Ancient tribal site | Oldest worship site, monumentalized |
+| **Temple of Dawn** | Eastern border | Captures first light; important for readings |`,
+        tags: ["dynasty", "duratheon", "kings", "history", "chronology"]
       },
       "duratheon-arte": {
         group: "duratheon",
         title: "DURATHEON — Art & Culture",
-        content: `**A Doutrina do Branco e as Artes do Reino**
+        content: `**The Doctrine of White and the Arts of the Kingdom**
 
 ---
 
-**A DOUTRINA DO BRANCO**
+**THE DOCTRINE OF WHITE**
 
 *"Sthendur is Stone — grey, black, primordial, eternal. We who worship him must not presume to equal him. Our stone will be white, pure, untouched by the darkness of the earth. Only in the temples will the true Stone appear. Thus we honor him by contrast, not imitation."*
-— Alto Leitor Thurnavel IX, 495 AF
+— High Reader Thurnavel IX, 495 AF
 
-**Materiais PERMITIDOS em buildings seculares:**
-| Material | Usage | Fonte |
-|----------|-----|-------|
-| Marble branco | Fachadas, colunas, pisos | Pedreiras Veluthar (quase esgotadas) |
-| Limestone creme | Fachadas secondary, interiores | Several pedreiras |
+**Materials PERMITTED in secular buildings:**
+| Material | Usage | Source |
+|----------|-------|--------|
+| White marble | Facades, columns, floors | Veluthar quarries (nearly depleted) |
+| Cream limestone | Secondary facades, interiors | Various quarries |
 | Red granite | Accent details, lintels, bases | Kravaal Mountains |
-| Folha de ouro | Inscriptions, capitals, domes | Trade (caro) |
-| Madeira de ébano | Portas, furniture, acabamentos | Florestas do sul (agora raras) |
-| Bronze | Portas, ferragens, statuary | Foundries locais |
+| Gold leaf | Inscriptions, capitals, domes | Trade (expensive) |
+| Ebony wood | Doors, furniture, trim | Southern forests (now rare) |
+| Bronze | Doors, hardware, statuary | Local foundries |
 
-**Materiais PROIBIDOS em buildings seculares:**
+**Materials FORBIDDEN in secular buildings:**
 - Black or grey stone (reserved for temples)
-- Surfaces pintadas que ocultam pedra
-- Tijolo exposto ou construction rustic
-- Terra, grama ou jardins extensos
+- Painted surfaces that conceal stone
+- Exposed brick or rustic construction
+- Earth, grass or extensive gardens
 
-**O Efeito Visual:**
-- Cidade secular: Marble branco ofuscante, acentos de ouro, aspirando para cima
-- Distrito sagrado: Basalto negro, acentos de prata, pressionando para baixo
+**The Visual Effect:**
+- Secular city: Blinding white marble, gold accents, aspiring upward
+- Sacred district: Black basalt, silver accents, pressing downward
 
 ---
 
-**ARTES VISUAIS — Pintando a Cidade**
+**VISUAL ARTS — Painting the City**
 
 The painting tradition of Duratheon is unique: artists paint almost exclusively the city itself.
 
-| Tema | Frequency |
-|------|------------|
-| Paisagens urbanas de Vaelhem | 70% |
-| Detalhes architectural | 15% |
-| Retratos reais | 10% |
-| Cenas religiosas | 4% |
-| Paisagens/natureza | <1% |
-| Pessoas comuns | **0%** (proibido) |
+| Theme | Frequency |
+|-------|-----------|
+| Urban landscapes of Vaelhem | 70% |
+| Architectural details | 15% |
+| Royal portraits | 10% |
+| Religious scenes | 4% |
+| Landscapes/nature | <1% |
+| Common people | **0%** (forbidden) |
 
 *"The marble column is more beautiful than the tree, for the column is will made manifest. The tree merely exists. The column proclaims: we shaped this. We mastered stone. We are not animals."*
-— Vaelorem, o Velho, *Tratado about Arte*, 465 AF
+— Vaelorem the Elder, *Treatise on Art*, 465 AF
 
 **Consequences:**
 - Duratheon has no landscape painting tradition
 - Nature is seen as resource, not beauty
-- A depletion das florestas not causa pesar aesthetic
+- The depletion of forests causes no aesthetic sorrow
 
 ---
 
-**ESCULTURA — Os Mil Reis**
+**SCULPTURE — The Thousand Kings**
 
 Sculpture is Duratheon's supreme art. The city contains ~50,000 sculpted figures:
 
-| Tipo | Number | Material |
+| Type | Number | Material |
 |------|--------|----------|
-| Statues reais | 500+ | Marble branco, algumas com ouro |
-| Memoriais nobres | 2.000+ | Marble branco |
-| Figuras allegorical | 5.000+ | Marble branco |
-| Relevos architectural | 10.000+ | Marble e granito vermelho |
-| Statues de Sthendur | 100+ | **Basalto negro** (apenas templos) |
-| Decorativas menores | 30.000+ | Various |
+| Royal statues | 500+ | White marble, some with gold |
+| Noble memorials | 2,000+ | White marble |
+| Allegorical figures | 5,000+ | White marble |
+| Architectural reliefs | 10,000+ | Marble and red granite |
+| Statues of Sthendur | 100+ | **Black basalt** (temples only) |
+| Minor decorative | 30,000+ | Various |
 
 **The Approach** — the processional avenue to the palace — contains 68 statues, one for each king. Each is idealized, heroic, 4.5 meters tall. Krav Vael II (the Usurper who killed his brothers) looks noble. Senara (who executed 12,000) looks serene.
 
@@ -2459,67 +3066,67 @@ Sculpture is Duratheon's supreme art. The city contains ~50,000 sculpted figures
 
 **MUSIC — The Voice of Stone**
 
-**Instrumentos Principais**
-| Instrumento | Tipo | Material | Usage |
-|-------------|------|----------|-----|
+**Main Instruments**
+| Instrument | Type | Material | Usage |
+|------------|------|----------|-------|
 | **THUL-KHENOR** | Pipe organ (massive) | Stone, bronze, wood | Temple worship |
-| VETH-SERENUM | Conjunto de sopros | Bronze, prata | Cerimonial |
-| KRUVEL-TAREM | Bateria de percussion | Bronze, pedra | Militar, religioso |
-| SEN-LYRUM | Coro de cordas | Madeira, tripa, prata | Entretenimento da corte |
-| ZER-KHALUM | Voz solo (treinada) | — | Canto liturgical |
+| VETH-SERENUM | Wind ensemble | Bronze, silver | Ceremonial |
+| KRUVEL-TAREM | Percussion battery | Bronze, stone | Military, religious |
+| SEN-LYRUM | String choir | Wood, gut, silver | Court entertainment |
+| ZER-KHALUM | Solo voice (trained) | — | Liturgical song |
 
 **THE THUL-KHENOR — The Voice of Stone**
 
 Duratheon's greatest musical achievement is the THUL-KHENOR — a pipe organ of unprecedented size and complexity.
 
-O instrumento no Pilar de Thurnavel (o great templo) contains:
-- **12.000 tubos** (de 5 cm a 12 metros)
-- 200 registros (variations tonais)
-- 5 teclados (tocados por multiple musicians)
-- Alimentado por 12 trabalhadores operando foles continuamente
+The instrument in the Pillar of Thurnavel (the great temple) contains:
+- **12,000 pipes** (from 5 cm to 12 meters)
+- 200 registers (tonal variations)
+- 5 keyboards (played by multiple musicians)
+- Powered by 12 workers operating bellows continuously
 
-*Quando toca, all o templo vibra. Adoradores descrevem a sensaction as "a voz de Sthendur tornada som."*
+*When it plays, all the temple vibrates. Worshippers describe the sensation as "the voice of Sthendur made sound."*
 
 **12-Tone Musical System**
 
-| Tom | Name | Associaction Theological |
-|-----|------|---------------------|
+| Tone | Name | Theological Association |
+|------|------|------------------------|
 | 1 | THUL | Stone/foundation |
-| 2 | DWÉ | Dualidade/balance |
-| 3 | TRÁ | Manifestaction |
-| 4 | KWAR | Estabilidade |
+| 2 | DWÉ | Duality/balance |
+| 3 | TRÁ | Manifestation |
+| 4 | KWAR | Stability |
 | 5 | PEN | Life |
-| 6 | SEKH | Perfection smaller |
-| 7 | ZEN | Jornada |
-| 8 | OKTU | Balance duplo |
-| 9 | NUVEN | Completude se aproximando |
-| 10 | DEKH | Plenitude |
-| 11 | ELF | Limiar |
-| 12 | THOZ | Perfection/retorno |
+| 6 | SEKH | Lesser perfection |
+| 7 | ZEN | Journey |
+| 8 | OKTU | Double balance |
+| 9 | NUVEN | Approaching completeness |
+| 10 | DEKH | Fullness |
+| 11 | ELF | Threshold |
+| 12 | THOZ | Perfection/return |
 
 ---
 
-**LITERATURA**
+**LITERATURE**
 
-| Gender | Status |
-|--------|--------|
-| Textos religiosos | Central |
+| Genre | Status |
+|-------|--------|
+| Religious texts | Central |
 | Historical chronicles | Valued |
-| Codes legais | Practical |
-| Poesia | Aristocratic |
-| Filosofia | Academic |
+| Legal codes | Practical |
+| Poetry | Aristocratic |
+| Philosophy | Academic |
 | **Fiction** | **Virtually nonexistent** |
 
 *Fiction is considered "lies" — contrary to the truth Sthendur demands.*
 
 ---
 
-**ARQUITETURA BEYOND DA CAPITAL**
+**ARCHITECTURE BEYOND THE CAPITAL**
 
-| Tipo de Cidade | Character |
-|----------------|---------|
-| Cidades maiores | Fachadas de marble branco (importado a great custo) |
-| Cidades secondary | Limestone branco; marble only para buildings public |
+| City Type | Character |
+|-----------|-----------|
+| Major cities | White marble facades (imported at great cost) |
+| Secondary cities | White limestone; marble only for public buildings |
 | Villages | Stone or whitewashed plaster |
 | Aldeias | Caiaction about materiais locais |
 
@@ -2621,98 +3228,98 @@ Mas a Descida never vem.`,
       "duratheon-deplecao": {
         group: "duratheon",
         title: "DURATHEON — Depletion Crisis",
-        content: `**O Reino que Consome a Si Mesmo**
+        content: `**The Kingdom That Consumes Itself**
 
 ---
 
-**AS MINAS DE DURATHEON**
+**THE MINES OF DURATHEON**
 
 The wealth of the kingdom was built on extraction. That wealth is disappearing.
 
-| Mina | Recurso | Status | Production no Pico | Production Atual |
-|------|---------|--------|------------------|----------------|
-| Pedreiras Veluthar | Marble branco | Quase esgotadas | 50.000 ton/ano | 5.000 ton/ano |
-| Obras de Ferro Kravaal | Ore de ferro | Declinando | 30.000 ton/ano | 12.000 ton/ano |
-| Minas Thurnavel | Cobre, estanho | **Esgotadas** | 15.000 ton/ano | 2.000 ton/ano |
-| Pedreiras Sethorak | Granito vermelho | Declinando | 20.000 ton/ano | 8.000 ton/ano |
-| Veios de Ouro Orientais | Ouro | **Esgotados** | 230 kg/ano | Vestiges |
-| Prata do Norte | Prata | Ativa | 900 kg/ano | 680 kg/ano |
+| Mine | Resource | Status | Peak Production | Current Production |
+|------|----------|--------|-----------------|-------------------|
+| Veluthar Quarries | White marble | Nearly depleted | 50,000 ton/year | 5,000 ton/year |
+| Kravaal Iron Works | Iron ore | Declining | 30,000 ton/year | 12,000 ton/year |
+| Thurnavel Mines | Copper, tin | **Depleted** | 15,000 ton/year | 2,000 ton/year |
+| Sethorak Quarries | Red granite | Declining | 20,000 ton/year | 8,000 ton/year |
+| Eastern Gold Veins | Gold | **Depleted** | 230 kg/year | Traces |
+| Northern Silver | Silver | Active | 900 kg/year | 680 kg/year |
 
 ---
 
-**AS FLORESTAS PERDIDAS**
+**THE LOST FORESTS**
 
 When Duratheon was young, forests covered the central provinces. They are gone.
 
-| Floresta | Extension Original | Extension Atual | Causa | Impacto |
-|----------|-------------------|----------------|-------|---------|
-| Thornwood | 800.000 ha | 20.000 ha | Madeira para construction | Ébano now importado |
-| O Mar Verde | 1.200.000 ha | 80.000 ha | Coal para forjas | Escassez de fuel |
-| Bosques Veluth | 200.000 ha | 32.000 ha | Construction naval | Menos navios |
-| Stands Orientais | 400.000 ha | 120.000 ha | Desmatamento agricultural | Erosion do solo beginning |
+| Forest | Original Extent | Current Extent | Cause | Impact |
+|--------|-----------------|----------------|-------|--------|
+| Thornwood | 800,000 ha | 20,000 ha | Timber for construction | Ebony now imported |
+| The Green Sea | 1,200,000 ha | 80,000 ha | Coal for forges | Fuel scarcity |
+| Veluth Groves | 200,000 ha | 32,000 ha | Naval construction | Fewer ships |
+| Eastern Stands | 400,000 ha | 120,000 ha | Agricultural clearing | Soil erosion beginning |
 
 *The Third Pillar (NAKRAVEX — Not Being Conquered) was interpreted as expansion at any cost. The forests were conquered. Now they are gone, and the cost is becoming clear.*
 
 ---
 
-**A CRISE**
+**THE CRISIS**
 
-**O Problema:**
+**The Problem:**
 - Marble for new constructions must now be imported (expensive)
-- Ferro para armas requer minas more profundas e perigosas
+- Iron for weapons requires deeper and more dangerous mines
 - Wood for ships, coal and construction is scarce
 - Gold for ornamentation comes from trade with Lands Beyond (vulnerable)
-- A population que before crescia now estagna
+- The population that once grew now stagnates
 
-**A Dificuldade Theological:**
-- Os Cinco Pilares comandam expansion (TORNAVEL) e prosperidade (VELAKUM)
-- Mas expansion esgotou os recursos necessary para prosperidade
-- Sacerdotes not conseguem explicar por que Sthendur permite seu reino escolhido se depletar
+**The Theological Difficulty:**
+- The Five Pillars command expansion (TORNAVEL) and prosperity (VELAKUM)
+- But expansion exhausted the resources necessary for prosperity
+- Priests cannot explain why Sthendur allows his chosen kingdom to deplete
 
-**A Interpretation Oficial:**
+**The Official Interpretation:**
 *"Lands Beyond has what we lack. Sthendur commands that we take."*
 
 **This is why Tornael prepares for war.**
 
 ---
 
-**INDICADORES ECONOMIC**
+**ECONOMIC INDICATORS**
 
-| Indicator | Pico (era Senara) | Current | Trend |
-|-----------|-------------------|-------|-----------|
-| Tesouro real | Cheio | 40% da capacidade | Declinando |
-| Volume de trade | 100% | 60% | Declinando |
-| Taxas de impostos | Pattern | **3x o pattern** | Esmagando population |
-| Riqueza mercantil | Alta | Concentrada em poucos | Desigualdade crescendo |
-| Emprego artesanal | Pleno | 70% | Declinando |
-| Production agricultural | Excedente | Suficiente | Estagnada |
-
----
-
-**O CUSTO HUMANO**
-
-De 777 AF a carta de Vaethor Zumax:
-
-*"The cost was immense. The provinces bled to feed this army. The mines emptied to arm it. The forests fell to build the ships. The treasury — fifteen years in deficit, Your Majesty — was emptied to pay for what now waits to march."*
+| Indicator | Peak (Senara era) | Current | Trend |
+|-----------|-------------------|---------|-------|
+| Royal treasury | Full | 40% capacity | Declining |
+| Trade volume | 100% | 60% | Declining |
+| Tax rates | Standard | **3x standard** | Crushing population |
+| Merchant wealth | High | Concentrated in few | Inequality growing |
+| Artisan employment | Full | 70% | Declining |
+| Agricultural production | Surplus | Sufficient | Stagnant |
 
 ---
 
-**ASSENTAMENTOS EM DECLINE**
+**THE HUMAN COST**
 
-| Assentamento | Function Original | Estado Atual | Causa |
-|--------------|-----------------|--------------|-------|
-| Sethorak | Pedreiras de marble | Cidade fantasma emergindo | Pedreiras esgotadas |
-| Thurnaval | Minas de ferro | Operaction minimum | Veios exaustos |
-| Velkorak | Porto pesqueiro | Encolhendo | Pesca excessiva |
-| Veluthek | Posto comercial | Meio-abandonado | Decline do trade |
+From the 777 AF letter of Vaethor Zumax:
 
-*O reino gasta sua riqueza restante na invasion de Tornael. Se a invasion falhar, not restará nada.*`,
-        tags: ["depletion", "economia", "recursos", "crise", "duratheon", "minas", "florestas"]
+*"The cost was immense. The provinces bled to feed this army. The mines emptied to arm it. The forests fell to build the ships. The treasury — fifteen years in deficit, Your Majesty — was emptied to pay for what now marches north."*
+
+---
+
+**SETTLEMENTS IN DECLINE**
+
+| Settlement | Original Function | Current State | Cause |
+|------------|-------------------|---------------|-------|
+| Sethorak | Marble quarries | Emerging ghost town | Quarries depleted |
+| Thurnaval | Iron mines | Minimum operation | Veins exhausted |
+| Velkorak | Fishing port | Shrinking | Overfishing |
+| Veluthek | Trading post | Half-abandoned | Trade decline |
+
+*The kingdom spends its remaining wealth on Tornael's invasion. If the invasion fails, nothing will remain.*`,
+        tags: ["depletion", "economy", "resources", "crisis", "duratheon", "mines", "forests"]
       },
       "duratheon-vaelhem": {
         group: "duratheon",
         title: "DURATHEON — Vaelhem Thel",
-        content: `**A Cidade Branca**
+        content: `**The White City**
 
 *"DURATHEON TREUL VAELOR THEL. SA AEL TREUL ZA ZUN."*
 *"Duratheon is Supreme Lord. This world bears my name."*
@@ -2720,107 +3327,107 @@ De 777 AF a carta de Vaethor Zumax:
 
 ---
 
-**NOMES DA CIDADE**
+**NAMES OF THE CITY**
 
 | Name | Language | Meaning | Usage |
-|------|--------|-------------|-----|
+|------|----------|---------|-------|
 | VAELHEM THEL | HIGH ZANUAX | "Supreme Home of the Accumulators" | Official, ceremonial |
-| VAELHEM | ZANUAX | "Lar dos Acumuladores" | Fala comum |
-| A Cidade Branca | Translation | — | Poetic |
+| VAELHEM | ZANUAX | "Home of the Accumulators" | Common speech |
+| The White City | Translation | — | Poetic |
 | The Stone Crown | Translation | — | Military |
-| Sede de Sthendur | Religioso | — | Sacerdotal |
+| Seat of Sthendur | Religious | — | Priestly |
 
 ---
 
 **HISTORY**
 
 | Date | Event |
-|------|--------|
-| ~569 BF | Seth Vael I funda Vaelhem as assentamento permanente |
-| ~362 BF | Jak Vael IV builds primeiras muralhas de pedra |
-| 45-63 AF | Tharel Vael builds os Sete Grandes Templos |
-| 1 AF | Duratheon Vael I declara capital; expansion massiva |
-| 315-385 AF | Kravorn Vael II rebuilds after negligence Thurnavel |
-| 492-517 AF | Sethavor "o Embelezador" completa transformation em marble |
-| 653-704 AF | Vaelan Vael adiciona a Torre dos Reis |
+|------|-------|
+| ~569 BF | Seth Vael I founds Vaelhem as permanent settlement |
+| ~362 BF | Jak Vael IV builds first stone walls |
+| 45-63 AF | Tharel Vael builds the Seven Great Temples |
+| 1 AF | Duratheon Vael I declares capital; massive expansion |
+| 315-385 AF | Kravorn Vael II rebuilds after Thurnavel neglect |
+| 492-517 AF | Sethavor "the Beautifier" completes marble transformation |
+| 653-704 AF | Vaelan Vael adds the Tower of Kings |
 | 777 AF | Tornael prepares infrastructure for the Great Expansion |
 
 ---
 
-**ESCALA**
+**SCALE**
 
 | Metric | Value |
-|---------|-------|
-| Área dentro das muralhas | ~6.000 hectares |
-| Population (oficial) | ~400.000 citizens registrados |
-| Population (real) | **~650.000** (incluindo not-registrados) |
-| Casas nobres | ~200 families antigas |
-| Templos | 7 Grandes + 40 menores |
-| Palaces | 1 Real + ~80 nobres |
-| Barracks | 12 dentro das muralhas |
+|--------|-------|
+| Area within walls | ~6,000 hectares |
+| Population (official) | ~400,000 registered citizens |
+| Population (actual) | **~650,000** (including unregistered) |
+| Noble houses | ~200 ancient families |
+| Temples | 7 Great + 40 lesser |
+| Palaces | 1 Royal + ~80 noble |
+| Barracks | 12 within walls |
 
 ---
 
-**OS DISTRITOS**
+**THE DISTRICTS**
 
-| Distrito | Nome ZANUAX | Function |
-|----------|-------------|--------|
-| Precinto Real | VAELHEM THEL | Palace, Torre dos Reis, Cortes |
-| Distrito dos Templos | THULHEIM | 7 Grandes Templos, Bairro Sacerdotal |
-| Distrito Nobre | VAELTHOR | 80 Palaces, Jardins (raros) |
-| Administrativo | SENVAREK | Ministries, Arquivos, Tribunais |
-| Militar | TORNHEM | Barracks, Arsenais, Treinamento |
-| Artisans | SETHARAK | Oficinas, Guildas, Mercados |
-| Mercantil | VELAKHEM | Warehouses, Bolsas, Estalagens |
-| Favelas Ocultas | OS VEILS | Becos, cellars, spaces esquecidos |
+| District | ZANUAX Name | Function |
+|----------|-------------|----------|
+| Royal Precinct | VAELHEM THEL | Palace, Tower of Kings, Courts |
+| Temple District | THULHEIM | 7 Great Temples, Priestly Quarter |
+| Noble District | VAELTHOR | 80 Palaces, Gardens (rare) |
+| Administrative | SENVAREK | Ministries, Archives, Courts |
+| Military | TORNHEM | Barracks, Arsenals, Training |
+| Artisans | SETHARAK | Workshops, Guilds, Markets |
+| Mercantile | VELAKHEM | Warehouses, Exchanges, Inns |
+| Hidden Slums | THE VEILS | Alleys, cellars, forgotten spaces |
 
 ---
 
-**O PALACE DOS REIS**
+**THE PALACE OF KINGS**
 
 The Palace of Duratheon is not a building — it is a sculptural monument that happens to contain rooms.
 
 | Characteristic | Description |
-|----------------|-----------|
-| Área | ~16 hectares |
-| Altura | Dome central 60m; Torre dos Reis **107m** |
-| Material | Marble branco, base de granito vermelho, domes douradas |
-| Estilo | Monumental, esmagador, desumano em escala |
-| Jardins | **NENHUM** — courtyards pavimentados em marble |
-| Statuary | 1.000+ figuras — reis, generais, alegorias |
+|----------------|-------------|
+| Area | ~16 hectares |
+| Height | Central dome 60m; Tower of Kings **107m** |
+| Material | White marble, red granite base, gilded domes |
+| Style | Monumental, overwhelming, inhuman in scale |
+| Gardens | **NONE** — courtyards paved in marble |
+| Statuary | 1,000+ figures — kings, generals, allegories |
 
-**Elementos Architectural:**
-- **A Aproximaction:** Avenida de 300m com 68 statues (uma por rei)
-- **O Gate da Acumulaction:** Arco triplo, 24m, portas de ébano/ouro
-- **A Corte dos Pilares:** 200 colunas, audiences
-- **O Hall do Trono:** 90m × 30m de altura, acoustic perfeita
-- **A Torre dos Reis:** 107m, aposentos reais nos andares superiores
-- **O Hall dos Nomes:** 68 nomes em letras de ouro
+**Architectural Elements:**
+- **The Approach:** 300m avenue with 68 statues (one per king)
+- **The Gate of Accumulation:** Triple arch, 24m, ebony/gold doors
+- **The Court of Pillars:** 200 columns, audiences
+- **The Throne Hall:** 90m × 30m height, perfect acoustics
+- **The Tower of Kings:** 107m, royal chambers on upper floors
+- **The Hall of Names:** 68 names in gold letters
 
 **What is ABSENT:**
-- Árvores, grama, flores
-- Fontes (água danifica a pedra)
-- Cor (exceto granito vermelho e ouro)
+- Trees, grass, flowers
+- Fountains (water damages stone)
+- Color (except red granite and gold)
 
 *The Palace is cold even in summer. Servants whisper that the kings preferred it that way. Stone does not betray. Stone does not wilt. Stone resists.*
 
 ---
 
-**A TORRE DOS REIS**
+**THE TOWER OF KINGS**
 
-Built por Vaelan "o Amado" — a estrutura more alta de Ungaar (107m).
+Built by Vaelan "the Beloved" — the tallest structure in Ungaar (107m).
 
 Tragically, his son Torn XVII threw himself from its tallest window. The room is sealed. Servants claim to hear crying on certain nights.
 
 ---
 
-**OS SETE GRANDES TEMPLOS**
+**THE SEVEN GREAT TEMPLES**
 
-Em contraste deliberado com a cidade branca, built em **basalto negro**.
+In deliberate contrast with the white city, built in **black basalt**.
 
-| Templo | Dedicaction | Altura | Characteristic |
-|--------|-----------|--------|----------------|
-| **Pilar de Thurnavel** | O Profeta | 55m | Pilar "petrificado" do profeta |
+| Temple | Dedication | Height | Characteristic |
+|--------|------------|--------|----------------|
+| **Pillar of Thurnavel** | The Prophet | 55m | "Petrified" pillar of the prophet |
 | Vault das Hands | Sustento | 46m | Dome esculpida as hands |
 | Templo do Julgamento | A Descida | 37m | Statue de Sthendur (18m) |
 | Templo dos Cinco Pilares | Mandamentos | 30m | Cinco torres |
@@ -3113,8 +3720,11 @@ Vaelorn has not yet been developed in detail. Elements to define:
 |-----------|-------|
 | Title | Krav XIX de Duratheon |
 | House | House Vael |
-| Reign | 740 AF — present |
-| Idade em 778 AF | ~52 anos |
+| Father | Aldaran Vael |
+| Reign | 740 AF — 778 AF |
+| Age em 778 AF | ~52 anos |
+| Wife | Queen Senthara |
+| Children | Krav (15), Aelara (12) |
 
 **Personality**
 - Obcecado com grandeza
@@ -3123,48 +3733,57 @@ Vaelorn has not yet been developed in detail. Elements to define:
 - Despreza os Kaeldur
 
 **A Campanha de 778 AF**
-Tornael personally led 280,000 men through Kaelthrek Holds. The campaign was destroyed by the Kaeldur. Tornael was captured.
+Tornael personally led 285,000 men through Kaelthrek Holds. The campaign was destroyed by the Kaeldur. Tornael died of pneumonia during the march, seven days after leaving the capital. His son Krav XIX assumed command.
 
-**Current Status**
-Prisioneiro dos Kaeldur. Destino incerto.`,
+**Legacy**
+Preparou a guerra por 38 anos (15 sob seu pai, mais 23 de seu próprio reinado). Esvaziou o tesouro. Esgotou as províncias. Plantou as sementes da queda de Duratheon.`,
         tags: ["tornael", "rei", "house vael", "campanha"]
       },
       "maela": {
-        title: "Queen Maela",
+        title: "Queen Senthara",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | Title | Queen Consorte de Duratheon |
-| Husband | Tornael Vael (Krav XIX) |
-| Children | Skael (filha, 17 anos) |
+| Husband | Tornael Vael |
+| Children | Krav (filho, 15 anos), Aelara (filha, 12 anos) |
+
+**Appearance**
+Olhos escuros, profundos — os mesmos olhos que a filha herdou.
 
 **Personality**
-- Pragmatic
+- Pragmática, reflexiva
 - Mais inteligente que o marido
-- Preocupada com a filha
-- Vê a ruin se aproximando
+- Vê a ruína se aproximando
+- Faz perguntas que ninguém quer responder
 
-**Current Status**
-Em Vaelhem Thel, aguardando news da campanha. Quando souber do desastre, terá que agir.`,
-        tags: ["maela", "rainha", "house vael"]
+**Relationships**
+- Velira Sethak: amiga próxima, uma das poucas com quem fala honestamente
+- Vaethor Zumax: conselheiro, "o único homem no palácio que lhe dizia verdades que ela não queria ouvir"
+
+**Defining Moment**
+No Duathel de 778 AF, sete dias após a partida do rei, Senthara olhou para o espaço vazio no topo da lareira — reservado para a conquista que ainda não aconteceu — e se perguntou, pela primeira vez em anos, se algum dia aconteceria.
+
+**Defining Quote**
+"É estranho como nos acostumamos a tudo. Ao que é ruim e ao que é bom. A vida parece sempre voltar ao mesmo lugar. Como se nada do que fizéssemos mudasse coisa alguma."`,
+        tags: ["maela", "rainha", "house vael", "the-depletion"]
       },
       "skael": {
-        title: "Princess Skael",
+        title: "Skael",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Princess de Duratheon |
+| Title | Filha do Kaelnar |
 | Age | 17 anos |
-| Parents | Tornael e Maela |
+| Father | Thaelkhen (Kaelnar dos Kaeldur) |
+| People | Kaeldur |
 
-**Personality**
-- Jovem, mas perceptiva
-- Herdeira do trono
-- No compartilha as illusions do pai
+**Position**
+Filha de Thaelkhen, o líder Kaeldur. Uma jovem de dezessete anos que cresceu nas montanhas, entre o fogo e o gelo.
 
-**Importance**
-With Tornael captured, Skael is the heir. If Tornael dies, she becomes queen — at 17 years old, in the middle of the kingdom's collapse.`,
-        tags: ["skael", "princesa", "house vael"]
+**Note**
+Personagem a ser desenvolvida em capítulos futuros.`,
+        tags: ["skael", "kaeldur", "thaelkhen"]
       },
       "thaelkhen": {
         title: "Kaelnar Thaelkhen",
@@ -3174,6 +3793,7 @@ With Tornael captured, Skael is the heir. If Tornael dies, she becomes queen —
 | Title | Kaelnar (Rei) dos Kaeldur |
 | Governo | Eleito pelo conselho |
 | Age | ~45 anos |
+| Daughter | Skael (17 anos) |
 
 **Personality**
 - Estrategista brilhante
@@ -3182,11 +3802,11 @@ With Tornael captured, Skael is the heir. If Tornael dies, she becomes queen —
 - Quer justice, not genocide
 
 **A Victory de 778 AF**
-Thaelkhen planejou a emboscada em Kaelthrek Holds. Destruiu o army de Duratheon without perder more de 2.000 guerreiros. Capturou o rei inimigo.
+Thaelkhen planejou a emboscada em Kaelthrek Holds. Destruiu o army de Duratheon without perder more de 2.000 guerreiros. Capturou o príncipe Krav.
 
 **Dilema**
-What to do with Tornael? Killing him brings satisfaction, but solves nothing. Keeping him alive gives negotiating power. Thaelkhen is pragmatic.`,
-        tags: ["thaelkhen", "kaelnar", "kaeldur"]
+What to do with Krav? Killing him brings satisfaction, but solves nothing. Keeping him alive gives negotiating power. Thaelkhen is pragmatic.`,
+        tags: ["thaelkhen", "kaelnar", "kaeldur", "skael"]
       },
       "setharen-kravos": {
         title: "Setharen Kravos",
@@ -3448,7 +4068,7 @@ Nobre de Duratheon mencionada nos manuscritos.`,
         tags: ["velathra", "nobre"]
       },
       "princess-vaela": {
-        title: "Princess Vaela",
+        title: "Princess Aelara",
         content: `*No data yet.*
 
 Princess historical de Duratheon.`,
@@ -3567,6 +4187,234 @@ Nobre de Duratheon mencionado nos manuscritos.`,
 
 Nobre de Duratheon mencionado nos manuscritos.`,
         tags: ["durathen", "nobre"]
+      },
+      "aldaran-vael": {
+        title: "Aldaran Vael",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | King de Duratheon |
+| Reign | 704 AF — 740 AF |
+| House | House Vael |
+| Successor | Tornael Vael (filho) |
+
+**Context**
+Aldaran reinou durante o período de instabilidade que seguiu o suicídio de Torn XVII. Foi um rei financeiramente fraco — precisou de empréstimos da burguesia emergente para manter o reino.
+
+**Legacy**
+Concedeu o monopólio dos mercados de Vaelhem Thel ao avô de Theron Agrias, em troca de um empréstimo que nunca foi cobrado. Uma decisão que enriqueceu uma família menor às custas do controle real sobre o abastecimento da capital.
+
+**Morte**
+Morreu em 740 AF. Seu filho Tornael assumiu e imediatamente começou a preparar a campanha que destruiria o reino.`,
+        tags: ["aldaran-vael", "house-vael", "rei", "instabilidade"]
+      },
+      "luxaren-thalorn": {
+        title: "Luxaren Thalorn",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Lord, administrador dos portos de Veluthaar |
+| House | House Thalorn (naval) |
+| Age | ~35 anos |
+| Wife | Velira Sethak |
+
+**Position**
+Casa Thalorn controla a frota mercante e os portos do sul. Luxaren administra Veluthaar, o maior porto comercial do reino.
+
+**Personality**
+- Inseguro, controlador
+- Ressente a proximidade da esposa com a rainha
+- "Um bom marido — se chamarmos assim quem provê conforto e posição"
+- Reputação de certa... aspereza quando contrariado
+
+**Appearance**
+Homem de talvez trinta e cinco anos, rosto estreito, nariz pontudo. O tipo de feições que parecem permanentemente ofendidas por algo. Veste-se na última moda da capital — veludo azul, bordados em prata, calções justos demais.
+
+**Defining Moment**
+No Duathel de 778 AF, tentou ordenar que Velira o acompanhasse. A rainha Senthara interveio: "Velira permanecerá ao meu lado esta noite. Talvez esta semana."`,
+        tags: ["luxaren-thalorn", "house-thalorn", "nobre", "velira", "the-depletion"]
+      },
+      "velira-sethak": {
+        title: "Velira Sethak (Thalorn)",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Birth Name | Velira Sethak |
+| Married Name | Velira Thalorn |
+| Father | Dureth Sethak (mercador, frota de trigo) |
+| Husband | Luxaren Thalorn |
+| Status em 778 AF | Grávida |
+
+**Position**
+Filha de família mercantil rica (Casa Sethak controla metade do trigo que alimenta a capital), casou-se com Luxaren Thalorn por conveniência social. Usa sempre azul-marinho — a cor da casa do marido.
+
+**Relationship with Senthara**
+Amiga próxima da rainha. Uma das poucas pessoas com quem Senthara fala honestamente.
+
+**Personality**
+- Perceptiva, gentil
+- Suporta o marido com paciência
+- "Ele é um bom homem. Ele apenas... precisa de mim."
+
+**Defining Quote**
+Quando Senthara perguntou por que se casou com Luxaren:
+"Ele não é cruel. Ele é apenas... fraco."
+"Não. Bem... ele precisa de mim."`,
+        tags: ["velira-sethak", "velira-thalorn", "maela", "the-depletion"]
+      },
+      "aldric-stennvik": {
+        title: "Aldric Stennvik",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Lord, administrador das minas do leste |
+| House | House Stennvik (mineração) |
+| Age | 72 anos |
+| Heirs | Nenhum (sem filhos) |
+
+**Position**
+Administra o que restou das minas do leste — que já foram a maior fonte de ferro do reino. As minas estão praticamente esgotadas.
+
+**Personality**
+- Era sábio, ou tinha sido
+- Já não se importa com o destino do império
+- "Estou velho. Sem filhos. Minha casa não tem herdeiros diretos."
+- Honra, reino, legado — "tudo besteira e vaidade"
+- Quer apenas garantir que viverá bem os anos que lhe restam
+
+**Philosophy**
+Um pragmatismo cínico nascido da exaustão. Viu recursos se esgotarem, viu o reino se endividar, viu reis cometerem os mesmos erros. Não tem mais energia para se importar — mas também não tem ilusões.
+
+**Defining Quote**
+"Impressionante como dependemos dessa gente." (sobre os Vethurim)
+"Impressionante como fingimos que não."`,
+        tags: ["aldric-stennvik", "house-stennvik", "minas", "nobre", "the-depletion"]
+      },
+      "regulus-corvain": {
+        title: "Regulus Corvain",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Lord |
+| House | House Corvain (contratos/lei) |
+| Age | ~50 anos |
+
+**Position**
+Casa Corvain controla os contratos. Toda transação comercial em Duratheon precisa do selo Corvain para ter validade legal. Heranças, disputas de terra, acordos mercantis — tudo passa por eles. Cada selo, uma taxa. Cada disputa, uma porcentagem.
+
+**Family Wealth**
+Os Corvain são provavelmente a família mais rica do reino depois dos Vael. Séculos de acumulação silenciosa. "A família não conquistava territórios — cobrava para que outros conquistassem legalmente." Embora os tempos recentes não tenham sido tão generosos para os negócios.
+
+**Appearance**
+Famoso por seu pragmatismo. Não usa roupas coloridas — sempre preto, sempre a mesma roupa. Diz que pensar em vestimenta é perda de tempo que poderia ser gasto revisando contratos.
+
+**Personality**
+- Pragmático ao extremo
+- Fala pouco, observa muito
+- Sorri sem mostrar os dentes
+- Sugere soluções práticas (e cruéis) para problemas sociais
+
+**Defining Quote**
+Sobre os pobres do Vel-Zumarakh: "Eu sugeri ao rei que os convocassem para a guerra, mas seus conselheiros insistiram que cada guerreiro precisava contribuir de forma genuína para a campanha. *Soldados são caros*, diziam eles."`,
+        tags: ["regulus-corvain", "house-corvain", "contratos", "nobre", "the-depletion"]
+      },
+      "theron-agrias": {
+        title: "Theron Agrias",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Lord |
+| House | House Agrias (mercados) |
+| Age | ~40 anos |
+
+**Position**
+Casa Agrias controla os mercados de Vaelhem Thel — uma rede de dezessete praças comerciais onde novecentas mil bocas compram o que podem. Controlam as licenças (cada banca paga taxa semanal), as balanças oficiais, e o fluxo de intermediários.
+
+**Origin of Wealth**
+O monopólio foi uma concessão de Aldaran Vael ao avô de Theron, em troca de um empréstimo que nunca foi cobrado. Uma tarefa considerada menor pelas casas maiores — nobres não pisam em mercados. Mas novecentas mil pessoas comprando comida todos os dias gera uma renda considerável.
+
+**Personality**
+- Boa aparência, não é má pessoa
+- Ama a esposa e os filhos
+- Sente necessidade de estar perto das casas maiores
+- Tem plena consciência de que sua fortuna vem do povo, não dos nobres
+
+**The Mystery**
+Alguns dizem que ele ri para ouvir. Que não fala para observar. Que não usa as roupas mais nobres para ser intencionalmente subestimado.
+
+É o que dizem.
+
+Mas talvez ele seja apenas uma pessoa simples, que quer fazer parte da corte.`,
+        tags: ["theron-agrias", "house-agrias", "mercados", "nobre", "the-depletion"]
+      },
+      "tariq-bashani": {
+        title: "Tariq Bashani",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Mestre Construtor Naval |
+| Origin | Vethurim |
+| Position | Construtor-chefe da frota real |
+
+**Position**
+Tariq é o homem responsável por construir os navios da campanha de Tornael. Vethurim — do povo que Duratheon despreza mas do qual depende. Tolerado porque indispensável.
+
+**The Irony**
+Assim como o tapete Vethurim no Thul-Vaelhem, assim como os tecidos que os nobres compram como "curiosidades exóticas", os navios que levarão o exército foram construídos por mãos que jamais seriam bem-vindas no salão do palácio.
+
+**Reputation**
+Os nobres mencionam seu nome com certo desconforto:
+"O Vethurim? Impressionante como dependemos dessa gente."
+"Impressionante como fingimos que não."`,
+        tags: ["tariq-bashani", "vethurim", "naval", "construtor", "the-depletion"]
+      },
+      "aelara-vael-princess": {
+        title: "Princess Aelara Vael",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Princesa de Duratheon |
+| Age | 12 anos (em 778 AF) |
+| Parents | Tornael e Senthara |
+| Siblings | Krav (irmão, 15 anos) |
+
+**Appearance**
+Cabelo escuro como o da mãe, olhos escuros como o da mãe, a mesma impaciência mal disfarçada do pai. Dedos manchados de tinta — azul e ocre, sempre azul e ocre.
+
+**Personality**
+- Entediada com a corte
+- Prefere pintar e ler a fingir interesse em tecidos e música
+- Sente falta do irmão Krav, que marcha com o pai no norte
+- Mais perceptiva do que parece
+
+**Defining Moment**
+No Duathel de 778 AF, sentada no trono do pai (que deveria estar vazio), riu alto ao ver as calças de Luxaren Thalorn: "Essas são as calças mais feias que já vi na vida!"
+
+**The Detail**
+Durante a conversa filosófica entre Senthara e Velira sobre o fogo que cega mas depois não cega mais, Aelara parou de cutucar as unhas. Estava ouvindo, embora fingisse não estar.`,
+        tags: ["aelara-vael", "princesa", "house-vael", "the-depletion", "maela"]
+      },
+      "krav-vael": {
+        title: "Prince Krav Vael",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Príncipe de Duratheon, Herdeiro do Trono |
+| Age | 15 anos (em 778 AF) |
+| Parents | Tornael e Senthara |
+| Siblings | Aelara (irmã, 12 anos) |
+
+**Position**
+Herdeiro do trono. Marcha com o pai na campanha ao norte — a primeira experiência militar de um príncipe de quinze anos.
+
+**As Seen by Others**
+Aelara sente sua falta: "Krav, que sempre a deixava assistir quando praticava esgrima. Krav, que contava histórias de batalhas antigas quando os tutores não estavam olhando. Krav, que provavelmente estava vivendo uma aventura de verdade naquele momento."
+
+Senthara se preocupa: "Krav... se ele está comendo direito — você sabe como ele é, esquece de comer quando está animado com alguma coisa." E depois, mais baixo: "Krav... Meu menino. Já sinto falta dele."
+
+**Fate**
+A campanha será destruída pelos Kaeldur. O destino de Krav após a batalha permanece incerto.`,
+        tags: ["krav-vael", "principe", "house-vael", "campanha", "the-depletion"]
       }
     }
   },
@@ -4288,6 +5136,323 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 | **Vreth** | Strength/Montanha | Elder no Hall of Fire |
 | **Maela** | (TAELUN antigo) | Mulher que acolhe Krav |`,
         tags: ["kaeldrek", "nomes", "onomastic"]
+      },
+      "nomenclatura-sistema": {
+        group: "zanuax",
+        title: "NOMENCLATURA — Sistema Completo",
+        content: `**SISTEMA DE NOMENCLATURA DE SETHAEL**
+*Um guia para criação de nomes consistentes*
+
+---
+
+## PRINCÍPIOS FUNDAMENTAIS
+
+Os nomes em Sethael seguem padrões linguísticos que refletem:
+1. **Estrato temporal** — de qual era vem o nome
+2. **Classe social** — plebeu, mercador, nobre, real
+3. **Região** — dialetos e influências locais
+4. **Gênero** — padrões masculinos, femininos, neutros
+5. **Função** — nome próprio, patronímico, epíteto, título
+
+---
+
+## I. RAÍZES PRIMÁRIAS (SEMANTIC CORES)
+
+### Raízes de Poder e Autoridade
+| Raiz | Significado | Conotação | Exemplos |
+|------|-------------|-----------|----------|
+| **VAEL-** | Acumular, possuir | Real, imperial | Vaelan, Vaelorn, Vaethor |
+| **KRAV-** | Conquistar, dominar | Militar, épico | Kravorn, Kraveth, Kravethar |
+| **TORN-** | Virar, observar, comandar | Autoridade, visão | Tornael, Tornaven, Torneth |
+| **DOM-** | Senhor, casa | Nobre | Domaren, Dometh |
+| **REG-** | Governar, reger | Administrativo | Regnar, Regeth |
+
+### Raízes de Qualidade e Virtude
+| Raiz | Significado | Conotação | Exemplos |
+|------|-------------|-----------|----------|
+| **THAEL-** | Elevado, sagrado | Espiritual | Thaelor, Thaelara, Thaelkhen |
+| **SEN-** | Preservar, guardar | Sábio, ancião | Senara, Senvarak, Senthur |
+| **LUM-** | Luz, iluminar | Puro, brilhante | Lumara, Lumineth, Lumorn |
+| **VER-** | Verdade, verdadeiro | Honesto | Verathar, Verena, Verith |
+| **SAP-** | Sábio, conhecedor | Erudito | Saphenar, Saphira |
+
+### Raízes de Elementos e Natureza
+| Raiz | Significado | Conotação | Exemplos |
+|------|-------------|-----------|----------|
+| **DUR-** | Pedra, resistir | Forte, permanente | Duratheon, Durenkar, Dureth |
+| **KAEL-** | Fogo (Kaeldrek) | Paixão, força | Kaelnar, Kaelveth |
+| **AQU-** | Água | Fluido, adaptável | Aquaren, Aquila |
+| **SYLV-** | Floresta | Natural, selvagem | Sylvara, Sylveth |
+| **FERR-** | Ferro, metal | Duro, trabalhador | Ferreth, Ferrand |
+
+### Raízes de Origem e Lugar
+| Raiz | Significado | Conotação | Exemplos |
+|------|-------------|-----------|----------|
+| **SETH-** | Mundo, cosmos | Universal | Sethael, Setharen, Sethira |
+| **VELUTH-** | Das terras do sul | Regional | Veluthar, Veluthara |
+| **ZUM-** | Do povo Vethurim | Imigrante | Zumax, Zumara, Zumeth |
+| **KETH-** | Das montanhas | Serrano | Kethar, Kethara |
+| **THUL-** | Sagrado, antigo | Arcaico | Thulvar, Thulena |
+
+### Raízes Teofóricas (relacionadas a deuses)
+| Raiz | Significado | Conotação | Exemplos |
+|------|-------------|-----------|----------|
+| **STHEN-** | De Sthendur | Piedoso, devoto | Sthendara, Sthenvar |
+| **IUL-** | Dos IULDAR | Mítico, antigo | Iulara, Iuleth |
+| **KRAETH-** | Dos Kraeth | Poderoso | Kraethon, Kraethira |
+
+---
+
+## II. SUFIXOS POR GÊNERO
+
+### Sufixos Masculinos
+| Sufixo | Classe | Período | Exemplos |
+|--------|--------|---------|----------|
+| **-orn** | Nobre/Real | TAELUN Tardio | Kravorn, Vaelorn, Durorn |
+| **-ael** | Real/Sagrado | Proto-ZANUAX | Tornael, Sethael, Thaelael |
+| **-eth** | Comum/Militar | ZANUAX Clássico | Kraveth, Dureth, Torneth |
+| **-ar** | Comum | ZANUAX | Verathar, Senvar, Dominar |
+| **-or** | Nobre | High ZANUAX | Thaelor, Vaelor |
+| **-en** | Comum/Antigo | TAELUN | Setharen, Velaren, Thuren |
+| **-ax** | Vethurim | Regional | Zumax, Velorax, Thurnax |
+| **-and** | Ocidental | Regional | Ferrand, Durrand |
+| **-ius** | Sentek/Erudito | Formal | Valerius, Setharius |
+| **-an** | Comum | ZANUAX | Vaelan, Doran, Kravlan |
+
+### Sufixos Femininos
+| Sufixo | Classe | Período | Exemplos |
+|--------|--------|---------|----------|
+| **-ara** | Nobre/Real | ZANUAX | Senara, Aelara, Lumara |
+| **-ela** | Comum/Antigo | TAELUN | Maela, Vaela, Sethela |
+| **-ira** | Nobre | High ZANUAX | Saphira, Velira, Thaelira |
+| **-eth** | Comum (unissex) | ZANUAX | Kaelveth, Torneth |
+| **-ina** | Diminutivo/Jovem | ZANUAX | Vaelina, Thornina |
+| **-itha** | Antigo/Sagrado | TAELUN | Senitha, Thaelitha |
+| **-wen** | Vethurim | Regional | Zumawen, Velwen |
+| **-is** | Sentek/Erudita | Formal | Velaris, Setharis |
+
+### Sufixos Neutros/Unissex
+| Sufixo | Classe | Período | Exemplos |
+|--------|--------|---------|----------|
+| **-khen** | Kaeldur | Regional | Thaelkhen, Vaelkhen |
+| **-veth** | Comum | ZANUAX | Kaelveth, Durveth |
+| **-en** | Antigo | TAELUN | Velken, Thornen |
+
+---
+
+## III. ESTRUTURA DOS NOMES POR CLASSE SOCIAL
+
+### Realeza (Casa Vael)
+**Estrutura:** RAIZ-PODER + -ael/-orn + Vael
+- Tornael Vael (Torn + ael + Vael)
+- Kravorn Vael (Krav + orn + Vael)
+- Vaelan Vael (Vael + an + Vael)
+
+### Alta Nobreza (Casas Maiores)
+**Estrutura:** RAIZ-VIRTUDE + -ar/-or + NOME-DA-CASA
+- Vaethor Zumax (Vae + thor + Zumax)
+- Setharen Kravos (Seth + aren + Kravos)
+- Senara Senvarak (Sen + ara + Senvarak)
+
+### Baixa Nobreza (Casas Menores)
+**Estrutura:** RAIZ + -eth/-en + NOME-DA-CASA
+- Kraveth Vaelmar (Krav + eth + Vaelmar)
+- Dureth Thornavel (Dur + eth + Thornavel)
+- Velaren Sethak (Vel + aren + Sethak)
+
+### Plebeus Urbanos
+**Estrutura:** RAIZ-SIMPLES + -an/-en (sem sobrenome ou patronímico)
+- Thaelor (Thael + or) — maestro
+- Vaelan (Vael + an)
+- Durren (Dur + en)
+- Maela (Mael + a) — forma arcaica
+
+### Plebeus Rurais
+**Estrutura:** RAIZ-NATUREZA + -eth/-en + [ofício ou vila]
+- Ferreth da Forja (Ferr + eth)
+- Sylven do Bosque (Sylv + en)
+- Aqueth do Rio (Aqu + eth)
+
+### Imigrantes Vethurim
+**Estrutura:** RAIZ-VETHURIM + -ax/-wen + [vila de origem]
+- Zumax de Zumarack
+- Thurnax de Vethurack
+- Velwen de Zumarack
+
+---
+
+## IV. NOMES DE CASAS NOBRES
+
+### Casas Reais
+| Casa | Significado | Origem |
+|------|-------------|--------|
+| **Vael** | Os Acumuladores | Fundadora do Reino |
+| **Senvarak** | Os Preservadores da Força | Golpe de 137 AF |
+| **Thurnavel** | Os do Caminho Sagrado | Pós-Senara |
+
+### Casas Maiores
+| Casa | Significado | Especialidade |
+|------|-------------|---------------|
+| **Kravethar** | Herdeiros da Conquista | Militar |
+| **Vaelmar** | Mar dos Acumuladores | Naval |
+| **Sethak** | Filhos do Mundo | Comercial |
+| **Thornavel** | Caminho da Observação | Diplomática |
+| **Kravos** | Conquistadores | Militar |
+| **Senthek** | Preservadores do Conhecimento | Escribas |
+| **Duravel** | Caminho da Resistência | Construção |
+
+### Casas Menores
+| Casa | Significado | Região |
+|------|-------------|--------|
+| **Veluthar** | Do Sul | Veluthaar |
+| **Zumarak** | Do Povo Vethurim | Costa Sul |
+| **Kethnar** | Das Montanhas | Norte |
+| **Ferrath** | Do Ferro | Kravaal |
+
+---
+
+## V. EPÍTETOS E COGNOMES
+
+### Epítetos Positivos (dados em vida)
+| Epíteto | HIGH ZANUAX | Significado |
+|---------|-------------|-------------|
+| o Grande | Mägnël | Por conquistas |
+| o Sábio | Säpïëntël | Por conhecimento |
+| o Justo | Jüstël | Por governo |
+| o Iluminado/a | Lümïnätël | Por reformas |
+| o Forte | Fōrtël | Por batalhas |
+| o Piedoso | Pïël | Por devoção |
+
+### Epítetos Negativos (dados postumamente)
+| Epíteto | HIGH ZANUAX | Significado |
+|---------|-------------|-------------|
+| o Subjugador | Sübjügätōr | Conquistador cruel |
+| o Usurpador | Üsürpätōr | Tomou o trono |
+| o Louco | Dëmëntël | Governou mal |
+| o Fraco | Dëbïlël | Perdeu território |
+| o Sangrento | Krüëntël | Muitas execuções |
+
+### Epítetos Regionais (Kaeldrek)
+| Epíteto | Kaeldrek | Significado |
+|---------|----------|-------------|
+| Vreth | — | O Forte (título) |
+| Kaelnar | — | Mestre do Fogo (rei) |
+| Threknar | — | Mestre da Forja |
+| Durvrek | — | Caminhante da Pedra |
+
+---
+
+## VI. PADRÕES FONOLÓGICOS POR PERÍODO
+
+### TAELUN Arcaico (Eras I-III)
+- Consoantes duras: K, TH, KR, VR
+- Vogais fechadas: U, E
+- Estrutura: CVC-CVC
+- **Exemplos:** Kraeth, Thulvar, Durek
+
+### TAELUN Tardio / Proto-ZANUAX (~700-1 BF)
+- Suavização inicial: TH → T, KR → KR/CR
+- Sufixos emergentes: -ael, -orn, -eth
+- **Exemplos:** Tornael, Kravorn, Sethael
+
+### ZANUAX Clássico (1-400 AF)
+- Vogais abertas: A, O
+- Sufixos elaborados: -ara, -aven, -ethar
+- **Exemplos:** Senara, Tornaven, Verathar
+
+### High ZANUAX (400+ AF)
+- Ornamentação: diacríticos, vogais longas
+- Latinização: -ius, -is, -or
+- **Exemplos:** Valerius, Thaelor, Setharis
+
+---
+
+## VII. GERADOR DE NOMES — MÉTODO PRÁTICO
+
+### Passo 1: Escolha a Raiz (baseado no significado desejado)
+### Passo 2: Escolha o Sufixo (baseado em gênero e classe)
+### Passo 3: Adicione Sobrenome (se nobre) ou Origem (se plebeu)
+### Passo 4: Considere Epíteto (se personagem importante)
+
+### EXEMPLOS GERADOS:
+
+**Nobre masculino militar:**
+- Raiz: KRAV- (conquistar)
+- Sufixo: -eth (militar)
+- Casa: Vaelmar (naval)
+- **Resultado: Kraveth Vaelmar** ✓
+
+**Nobre feminina sábia:**
+- Raiz: SEN- (preservar)
+- Sufixo: -ara (nobre feminino)
+- Casa: Senvarak
+- Epíteto: a Iluminada
+- **Resultado: Senara Senvarak, a Iluminada** ✓
+
+**Plebeu erudito:**
+- Raiz: THAEL- (elevado)
+- Sufixo: -or (formal)
+- Profissão: maestro
+- **Resultado: Thaelor, maestro da corte** ✓
+
+**Imigrante Vethurim:**
+- Raiz: ZUM- (Vethurim)
+- Sufixo: -ax (Vethurim masculino)
+- Vila: Zumarack
+- **Resultado: Zumax de Zumarack** ✓
+
+**Princesa real:**
+- Raiz: AEL- (do ar, etéreo)
+- Sufixo: -ara (nobre feminino)
+- Casa: Vael
+- **Resultado: Aelara Vael** ✓
+
+**Guerreiro Kaeldur:**
+- Raiz: VRETH- (força)
+- Sufixo: (nenhum — estilo Kaeldrek)
+- Título: Kaeldur III
+- **Resultado: Vreth Kaeldur III** ✓
+
+---
+
+## VIII. NOMES A EVITAR (muito similares)
+
+Para manter diversidade, evite criar nomes muito próximos a existentes:
+
+| Existente | Evitar | Use em vez |
+|-----------|--------|------------|
+| Tornael | Torneth, Tornar | Regnar, Dometh |
+| Kravorn | Kraveth já existe | Durorn, Ferrorn |
+| Senara | Senira | Lumara, Verina |
+| Vaethor | Vaelor | Saphior, Verior |
+| Setharen | Sethael já existe | Thornaren, Velaren |
+
+---
+
+## IX. TABELA DE REFERÊNCIA RÁPIDA
+
+### Masculinos por Classe
+| Classe | Sufixos Preferidos | Exemplo |
+|--------|-------------------|---------|
+| Real | -ael, -orn | Tornael, Kravorn |
+| Alta Nobreza | -or, -ar | Thaelor, Verathar |
+| Baixa Nobreza | -eth, -en | Kraveth, Velaren |
+| Plebeu Urbano | -an, -en | Vaelan, Durren |
+| Plebeu Rural | -eth, -en | Ferreth, Sylven |
+| Vethurim | -ax | Zumax, Thurnax |
+| Kaeldur | (sem sufixo) | Vreth, Kael |
+
+### Femininos por Classe
+| Classe | Sufixos Preferidos | Exemplo |
+|--------|-------------------|---------|
+| Real | -ara, -ela | Aelara, Vaela |
+| Alta Nobreza | -ara, -ira | Senara, Saphira |
+| Baixa Nobreza | -eth, -itha | Veleth, Senitha |
+| Plebeia Urbana | -ela, -ina | Maela, Vaelina |
+| Plebeia Rural | -eth, -en | Sylveth, Aquen |
+| Vethurim | -wen | Zumawen, Velwen |
+| Kaeldur | -veth, -khen | Kaelveth, Vraela |`,
+        tags: ["nomenclatura", "nomes", "zanuax", "taelun", "onomastica", "guia"]
       },
       "zanuax-visao": {
         group: "zanuax",
@@ -6282,27 +7447,112 @@ O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 A
         tags: ["massacre", "kravorn ii", "kaeldur", "history"]
       },
       "campanha-778": {
-        title: "The Campaign of 778 AF",
-        content: `**O Desastre**
+        title: "The Northern Campaign of 778 AF",
+        content: `**THE NORTHERN CAMPAIGN — MILITARY DATA**
 
-| Parameter | Value |
-|-----------|-------|
-| Comandante | Tornael Vael (Krav XIX) |
-| Army | 280.000 homens |
-| Objetivo | Conquistar Lands Beyond |
-| Result | **DESTRUCTION TOTAL** |
+---
 
-**A Rota**
-1. Vaelhem Thel → Kravethorn (40 dias)
-2. Travessia maritime (atrasada por meses)
-3. Kaelthrek Holds (85 km de desfiladeiro)
+## TIMELINE
 
-**O Problema**
-280.000 homens em um desfiladeiro de 30m de largura = coluna de 37 km. Impossible to defend. Impossible to maneuver.
+| Mês | Evento |
+|-----|--------|
+| **Mês 0** | Frota parte de Veluthaar (550 navios) |
+| **Mês +2** | Exército parte da capital (285k homens) |
+| **Mês +2 + 7 dias** | Duathel — última festa antes da queda |
+| **Mês +4** | Vaethor escreve a carta ao rei |
+| **Mês +4 a +4.5** | Exército chega a Kravethorn |
+| **Mês +5** | Travessia do canal (múltiplas viagens) |
+| **Mês +6** | Exército entra em Kaelthrek |
+| **Mês +7-8** | Desastre nas montanhas |
 
-**O Resultado**
-The Kaeldur attacked from above. Avalanches. Arrows. Stones. The army was destroyed. Tornael was captured.`,
-        tags: ["campanha", "778 af", "desastre", "tornael"]
+---
+
+## COMPOSIÇÃO DAS FORÇAS
+
+### TOTAIS DA CAMPANHA
+| Recurso | Quantidade |
+|---------|------------|
+| Homens | 320.000 |
+| Navios | 760 |
+| Siege engines | 300 |
+| Warhorses | 12.000 |
+| Paladins | 10.000 |
+
+### FROTA DE VELUTHAAR (Rota Marítima)
+| Recurso | Quantidade | Notas |
+|---------|------------|-------|
+| Navios | 550 | Cruzam 18.000 km via Vel-Nakh |
+| Homens | 35.000 | Elite: cavalaria, engenheiros |
+| Warhorses | 8.000 | Cavalaria pesada (não cruza montanhas) |
+| Paladins | 7.000 | Elite em armadura pesada |
+| Siege engines | 200 | Trebuchets, catapultas, carros de guerra |
+
+**Missão:** Atacar a costa leste das Terras Além. Movimento de pinça.
+
+**Status:** Partiu 4 meses antes da carta de Vaethor. Destino desconhecido — 29 frotas anteriores desapareceram em Vel-Nakh.
+
+### EXÉRCITO TERRESTRE (Rota por Kaelthrek)
+| Recurso | Quantidade | Notas |
+|---------|------------|-------|
+| Navios | 210 | Travessia do canal (400 km) |
+| Homens | 285.000 | Infantaria principal |
+| Warhorses | 4.000 | Cavalaria leve |
+| Paladins | 3.000 | Reserva |
+| Siege engines | 100 | Equipamento restante |
+
+**Missão:** Atravessar Kaelthrek, descer pelo leste, cercar a capital das Terras Além.
+
+**Status:** 2 meses de marcha quando Vaethor escreve. A ~2 semanas de Kravethorn.
+
+---
+
+## DISTÂNCIAS E TEMPOS
+
+| Rota | Distância | Velocidade | Tempo |
+|------|-----------|------------|-------|
+| Capital → Kravethorn | ~1.000 km | 15 km/dia | ~67 dias |
+| Travessia do canal | 400 km | — | 2-4 semanas (múltiplas viagens) |
+| Veluthaar → Terras Além | ~18.000 km | 100-120 km/dia | ~5-6 meses |
+
+---
+
+## COMANDO
+
+| Posição | Nome | Notas |
+|---------|------|-------|
+| Rei | Tornael Vael | Comandante supremo. Morre de VETH-NAKH antes de Kaelthrek |
+| Príncipe | Krav Vael XIX (14 anos) | Assume comando após morte do pai |
+| General | Kraveth Vaelmar | Único comandante competente. Capturado |
+| Almirante | Durel Vaemar | Logística, não combate |
+
+---
+
+## O PLANO (e sua falha)
+
+**Estratégia:** Movimento de pinça
+1. Frota ataca pelo leste (via Vel-Nakh)
+2. Exército ataca pelo norte (via Kaelthrek)
+3. Cercam a capital das Terras Além
+
+**Por que falhou:**
+- Frota provavelmente perdida em Vel-Nakh (29 precedentes)
+- Kaelthrek é um desfiladeiro de 30m de largura
+- 285.000 homens = coluna de 37 km impossível de defender
+- Kaeldur atacaram de cima: avalanches, flechas, pedras
+- Tornael morreu de VETH-NAKH antes da batalha
+- Krav (14 anos) assumiu comando de um exército já condenado
+
+**Resultado:** Destruição total. ~18 sobreviventes confirmados. Krav e Kraveth capturados.
+
+---
+
+## FONTES NO MANUSCRITO
+
+- **Cap II (The Letter of Vaethor Zumax):** Dados militares, advertência ignorada
+- **Cap V (The Letter from the North):** Relato da derrota por Kraveth
+- **Cap VI (The Hall of Fire):** Krav entre os Kaeldur
+- **Dry Wood:** Setharen revela o plano de reorganização`,
+        tags: ["campanha", "778-af", "desastre", "tornael", "militar", "dados"]
       },
       "colapso-duratheon": {
         title: "The Collapse of Duratheon",
@@ -6842,7 +8092,7 @@ Duratheon not caiu ainda. Mas a fall é inevitable.`,
 |----------|----------|
 | King | Tornael — prisioneiro dos Kaeldur |
 | Herdeira | Skael — 17 anos, em Vaelhem Thel |
-| Queen | Maela — tentando manter ordem |
+| Queen | Senthara — tentando manter ordem |
 | Capital | Em colapso, revoltas, fires |
 | Tesouro | Vazio |
 | Army | Destroyed |
@@ -6975,14 +8225,14 @@ Covers the cosmological origins: the Outside, the Seeders, the creation of Setha
 
 | Part | Chapters |
 |------|----------|
-| Part I | 7 |
+| Part I | 9 |
 | Part II | 5 |
 
 The main narrative begins 778 years After Founding. The kingdom of Duratheon faces collapse as King Tornael's disastrous campaign ends in capture and the realm descends into chaos.`,
         tags: ["about", "manuscript", "structure"]
       },
       "wgl-vi-ci": {
-        title: "Cap. I: The Outside and the Paradox of Totality",
+        title: "I — The Outside and the Paradox of Totality",
         book: "prologo",
         volume: "vol-i",
         content: `**The Governor That Does Not Govern**
@@ -6998,7 +8248,7 @@ To achieve this impossible achievement, the Outside creates a rule for itself. Y
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cii": {
-        title: "Cap. II: The Inside and the Birth of Time",
+        title: "II — The Inside and the Birth of Time",
         book: "prologo",
         volume: "vol-i",
         content: `**The Great Explosion**
@@ -7022,7 +8272,7 @@ And the distinction between the Outside and the Inside is now complete. The Outs
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-ciii": {
-        title: "Cap. III: The Seeders and the Price of Creation",
+        title: "III — The Seeders and the Price of Creation",
         book: "prologo",
         volume: "vol-i",
         content: `**The Nature of Seeds**
@@ -7044,7 +8294,7 @@ The seeds that combine strong memory with strong desire become the Seeders. They
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-civ": {
-        title: "Cap. IV: Sethael: The Seeded World",
+        title: "IV — Sethael: The Seeded World",
         book: "prologo",
         volume: "vol-i",
         content: `**The Approach**
@@ -7066,7 +8316,7 @@ This rock has become known as Sethael. The name arrives not through any consciou
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cv": {
-        title: "Cap. V: The Necessity of the IULDAR",
+        title: "V — The Necessity of the IULDAR",
         book: "prologo",
         volume: "vol-i",
         content: `**The Compulsion of Creation**
@@ -7086,7 +8336,7 @@ This distinction will prove crucial in ages yet to come. It creates a vulnerabil
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cvi": {
-        title: "Cap. VI: The Order of the IULDAR",
+        title: "VI — The Order of the IULDAR",
         book: "prologo",
         volume: "vol-i",
         content: `**The Kraeth**
@@ -7108,7 +8358,7 @@ These were the IULDAR---ten Kraeth with their Great one, the many Thul\\'Kar, th
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cvii": {
-        title: "Cap. VII: The Experiment of the Titans",
+        title: "VII — The Experiment of the Titans",
         book: "prologo",
         volume: "vol-i",
         content: `**The Collaboration**
@@ -7126,7 +8376,7 @@ The Seeder had created the Titans for a specific purpose: to labor. It had not c
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cviii": {
-        title: "Cap. VIII: The Gift of TAELUN",
+        title: "VIII — The Gift of TAELUN",
         book: "prologo",
         volume: "vol-i",
         content: `**The Seed of Language**
@@ -7146,7 +8396,7 @@ TAELUN did not remain static. No living language can remain static, for language
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vi-cix": {
-        title: "Cap. IX: The Gift of Freedom and the Death of the Seeder",
+        title: "IX — The Gift of Freedom and the Death of the Seeder",
         book: "prologo",
         volume: "vol-i",
         content: `**The Nature of Freedom**
@@ -7170,7 +8420,7 @@ The Seeder had died. Not in the sense of ceasing to exist completely---for the S
         tags: ["manuscript", "when-gods-labored", "volume-i"]
       },
       "wgl-vii-ci": {
-        title: "Cap. I: The World in Balance",
+        title: "I — The World in Balance",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Harmony of Maintenance**
@@ -7194,7 +8444,7 @@ Titans\\' Titans\\' unconscious labor---life flourished on Sethael as it had nev
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-vii-cii": {
-        title: "Cap. II: The Scattered Tribes",
+        title: "II — The Scattered Tribes",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Kethran: People of the Heights**
@@ -7214,7 +8464,7 @@ Despite their differentiation, the tribes of Ungavel were not isolated. The supe
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-vii-ciii": {
-        title: "Cap. III: Durel of the TauTek",
+        title: "III — Durel of the TauTek",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Weakness**
@@ -7238,7 +8488,7 @@ They called themselves SENDAR---from SEN, meaning to preserve or retain, combine
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-vii-civ": {
-        title: "Cap. IV: The Central Lands and Their People",
+        title: "IV — The Central Lands and Their People",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Structure of Power**
@@ -7260,7 +8510,7 @@ The TauTek observed the IULDAR as they observed everything else. They documented
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-vii-cv": {
-        title: "Cap. V: The Glorious Children",
+        title: "V — The Glorious Children",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Children of the Kraeth**
@@ -7280,7 +8530,7 @@ The millennia that followed the Children\\'s emergence became known, in later ch
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-vii-cvi": {
-        title: "Cap. VI: The Era of Innocence",
+        title: "VI — The Era of Innocence",
         book: "prologo",
         volume: "vol-ii",
         content: `**The Apparent Harmony**
@@ -7302,7 +8552,7 @@ Later generations, looking back on the Era of Innocence from the far side of cat
         tags: ["manuscript", "when-gods-labored", "volume-ii"]
       },
       "wgl-viii-ci": {
-        title: "Cap. I: The First Violence",
+        title: "I — The First Violence",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Archives**
@@ -7327,7 +8577,7 @@ The chronicles pause here to consider what had occurred. Not the physical events
         tags: ["manuscript", "when-gods-labored", "volume-iii"]
       },
       "wgl-viii-cii": {
-        title: "Cap. II: The Hunt",
+        title: "II — The Hunt",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Method**
@@ -7349,7 +8599,7 @@ The world that emerged from the hunt was unrecognizable from the world that had 
         tags: ["manuscript", "when-gods-labored", "volume-iii"]
       },
       "wgl-viii-ciii": {
-        title: "Cap. III: The Extraction",
+        title: "III — The Extraction",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Process**
@@ -7369,7 +8619,7 @@ The blood flowed from the facilities into the machinery of TauTek ambition. It f
         tags: ["manuscript", "when-gods-labored", "volume-iii"]
       },
       "wgl-viii-civ": {
-        title: "Cap. IV: The Fall of the IULDAR",
+        title: "IV — The Fall of the IULDAR",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Thul\\'Kar\\'s Stillness**
@@ -7387,7 +8637,7 @@ The TauTek interpreted the IULDAR\\'s fall as victory. Their records from this p
         tags: ["manuscript", "when-gods-labored", "volume-iii"]
       },
       "wgl-viii-cv": {
-        title: "Cap. V: The Silence",
+        title: "V — The Silence",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Descent**
@@ -7403,7 +8653,7 @@ Silence descended on Ungavel. Not literal silence---the world remained full of s
         tags: ["manuscript", "when-gods-labored", "volume-iii"]
       },
       "wgl-viii-cvi": {
-        title: "Cap. VI: The Vanishing",
+        title: "VI — The Vanishing",
         book: "prologo",
         volume: "vol-iii",
         content: `**The Discovery**
@@ -7426,7 +8676,7 @@ In the abyss, the Great Kraeth remained with the Abyrn. They had waited for some
         title: "I — Of Paper and Ash",
         book: "the-depletion",
         volume: "part-i",
-        content: `**VOLUME IV**
+        content: `**PART I**
 *The Fall of Duratheon*
 
 *Telenōm trē frükhǖ tï baërël,*
@@ -7578,7 +8828,7 @@ And with trembling hands, he begins to write:`,
         title: "II — The Letter of Vaethor Zumax",
         book: "the-depletion",
         volume: "part-i",
-        content: `**CHAPTER I**
+        content: `**II**
 *The Letter of Vaethor Zumax*
 
 ⟡ MEMORANDUM REGIUM ⟡
@@ -7662,17 +8912,31 @@ You have built something formidable. I do not deny it. Three hundred and twenty 
 
 The cost has been immense.
 
-The provinces bled to feed this army. The mines emptied to arm it. The forests fell to build the ships. The treasury — fifteen years in deficit, Your Majesty — has been hollowed out to pay for what now waits to march. And still we maintain thirty-five thousand soldiers scattered across the kingdom, guarding cities that grow hungrier, patrolling roads that carry fewer merchants each year. The cost has been immense. And we have not yet begun.
+The provinces bled to feed this army. The mines emptied to arm it. The forests fell to build the ships. The treasury — fifteen years in deficit, Your Majesty — has been hollowed out to pay for what now marches north. And still we maintain thirty-five thousand soldiers scattered across the kingdom, guarding cities that grow hungrier, patrolling roads that carry fewer merchants each year. The cost has been immense. And we have only begun.
 
 The fleet has already sailed.
 
-Five hundred and fifty ships departed Veluthaar a fortnight past. Thirty-five thousand men — our finest cavalry, our siege engineers, our heaviest equipment. They sail now toward Vel-Nakh, that passage which has swallowed twenty-nine fleets before them. I watched them go from the harbor walls, Your Majesty. I said nothing. What could I have said? The decision was made. The ships were loaded. The men were singing as they cast off, believing they sailed toward glory.
+Five hundred and fifty ships departed Veluthaar four months past — two months before the army even began its march from the capital. I stood on the harbor walls and watched them go. Thirty-five thousand of our finest men. Eight thousand warhorses — the heavy cavalry that cannot cross mountains, that must arrive by sea or not at all. Seven thousand paladins in armor worth more than the villages they were conscripted to protect. Two hundred siege engines — the trebuchets, the catapults, the war chariots that will batter down walls we have never seen. The engineers who know how to use them. The supplies to feed an army for six months.
 
-I cannot call them back. No one can. They are beyond recall, beyond prayer, beyond everything but the mercy of currents that have shown no mercy before. Perhaps they will survive. Perhaps the thirtieth fleet will be the first to pass. Perhaps.
+All of it sails now somewhere beyond Vel-Nakh, that passage which has swallowed twenty-nine fleets before them. By my calculations, if they survived the crossing, they should be approaching the eastern shores of Lands Beyond within the month. If they survived. We will not know for months — if we ever know at all.
 
-But the army remains.
+I said nothing as they departed, Your Majesty. What could I have said? The decision was made. The ships were loaded. The men were singing as they cast off, believing they sailed toward glory.
 
-Two hundred and eighty-five thousand men still wait in Kravethorn and along the northern roads. Two hundred and ten ships remain to carry them across the channel — five crossings, perhaps six, each wave waiting alone on hostile shores while the fleet returns for the next. This, Your Majesty, is what can still be stopped. This is what I beg you to reconsider.
+I cannot call them back. No one can. They are beyond recall, beyond prayer, beyond everything but the mercy of currents that have shown no mercy before.
+
+But the army marches still.
+
+Two hundred and eighty-five thousand men have marched for two months now. They left the capital as you did, following the northern roads toward Kravethorn. I watched you depart, Your Majesty — you and young Krav riding at the head of the column, banners snapping in the wind, the people cheering from the walls. That was sixty-three days ago. By my calculations, you should reach Kravethorn within days — within a fortnight at most.
+
+And then the crossing begins.
+
+Two hundred and ten ships wait in Kravethorn's harbor to ferry the army across the channel — four hundred kilometers of open water to the northern shore. Five crossings, perhaps six, to move two hundred and eighty-five thousand men with their remaining supplies: four thousand warhorses, three thousand paladins, one hundred siege engines, the infantry that forms the bulk of our force. Each wave waiting alone on hostile shores while the fleet returns for the next. Weeks of vulnerability. Weeks during which the Kaeldur — if they chose — could destroy each landing in detail before the next arrived.
+
+This, Your Majesty, is what can still be stopped. This is what I beg you to reconsider.
+
+I write this from the Greater Library, where I have spent fifty-three years serving your family. The halls are quiet now. The scholars have gone — most conscripted as scribes for the army, the rest fled to provinces that no longer exist. I am alone with the archives, alone with the weight of everything I know and everything I fear.
+
+The fleet is beyond saving. But the army — your army, with you and your son at its head — still marches on roads that lead back to the capital. There is still time. There is still choice.
 
 The cost has been immense. But it can be so much worse.
 
@@ -7908,11 +9172,512 @@ May Sthendur — if he exists — illuminate you.
 [Seal of the Greater Library in black wax]`,
         tags: ["manuscript", "volume-iv", "chapter-1", "vaethor-zumax", "letter", "vethurim", "vethurack", "zumarack"]
       },
-      "vol4-ch2": {
-        title: "III — The Letter from the North",
+      "vol4-ch1b": {
+        title: "III — The Empty Space",
         book: "the-depletion",
         volume: "part-i",
-        content: `**CHAPTER II**
+        content: `**III**
+*The Empty Space*
+
+The fourth day of the week, when the nobles gathered in the Great Hall of the palace to dine beneath the light of the chandeliers. Just another Duathel like so many others.
+
+The Thul-Vaelhem — the Sacred Hall of the Vaels — had been built to intimidate. And intimidate it did. The ceiling vanished into the gloom above the chandeliers, so high that the paintings on the frescoes could barely be distinguished from the floor. White marble everywhere, but not the cold white of bare stone — a golden white, almost alive, a reflection of the thousands of crystals and precious gems that hung from the golden chandeliers. The light danced on the polished surfaces as if the hall itself were breathing.
+
+The columns. Sixteen in all, eight on each side, each one so broad that it would take five men with outstretched arms to embrace it. On the capitals, reliefs in gold depicted scenes of the founding — Duratheon Vael raising the first stone, the seven temples of Sthendur rising from the earth, the first banner fluttering over Vaelhem Thel. Details that no one could see from the floor. But nothing in Duratheon was done carelessly. Least of all in the palace. Least of all in the Thul-Vaelhem.
+
+Between the columns stood the statues. Not the sixty-eight of the Approach — those stood outside, lining the processional avenue. These were different: twelve figures, six meters tall each, the six founding kings and their queens, perfectly sculpted in marble from Veluthaar. The stone eyes watched the living with the serenity of the dead. Or perhaps with boredom. Seven hundred and seventy-eight years of dinners. Seven hundred and seventy-eight years of trivialities whispered beneath their marble noses.
+
+The crimson velvet curtains descended from golden rails — from such an absurd height that the silver-thread embroidery, meticulously stitched into every hem, was invisible to anyone standing on the floor. Artisans had spent years on those details. No one would ever see them. But that was Duratheon: perfection did not exist to be seen. It existed because anything less than perfect would be an offense to Sthendur.
+
+The carpet covered the entire hall — from one end to the other, fifteen meters wide by sixty long. They said it had been personally commissioned by Kravorn II, the Subjugator, after his final conquest. They also said — in whispers, never aloud — that the artisans were Vethurim. A people Duratheon despised, whose immigrants lived in coastal villages as second-class citizens, whose textiles the nobility purchased as "exotic curiosities" without ever admitting the mastery behind them. The irony did not escape those who paid attention: the floor the nobles trod upon, the carpet on which they danced and spilled wine, had been woven by the hands of a people who would not be welcome in that very hall.
+
+And the fireplace.
+
+It occupied the entire eastern wall of the hall — the wall to the right of those facing north, where the throne stood. Twenty meters wide. Ten tall. A monument of stone within another monument of stone. The carved reliefs narrated the history of Duratheon in chronological order: the founding of the temples, the construction of the university, the conquests of Kravorn, the peace treaties, the coronations. Seventeen artisans had worked for thirty-two years to complete it. Generations of hands upon the same stone.
+
+But at the top, a space remained empty.
+
+The scaffolding was still there during the day — the artisans working on a new relief, a space reserved for the Conquest of the Lands Beyond. The campaign that had not yet ended. The victory that had not yet happened. The king had already commissioned the scene: himself crossing the Northern Holds, the army marching behind, the banners of Duratheon fluttering over mountains no king had ever crossed.
+
+But that night was not about conquests.
+
+That night was just another Duathel.
+
+The orchestra played — sixteen musicians under the baton of old Thaelor Duanax, court maestro for twenty-three years. A new composition, they said. Something he had written in the past weeks, while the army marched north and the capital grew strangely silent. The violins rose and fell in gentle waves. The choir — twelve voices trained since childhood — harmonized in High Zanuax:
+
+*Glōrïäy ad Tornael!*
+*Glōrïäy ad vaëlōr!*
+*Glōrïäy ad fïlïël Sthendurël!*
+*Glōrïäy ad kë ïuläräk dürël Duratheonël!*
+*Glōrïäy ad kë vaëlōrärōm!*
+*Tornael Vael trē bënëdïktël*
+*Pätër-mätër ïpsël trē mëmōrätël*
+*Kwë Duratheon dürärōm*
+*Kwë Tornael vaëlōrärōm*
+*Tornael ïnklïnäräk teo*
+*Teo ïnklïnäräk ad Duratheon*
+*Küm Kravorn lïbëräräk pōpülël*
+*Küm Senara lümïnäräk teo*
+*Tornael ünïtäräk tërrä*
+*Glōrïäy ad vaëlōr!*
+*Glōrïäy ad fïlïël Sthendurël!*
+
+Glory to Tornael. Glory to the king. Glory to the son of Sthendur. Words that most nobles did not understand but pretended to, repeating the refrains with rehearsed fervor.
+
+The ebony table stretched through the center of the hall. Forty places. At the northern head, the throne of the king — empty. Tornael had departed seven days ago, marching to join the army, to provide the "final motif" for the fireplace. Beside the empty throne, in a smaller but equally ornate chair, sat the queen.
+
+Senthara.
+
+She watched the nobles dance without truly seeing them. Her eyes — dark, deep, the same eyes her daughter had inherited — were fixed on some point beyond the velvet curtains, beyond the marble walls, beyond Vaelhem Thel. Thinking. As she always thought. As she had thought all week, since the king had departed, since the silence had descended upon the capital like a velvet shroud.
+
+The silence.
+
+That was what disturbed her. For months — years, perhaps — the capital had been noise. The army massing, the drills in the squares, the forges working day and night to equip three hundred thousand men. Endless meetings in the palace. The Duathel dinners dominated by a single subject: the campaign, the campaign, always the campaign. The king monopolized the conversations, speaking of sieges and strategies, of ships departing from the southern ports while the army marched from the north. Brilliant, he would toast. Brilliant.
+
+But now the army had departed. The forges had gone cold. The squares stood empty. And the Duathel dinners had returned to what they had always been before the king's obsession: trivialities. The new fabrics arriving from the coast. The maestro's composition. The scandal of Lord Kraveth with Lord Setharen's wife.
+
+Senthara could not remember the last time a Duathel had been so... normal.
+
+And that frightened her.
+
+On the king's throne — the throne that should have been empty — sat Aelara.
+
+Twelve years old. Dark hair like her mother's, dark eyes like her mother's, the same poorly disguised impatience as her father. She squirmed on the stone seat, her legs swinging because they could not reach the floor, her ink-stained fingers — blue and ochre, always blue and ochre — drumming on the golden armrest of the throne. She should have been in the painting hall. She should have been reading. She should have been anywhere but here, feigning interest in conversations about fabrics and music and things that did not matter.
+
+She was thinking of Krav.
+
+Her brother, three years older, marching with their father somewhere in the north. Krav, who always let her watch when he practiced swordplay. Krav, who told her stories of ancient battles when the tutors were not looking. Krav, who was probably living a real adventure at that very moment, while she rotted on an uncomfortable throne listening to music she did not understand.
+
+Aelara sighed.
+
+The queen noticed. Said nothing.
+
+Senthara turned her eyes back to the dancing nobles — swirls of silk and velvet, rehearsed laughter, calculated bows. She remembered the first day she had entered the palace, at sixteen, to marry a prince she barely knew. She remembered the hanging gardens — *how can gardens exist away from the earth?*, she had wondered with the innocence of one who did not yet understand that in Duratheon everything was possible if there was enough gold to pay for it. She remembered finding it all magical. Beautiful.
+
+*Is what is beautiful always beautiful?*
+
+The question arose uninvited. Senthara pushed it away, but it returned. It returned every night, since the silence had descended upon the capital. Since the conversations with Vaethor Zumax — the old librarian, her closest counselor, the only man in the palace who told her truths she did not want to hear. He had been against the campaign from the beginning. Not with the direct words that would have cost him his position, but with questions. Always questions. *How many kings have returned from the northern mountains, Your Majesty? How many armies have crossed the Holds and lived to tell of it?* She had no answers. Tornael had certainties. And certainties, she had learned, did not need answers.
+
+She looked at the fireplace. At the empty space at the top. At the conquest that had not yet been carved because it had not yet happened.
+
+And she wondered, for the first time in years, if it ever would.
+
+⁂
+
+"Your Majesty? Queen Senthara?"
+
+The voice came from behind, soft and familiar. Velira Sethak — daughter of old Dureth Sethak, master merchant whose fleet carried half the wheat that fed the capital — had returned to court after a month in the western ports, accompanying her husband. Luxaren Thalorn administered the docks of Veluthaar, and Velira had spent weeks complaining about the salt in the air and the lack of civilized conversation.
+
+"May I keep you company?"
+
+Senthara gestured to the space beside her. Velira sat down with a rustle of navy-blue silk — always navy blue, the color of her husband's house.
+
+"I have been watching you all evening," Velira said, lowering her voice. "I sense you are distant today. More distant than you usually are at our grand dinners."
+
+The queen lowered her head. A half-smile, without joy.
+
+"I am well."
+
+She ran her hand over Aelara's hair. The princess was trying to remove ink from beneath her fingernail with the fierce concentration of one battling a mortal enemy.
+
+"I am well. Just thinking."
+
+"Thinking?"
+
+"Yes. Thinking." Senthara made a vague gesture with her hand. "About the food. Whether the cook will overdo the salt again like last week. About the new fabrics Lady Thornavel is wearing — did you see? Silk from Vethurack, they say, but I wager it is an imitation from Veluthaar. About the fact that the maestro chose to debut a new composition tonight, when half the court has not yet returned from the ports. He always does this, have you noticed? Premieres his music when there are fewer people to hear it. I think he is afraid of criticism."
+
+Velira nodded, waiting.
+
+"And about the campaign, of course." Senthara adjusted a fold in her dress that did not need adjusting. "About how the march is going. Seven days now, they must be reaching the northern provinces. Whether the eastern ports are ready to receive the fleet — there can be no delays, according to Tornael. The strategy depends on synchrony: the fleet arrives by sea, the army takes the Holds by land, and then — together — they encircle the capital of the Lands Beyond. Brilliant, he would say. Brilliant." She repeated the word as one repeats something heard too many times. "And about Krav, whether he is eating properly — you know how he is, he forgets to eat when he is excited about something."
+
+She stopped. Looked at Aelara, who was still battling the ink beneath her nails.
+
+"Krav..." Her voice dropped lower. "My boy. I miss him already."
+
+Aelara raised her eyes. For a moment, mother and daughter looked at each other — and there was something there that Velira could not name. Shared longing, perhaps. Or fear. Or simply the silent recognition that their family was incomplete, scattered between the capital and some cold place in the north.
+
+Senthara looked away first.
+
+"And about Tornael... whether he is sleeping. He never sleeps well in tents, complains about the stones on the ground, the noise of the soldiers. Twenty years married and I still do not understand how a man who planned a war for fifteen years never thought to bring a decent mattress."
+
+Velira laughed.
+
+"Those are many thoughts for a single night."
+
+"They are." Senthara looked at her own hands. "Many thoughts."
+
+The silence stretched a moment. The music continued. The nobles danced.
+
+"And nothing else?" asked Velira, with the delicacy of one who has known someone long enough to recognize when a list of worries is too long to be true.
+
+Senthara did not answer immediately. Her eyes went to the fireplace, to the flames, to the empty space at the top.
+
+"Is it not strange," she said, almost to herself, "that we grow accustomed to everything?"
+
+Velira frowned.
+
+"I am not certain I follow Your Majesty."
+
+"I mean... we grow accustomed to what is bad and to what is good. Life seems always to return to the same place. As if nothing we did changed anything at all."
+
+"I think Your Majesty needs to spend less time conversing with old Vaethor."
+
+The queen laughed — a brief sound, almost surprised.
+
+"You are a good friend, Velira. You always have been."
+
+"And I always will be." Velira touched the queen's arm. "We have much yet to live. Many things to do."
+
+"Such as?"
+
+Senthara's smile was gentle, but her eyes did not follow.
+
+Velira opened her mouth. Closed it. Thought.
+
+"Never mind," said Senthara. "I am merely being reflective. Merely wondering why, when we look at the fire for the first time, our eyes go blind for a moment... but then grow accustomed. And we can stare indefinitely, for as long as we wish. We grow accustomed."
+
+"A good thing," said Velira, attempting lightness. "That way we can sit near the fireplace without being harmed."
+
+"True. True."
+
+Aelara had stopped picking at her nails. She was listening now, though she pretended not to be.
+
+Senthara turned her head toward the fireplace. The flames danced across the stone reliefs, casting shadows over dead kings and past conquests. At the top, the empty space waited.
+
+⁂
+
+Silence.
+
+The music, the conversations, the clinking goblets — all noise. No distinguishable sound, yet all of it heard. The princess in her world. The queen in hers. Velira between the two.
+
+"But then—"
+
+They spoke at the same time. Laughed.
+
+"Please, Your Majesty," said Velira.
+
+"How is life? What do you intend to do this winter?"
+
+"Ah, yes." Velira adjusted the folds of her dress. "Luxaren and I are going south, to stay at my father-in-law's manor. You should come. It is not quite a palace, but it has every comfort. And I, as Your Majesty knows..." She lowered her voice. "I am with child. I cannot take risks during the winter. It can be rather cruel in Vaelhem Thel."
+
+"Do not remind me." The queen smiled. "At least we have fireplaces and furs."
+
+"There you are! I have been looking for you all—" A halt. "Your Majesty!"
+
+Luxaren Thalorn froze. He bowed to the queen, then to the princess — who remained profoundly bored with everything happening around her. He was a man of perhaps thirty-five years, narrow face, pointed nose, the sort of features that seemed permanently offended by something.
+
+But it was Aelara who broke the moment.
+
+A laugh. Loud, genuine, impossible to contain — the sort of laugh that only the innocence of a child could permit.
+
+"Those are the ugliest breeches I have ever seen in my life!"
+
+The princess's finger pointed directly at Luxaren's legs.
+
+He reacted without grace, straightening his spine, clutching his goblet of crystal and silver, glancing from side to side as if seeking witnesses to an affront. He wore the latest fashion of the capital — a true marvel of courtly style, they said. Blue velvet, naturally. Silver embroidery, naturally. But silk ruffles at the cuffs and breeches that clung like a second skin, following the curves of his thin legs until they met the round prominence of his belly. Pearlescent stockings. Blue velvet shoes with silver buckles.
+
+"The latest fashion," he said, his voice tense. "Master Kanteth Luxoren assured me. One of the finest tailors in the kingdom."
+
+Luxaren forced a laugh.
+
+"Children. So... spirited."
+
+The queen suppressed a genuine smile — perhaps the first in days. But her posture returned.
+
+"My daughter, mind how you speak."
+
+"It is quite all right, Your Majesty." Luxaren made a magnanimous gesture with his free hand. "But, as I was saying—" He turned to Velira. "There you are. I need you to come with me. Master Sthenmar Duravel is showing the drawings for the renovation of the Great Temple of Sthendur. We are patrons, as Your Majesty knows. Our name will be on the wall of benefactors. Come."
+
+The last word came out too firm. Almost a command.
+
+Luxaren was a good husband — if we may call someone that who provides comfort and position. But he had a reputation. Insecure, they said. Prone to a certain... sharpness when things did not proceed as he wished. Nothing that reached the wrong ears, of course. But the corridors of the palace had long memories.
+
+Velira rose. Head lowered.
+
+"With your leave, Your Majesty, I—"
+
+Senthara's hand caught her arm.
+
+When the queen raised her eyes to Luxaren, there was no smile. There was stone. The same stone as the statues. The same stone as the fireplace.
+
+"If you do not mind, my good friend," she said, her voice soft as silk and firm as iron, "Velira will remain at my side this evening. Perhaps this week."
+
+Luxaren blinked.
+
+"No, Your Majesty. Not at all. I understand perfectly." A smile that did not reach his eyes. "I am pleased to leave her in the highest of company."
+
+"Thank you."
+
+He bowed again — to the queen, to the princess, to Velira — and retreated. His blue velvet shoes made a soft sound on the Vethurim carpet as he withdrew.
+
+Velira sat. Her smile contained, satisfied.
+
+"Thank you, my queen."
+
+"I never quite understood why you married him."
+
+Velira looked at her own hands.
+
+"He is a good man. He is merely..."
+
+"Weak."
+
+The silence lasted a moment.
+
+"No." Velira raised her eyes. "Well... he needs me."
+
+The queen smiled gently and held her friend's hand.
+
+"Who does not?"`,
+        tags: ["manuscript", "volume-iv", "chapter-3", "maela", "aelara", "velira", "luxaren-thalorn", "duathel", "palace"]
+      },
+      "vol4-ch1c": {
+        title: "IV — Amber on White",
+        book: "the-depletion",
+        volume: "part-i",
+        content: `**IV**
+*Amber on White*
+
+On the other side of the hall, away from the tables where the servants had begun to serve, Luxaren Thalorn watched his wife.
+
+That cow. That rat. That fucking witch.
+
+"Careful with your words, Luxaren." Aldric Stennvik raised his goblet without looking at him — a man of seventy-two years, administrator of what remained of the eastern mines. "I can imagine who you're speaking of. It's not wise to say certain thoughts aloud."
+
+"I know, I know." Luxaren drained another goblet of velutharn with ferocity. His eyes would not leave Velira — laughing, laughing — while she spoke with the queen. The goblet was empty. He did not remember drinking. "It's just that... Ah, wouldn't it be good if women went off to lead battles while men stayed behind... administrating?"
+
+Aldric let out a dry laugh.
+
+Regulus Corvain and Theron Agrias approached in time to hear the end of the sentence, but not the beginning.
+
+"It would be good," said Regulus, "but we wouldn't have victories to tell our children about. And we'd probably all be someone's slaves."
+
+Theron laughed louder than the others — he always laughed louder than the others.
+
+"Regulus," said Aldric, "any news of the march? Isn't it interesting that we're acting so trivially while the most important event of the last three decades is happening?" He paused. "Not that I care, honestly. I care about the king, but I have no interest in wars."
+
+"Well, Lord Stennvik, the road is long. An army of that size takes time to march — more than a thousand kilometers to Kravethorn, perhaps three months in total. After seven days, they've barely left the central provinces." Regulus drank without haste. "The fleet, of course, departed two months before the army — they should be approaching Vel-Nakh by now, if they haven't already entered it. It will be quite a crossing. The tests the king conducted last year were not entirely successful, but they improved the ships — at least that's what Tariq Bashani said."
+
+"The Vethurim?" Theron wrinkled his nose. "Impressive how we depend on those people."
+
+"Impressive how we pretend we don't," said Aldric.
+
+Luxaren was not listening. On the other side of the hall, Velira had touched the queen's arm. The two of them were laughing at something. He gripped the empty goblet hard enough for his knuckles to turn white.
+
+"Well, honestly, I'm grateful I never learned to fight," he said, forcing himself back into the conversation. "Not everyone was made for it. That's why we're here — handling administrative matters."
+
+"Have you thought about going to Kravethorn?" Aldric asked. "To accompany the embarkation."
+
+"Not at all. That's for Setharen and his friends." Luxaren made a vague gesture with his empty goblet. "They say the city has become quite beautiful. And free of beggars."
+
+Theron let out another guffaw. Regulus merely smiled — a smile that did not show his teeth.
+
+The music continued in the background. The main table was being set with the finest gastronomy in all the kingdom, as was tradition on every Duathel. The servants moved in silence between the columns, carrying silver trays.
+
+"It's incredible that there's no solution for those people," said Regulus. "Vel-Zumarakh is completely overrun. You can't pass through there even by carriage, let alone on horseback. I suggested to the king that they be conscripted for the war, but his advisors insisted that every warrior needed to contribute genuinely to the campaign. Soldiers are expensive, they said."
+
+Luxaren nodded without hearing. His eyes had returned to the other side of the hall.
+
+The queen was still holding Velira's hand.
+
+The queen's refusal was lodged in his throat. No matter how much he drank, he could not swallow it. He had even forgotten the reason he had gone to call his wife — well, perhaps it was not so important after all. Perhaps he had merely wanted to keep her away from the queen. She had dangerous ideas. She dominated the minds of everyone around her.
+
+Except the mind of her husband.
+
+Dumb as a door.
+
+"Luxaren?"
+
+Without realizing it, he had spoken aloud. Aldric was watching him with a raised eyebrow. Luxaren laughed — a forced, harsh sound — and pretended he had been speaking of himself.
+
+"Me. I'm dumb as a door. I just forgot about..."
+
+Aldric laughed. "I see."
+
+The old man adjusted the folds of his cloak and gave a small bow to the group.
+
+"If you'll permit me, gentlemen, I think I should enjoy the feast. You know how it is — I shouldn't have many Duathel left." He looked from one to another. "With your leave. Luxaren. Theron. Regulus. Enjoy as you wish."
+
+Before departing, he approached Luxaren and gave two small taps on his forehead.
+
+"Be careful not to lose your head cursing so much."
+
+And he was gone.
+
+Theron and Regulus exchanged a glance — as if they had missed something — but did not give it much thought.
+
+"Well," said Theron, breaking the silence. "What did you think of the latest vintage of velutharn?"
+
+He was merely trying to make conversation with the nobles, speaking of something he thought he understood. Luxaren was not concerned. He took another gulp from another goblet and said only:
+
+"It's all the same to me."
+
+And left, leaving Theron and Regulus alone.
+
+Regulus laughed — a cold sound, without joy. He looked at Theron with the contempt he usually reserved for everyone, but which he applied with special frequency to him. Then he too left without saying a word.
+
+Theron remained alone among the columns, holding a goblet of velutharn that no one wanted to discuss.
+
+⁂
+
+Luxaren walked.
+
+Not back to his wife. Not back to the men who had already departed. He walked toward the great fireplace, the monument of stone within another monument of stone.
+
+His eyes wandered. Between the queen and Velira. Between the nobles laughing and dancing. Between the flames and the empty space above them — the conquest that had not yet been carved because it had not yet happened. The queen. The people. The void.
+
+For a moment — a fraction of a second, no more — his eyes met Senthara's.
+
+She was smiling. She was happy. She was holding Velira's hand as one holds something that belongs to them.
+
+But when her eyes met his, something changed.
+
+The eyebrow slightly raised. The smile slightly loosened. A micro-expression, almost imperceptible, that said one thing only:
+
+I know.
+
+In that fraction of a second, Luxaren stumbled.
+
+The velutharn spilled on the polished marble — amber on white, like golden blood. A servant appeared from nowhere to clean it. Someone laughed somewhere. The music continued.
+
+Luxaren did not look down. Did not look at the servant. Did not look at the stain on the floor.
+
+He looked at the fireplace. At the fire. At the empty space at the top.
+
+And for the first time that night, he did not think of his wife.
+
+He thought of himself.
+
+And thinking of himself, he decided it was time to leave.
+
+When he turned his back to the fireplace, the sound of halberds cut through the hall.
+
+The royal guards struck their shafts against the marble — once, twice, three times. Silence descended upon the Thul-Vaelhem like a shroud.
+
+Luxaren froze.
+
+His heart raced. His hands, suddenly cold, gripped the empty goblet hard enough for the crystal to creak. For a moment — a terrible, endless moment — he thought something had happened. News. A discovery. A name spoken aloud that should not be spoken.
+
+But it was only the ritual. The speech before dinner. The tradition of every Duathel.
+
+He breathed. Forced his hands to relax. No one had noticed. No one was looking at him.
+
+No one except the queen.
+
+⁂
+
+Senthara adjusted the folds of her dress. Looked down. Looked to the sides. When she spoke, her voice was clear, but there was something in it that was not usually there.
+
+"Another Duathel. Another..."
+
+She stopped. Breathed.
+
+"I think I've given this speech so many times. Though you're more accustomed to my husband's voice. Or even Krav's." A brief smile. "But even I am tired of doing and saying the same things. Celebrating the Duathel. Your grace. Maestro Thaelor's music." She made a vague gesture toward the orchestra. "Anyway. So much to be grateful for."
+
+The nobles smiled. Some raised their goblets.
+
+"But I wanted to remind you," Senthara continued, "that seven days ago, my husband and my son — and the sons of so many here — departed for the greatest military campaign in Duratheon's history."
+
+The silence changed in quality.
+
+"Do not be deceived by our comfort. By our food. By the fireplaces that begin to be lit as we approach the middle of spring and think that summer was yesterday."
+
+She looked at the great fireplace. At the empty space at the top.
+
+"Summer was yesterday. But after summer, we have months to prepare for winter. Even animals do this. And we should do the same."
+
+Lady Thornavel coughed — a small, discreet sound that no one would recognize as discomfort.
+
+"At the end of tonight's dinner," said Senthara, "there will be food left over. As there always is on every Duathel. And the next day, we give it to the pigs."
+
+A pause.
+
+"Today I wanted it to be different."
+
+Silence.
+
+"Everyone will take some food and give it to the poor in the streets."
+
+Someone near the columns murmured something. A gray-haired man furrowed his brow as if he had not heard correctly. A woman in a green dress looked at her husband with an expression that asked for translation.
+
+"Perhaps this is what is beautiful," said Senthara, almost to herself. "I don't know. I've never done this. And I doubt anyone here has."
+
+Another cough. This one louder. Someone cleared their throat.
+
+"From the top of my chamber, I see golden domes that blind my sight during the day. But I can still see the places where children die in the streets. Of hunger."
+
+A whisper ran along the side of the hall — not words, just sound. The sound of people who do not know what to do with their faces.
+
+Regulus, near the columns, merely raised his goblet to his lips — a slow, deliberate movement. He did not smile. He did not frown. He simply drank, as one drinks while waiting for rain to pass.
+
+"Perhaps this is what is beautiful," she repeated. "What if, instead of gold, we had people who had a place to live? Food? A warm blanket for cold nights? A place to clean themselves properly?" She paused. "Perhaps the smell you complain about so much could improve. Perhaps this is a beauty that lasts longer."
+
+No one responded.
+
+The queen looked at the hall. At the faces that had been smiles and were now masks — some confused, others tense, others completely empty. She was speaking, she realized now, in a language these people did not know. Not the High Zanuax of hymns that no one understood. Something worse. A language made of ideas that had no place in this hall.
+
+"Anyway." Senthara straightened her shoulders. "I think I'm rambling. Perhaps it's necessary. Perhaps this is the meaning of Duathel — to celebrate life and grace while misfortune exists. To celebrate our luck and the blessing granted by Sthendur."
+
+She looked at her own hands. At the rings. At the velvet of the dress that cost more than a family from Vel-Zumarakh would see in an entire lifetime.
+
+"Especially the luck of my house. As queen of the greatest kingdom that has ever existed in the world."
+
+The sentence came out like someone releasing a weight — not with pride, but with something that might have been shame. Or exhaustion. Or simply the awareness that her words were confused, full of good intentions, but without the strength to change her own life. Without the strength to change anyone's life there.
+
+She wanted to find beauty again. She wanted something — anything — to cure the sadness that had settled in her chest since the silence had descended upon the capital.
+
+But beauty would not come from a speech.
+
+And she knew it.
+
+"Glōrïäy ad Sthendur," someone murmured — too quickly, too relieved.
+
+"Glōrïäy ad Sthendur," others echoed, clinging to the familiar words like shipwreck survivors to debris.
+
+"Well." The queen lowered her eyes. "Forgive me. I'm just thinking of my husband and my son."
+
+She sat down.
+
+The silence lasted a moment longer than it should have. Two. Three.
+
+Senthara raised her hand — a small gesture, almost hesitant — and waved to the orchestra. Maestro Thaelor, who had been standing with his baton suspended in the air, blinked as if waking from a trance. He raised his arms. The violins came in out of sync, then found each other, then pretended they had always been together.
+
+The servants began to move. The silver trays appeared between the columns. The nobles began to speak again — in whispers first, then in murmurs, then in their usual voices. Life returned to the Thul-Vaelhem like water filling a hole in the sand.
+
+But something had changed.
+
+No one could say what. No one would try. The dinner would proceed. The food would be served. The velutharn would flow. And the next day, the leftovers would go to the pigs — as they always had, as they always would.
+
+Some speeches are made to be heard.
+
+This one had been made to be forgotten.
+
+⁂
+
+Near the fireplace, Luxaren Thalorn remained motionless.
+
+He was not thinking about the speech. He was not thinking about the poor, or the gold, or the children dying in the streets.
+
+He was thinking about the moment when the halberds struck the floor. About the cold that ran down his spine. About the name he almost heard spoken.
+
+The queen had looked at him. For a fraction of a second. With that micro-expression that said I know.
+
+But she did not know.
+
+She could not know.
+
+Luxaren placed the empty goblet on the tray of a passing servant, adjusted the sleeves of his navy-blue doublet, and walked toward the tables — where Velira was already seated, where the food was already being served, where life continued as if nothing had happened.
+
+Because nothing had happened.
+
+Yet.`,
+        tags: ["manuscript", "volume-iv", "chapter-4", "luxaren-thalorn", "maela", "regulus", "theron", "aldric", "duathel", "palace", "speech"]
+      },
+      "vol4-ch2": {
+        title: "V — The Letter from the North",
+        book: "the-depletion",
+        volume: "part-i",
+        content: `**V**
 *The Letter from the North*
 
 No wind. No voices. Only my own breathing and the crackle of the small fire they allow me to keep. There is a slit in the wall, high up, too narrow to pass a hand through. Through it comes pale light that tells me nothing except that day still follows night, even here.
@@ -7980,7 +9745,7 @@ I do not understand these people. I am not certain I want to.
 
 I do not know the fate of the King.
 
-Krav Vael led us as his father would have wished. He did not falter. He did not flee. He held the line when men three times his age broke and ran. He was fifteen years old and he fought like a man who had already lived and lost and had nothing left to fear.
+Krav Vael led us as his father would have wished. He did not falter. He did not flee. He held the line when men three times his age broke and ran. He was fourteen years old and he fought like a man who had already lived and lost and had nothing left to fear.
 
 I watched him rally troops who had given up hope. I watched him refuse to retreat when retreat might have saved him. I watched him stand in the snow with a blade too heavy for his arms, facing enemies who could have killed him with a single blow.
 
@@ -8030,10 +9795,10 @@ When she finished, she sat in silence, holding the parchment that smelled faintl
         tags: ["manuscript", "volume-iv", "chapter-2", "kraveth-vaelmar", "letter", "defeat"]
       },
       "vol4-ch3": {
-        title: "IV — The Hall of Fire",
+        title: "VI — The Hall of Fire",
         book: "the-depletion",
         volume: "part-i",
-        content: `**CHAPTER III**
+        content: `**VI**
 *The Hall of Fire*
 
 *Ekkhen Kaelnar. Kaelnar ekkhen-ir.*
@@ -8057,7 +9822,7 @@ The boy came through the great doors between two guards — Kaelthen and his sis
 
 Vreth studied him as he approached.
 
-Young. Fifteen, perhaps sixteen — the reports had said fifteen. Small for a king, though Vreth supposed that crowns did not come in sizes. The boy wore what remained of fine clothing: a tunic that had once been white silk, now grey with grime and torn at the shoulder; leather boots that had been made for palace floors, not mountain passes; a cloak that might have cost more than a Kaeldur family earned in a year, now stained with blood that was not his own.
+Young. Fourteen, perhaps — the reports had said fourteen. Small for a king, though Vreth supposed that crowns did not come in sizes. The boy wore what remained of fine clothing: a tunic that had once been white silk, now grey with grime and torn at the shoulder; leather boots that had been made for palace floors, not mountain passes; a cloak that might have cost more than a Kaeldur family earned in a year, now stained with blood that was not his own.
 
 The blood interested Vreth.
 
@@ -8237,7 +10002,7 @@ The boy was weeping now.
 
 Silent tears, streaming down cheeks that were too pale, too thin, too young for the weight they carried. He did not sob. He did not make sound. He simply sat there, gripping the table's edge, trembling, while tears cut tracks through the grime on his face.
 
-Vreth watched. He felt the familiar ache in his chest — the ache that came whenever he saw suffering he could not prevent, damage he could not undo. This boy had done nothing to deserve this. He had been born into a palace, raised on lies, handed a war that was already lost before it began. He was fifteen years old, and his world had ended, and he sat now in a hall of fire surrounded by people whose language he did not speak, whose customs he did not understand, whose patience was the only thing standing between him and death.
+Vreth watched. He felt the familiar ache in his chest — the ache that came whenever he saw suffering he could not prevent, damage he could not undo. This boy had done nothing to deserve this. He had been born into a palace, raised on lies, handed a war that was already lost before it began. He was fourteen years old, and his world had ended, and he sat now in a hall of fire surrounded by people whose language he did not speak, whose customs he did not understand, whose patience was the only thing standing between him and death.
 
 Vreth stood. His shadow stretched across the stone floor, cast long by the firelight. He moved around the table — slowly, deliberately, giving the boy time to track his movement, time to prepare for whatever came next.
 
@@ -8313,10 +10078,10 @@ Tomorrow, his real education would begin.`,
         tags: ["manuscript", "volume-iv", "chapter-3", "hall-of-fire", "vreth", "krav"]
       },
       "vol4-ch4": {
-        title: "V — The Shadow and the Light",
+        title: "VII — The Shadow and the Light",
         book: "the-depletion",
         volume: "part-i",
-        content: `**CHAPTER IV**
+        content: `**VII**
 *The Shadow and the Light*
 
 I know what is often said.
@@ -8685,10 +10450,10 @@ The truest one.`,
         tags: ["manuscript", "volume-iv", "chapter-4", "shadow-light", "aelara", "vaethor", "thaelor"]
       },
       "vol4-ch5": {
-        title: "VI — Bread and Tomato",
+        title: "VIII — Bread and Tomato",
         book: "the-depletion",
         volume: "part-i",
-        content: `**CHAPTER V**
+        content: `**VIII**
 *Bread and Tomato*
 
 The house was marble, like all houses in the capital.
@@ -9159,12 +10924,12 @@ In the darkness, they sat together, listening to their children breathe.`,
         tags: ["manuscript", "volume-iv", "chapter-5", "bread-tomato", "common-people", "fall"]
       },
       "vol4-epilogue": {
-        title: "VII — The Vanishing of the TauTek",
+        title: "IX — The Vanishing of the TauTek",
         book: "the-depletion",
         volume: "part-i",
-        content: `**EPILOGUE**
+        content: `**IX**
 *The Vanishing of the TauTek*
-*A Fragmentary Chronicle in First Voice*
+*Epilogue*
 
 Sit down, children. Come closer to the fire.
 
@@ -9332,7 +11097,7 @@ And now we debate whether they ever existed at all.
         volume: "part-ii",
         content: `**PART II**
 
-**CHAPTER I**
+**I**
 *The Guest*
 
 It was cold. Not like other months—it was spring, after all—but cold nonetheless. There was no grass, no trees. Few animals inhabited those heights, but they existed: thick-furred creatures emerging from deep burrows, small rodents that insisted on living where life seemed impossible.
@@ -9381,7 +11146,7 @@ The palace. The inner courtyard—not the public one where petitioners gathered 
 
 He used to lie on the edge of that fountain. The stone was always cool, even in summer. He would close his eyes and listen to the water and pretend the world beyond the hedges did not exist.
 
-Vaela would find him there. His sister, three years younger, with their mother's dark hair and their father's stubborn jaw. She would sit beside him and say nothing, or she would talk for hours about the books she was reading, the languages she was learning, the injustice of not being allowed to train with swords. He never minded. Her voice was part of the fountain, part of the stone, part of home.
+Aelara would find him there. His sister, three years younger, with their mother's dark hair and their father's stubborn jaw. She would sit beside him and say nothing, or she would talk for hours about the books she was reading, the languages she was learning, the injustice of not being allowed to train with swords. He never minded. Her voice was part of the fountain, part of the stone, part of home.
 
 Where was she now? Was she alive? Was she hiding in some cellar while the kingdom crumbled? Was she—
 
@@ -9562,7 +11327,7 @@ Outside, it was still cold.`,
         title: "II — The First Fruit",
         book: "the-depletion",
         volume: "part-ii",
-        content: `**CHAPTER II**
+        content: `**II**
 *The First Fruit*
 
 *Kael-var threk. Skarlaer vel-eth.*
@@ -9855,7 +11620,7 @@ And spring, slowly, impossibly, continued.`,
         title: "III — The Long March",
         book: "the-depletion",
         volume: "part-ii",
-        content: `**CHAPTER III**
+        content: `**III**
 *The Long March*
 
 Os dias passam de forma more gentil when temos amigos por perto.
@@ -10233,7 +11998,7 @@ O fogo estalou between eles, e a pergunta ficou suspensa no ar, without resposta
         title: "IV — The Seed",
         book: "the-depletion",
         volume: "part-ii",
-        content: `**CHAPTER IV**
+        content: `**IV**
 *The Seed*
 
 *Dur-threk na-varek.*
@@ -10385,7 +12150,7 @@ Krav's legs gave out.
 
 He collapsed to his knees, the tears coming at last—not the silent weeping of the cold ring, but full, wracking sobs that shook his entire body. The armor of kingship, the mask of royal dignity, the pretense of control—all of it shattered at once, falling away like dead leaves.
 
-He was not a king. He was a boy. A fifteen-year-old boy who had lost everything, and was now losing the last person who connected him to home.
+He was not a king. He was a boy. A fourteen-year-old boy who had lost everything, and was now losing the last person who connected him to home.
 
 "Cursed be my name," he gasped between sobs. "Cursed be my name!"
 
@@ -10446,7 +12211,7 @@ And somewhere in the distance, spring was melting the passes that would carry th
         title: "VI — Dry Wood",
         book: "the-depletion",
         volume: "part-ii",
-        content: `**CHAPTER VI**
+        content: `**VI**
 *Dry Wood*
 
 The harbor city of Taelorn had been built to launch an empire.
@@ -10539,7 +12304,7 @@ The room shifted. Someone inhaled sharply.
 
 He let the silence do its work.
 
-'Queen Senthara. Princess Vaela. The household staff. Master Vaethor Zumax.' He listed the names as one might list items lost in a shipwreck. 'All confirmed dead. The treasury looted. The granaries emptied. The Temples of Sthendur significantly damaged.'
+'Queen Senthara. Princess Aelara. The household staff. Master Vaethor Zumax.' He listed the names as one might list items lost in a shipwreck. 'All confirmed dead. The treasury looted. The granaries emptied. The Temples of Sthendur significantly damaged.'
 
 'Sthendur preserve us,' someone muttered.
 
@@ -11077,14 +12842,20 @@ const space = {
   8: '96px',
 };
 
-// Typography Scale (Helvetica)
+// ═══════════════════════════════════════════════════════════════════════
+// RESPONSIVE DESIGN SYSTEM — Fluid Typography & Adaptive Layout
+// ═══════════════════════════════════════════════════════════════════════
+
+// Typography Scale — Now fluid with CSS custom properties
 const type = {
-  h1: { size: '32px', weight: 300, tracking: '-0.01em', height: 1.2 },
-  h2: { size: '24px', weight: 400, tracking: '0', height: 1.3 },
-  h3: { size: '14px', weight: 500, tracking: '0.08em', height: 1.4, transform: 'uppercase' },
-  body: { size: '16px', weight: 400, tracking: '0', height: 1.65 },
-  small: { size: '13px', weight: 400, tracking: '0', height: 1.5 },
-  caption: { size: '11px', weight: 500, tracking: '0.1em', height: 1.4, transform: 'uppercase' },
+  display: { size: 'var(--type-display)', weight: 300, tracking: '-0.03em', height: 1.05 },
+  h1: { size: 'var(--type-h1)', weight: 400, tracking: '-0.02em', height: 1.15 },
+  h2: { size: 'var(--type-h2)', weight: 400, tracking: '-0.01em', height: 1.25 },
+  h3: { size: 'var(--type-h3)', weight: 500, tracking: '0.08em', height: 1.4, transform: 'uppercase' },
+  body: { size: 'var(--type-body)', weight: 400, tracking: '0', height: 1.7 },
+  small: { size: 'var(--type-small)', weight: 400, tracking: '0', height: 1.5 },
+  caption: { size: 'var(--type-caption)', weight: 500, tracking: '0.1em', height: 1.4, transform: 'uppercase' },
+  nav: { size: 'var(--type-nav)', weight: 400, tracking: '0', height: 1.5 },
 };
 
 // Color Palette — Minimal: Off-white + Grey
@@ -11102,6 +12873,163 @@ const palette = {
     border: '#2A2A2A',     // Cinza escuro
   }
 };
+
+// Responsive CSS Custom Properties
+const RESPONSIVE_STYLES = `
+  :root {
+    /* ═══════════════════════════════════════════════════════════════════
+       FLUID TYPE SCALE — clamp(min, preferred, max)
+       Based on viewport width, scales smoothly between breakpoints
+       ═══════════════════════════════════════════════════════════════════ */
+    
+    /* Display — Hero headlines */
+    --type-display: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+    
+    /* H1 — Page titles */
+    --type-h1: clamp(1.75rem, 3vw + 0.5rem, 2.75rem);
+    
+    /* H2 — Section titles */
+    --type-h2: clamp(1.25rem, 2vw + 0.25rem, 1.75rem);
+    
+    /* H3 — Subsection titles */
+    --type-h3: clamp(0.75rem, 0.5vw + 0.5rem, 1rem);
+    
+    /* Body — Main content */
+    --type-body: clamp(0.9375rem, 0.5vw + 0.75rem, 1.125rem);
+    
+    /* Small — Secondary text */
+    --type-small: clamp(0.8125rem, 0.25vw + 0.7rem, 0.9375rem);
+    
+    /* Caption — Labels, metadata */
+    --type-caption: clamp(0.625rem, 0.25vw + 0.5rem, 0.75rem);
+    
+    /* Nav — Navigation items */
+    --type-nav: clamp(0.75rem, 0.5vw + 0.5rem, 0.875rem);
+    
+    /* ═══════════════════════════════════════════════════════════════════
+       GRID ALIGNMENT — Strict vertical rhythm
+       ═══════════════════════════════════════════════════════════════════ */
+    
+    /* Standard row height for grid alignment */
+    --row-height: 20px;
+    
+    /* ═══════════════════════════════════════════════════════════════════
+       FLUID SPACING SCALE
+       ═══════════════════════════════════════════════════════════════════ */
+    
+    /* Padding — Main content areas */
+    --space-page: clamp(1.5rem, 4vw, 4rem);
+    --space-section: clamp(1rem, 2vw, 2rem);
+    --space-element: clamp(0.5rem, 1vw, 1rem);
+    
+    /* Gap — Grid and flex gaps */
+    --gap-lg: clamp(1.5rem, 3vw, 3rem);
+    --gap-md: clamp(1rem, 2vw, 1.5rem);
+    --gap-sm: clamp(0.5rem, 1vw, 1rem);
+    
+    /* ═══════════════════════════════════════════════════════════════════
+       LAYOUT DIMENSIONS
+       ═══════════════════════════════════════════════════════════════════ */
+    
+    /* Sidebar */
+    --sidebar-width: clamp(200px, 18vw, 260px);
+    --sidebar-collapsed: 48px;
+    
+    /* Content max-width */
+    --content-max: min(90vw, 1400px);
+    --prose-max: min(75ch, 90vw);
+    
+    /* Grid label column */
+    --label-col: clamp(100px, 12vw, 180px);
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     GRID LABEL UTILITY — Ensures consistent alignment
+     ═══════════════════════════════════════════════════════════════════ */
+  .grid-label {
+    font-size: var(--type-small);
+    line-height: var(--row-height);
+    display: flex;
+    align-items: center;
+    height: var(--row-height);
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     BREAKPOINT OVERRIDES — Fine-tuning per viewport
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  /* Mobile — Compact mode */
+  @media (max-width: 640px) {
+    :root {
+      --label-col: 0px;
+      --space-page: 1rem;
+      --sidebar-width: 100vw;
+    }
+  }
+  
+  /* Tablet */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    :root {
+      --label-col: clamp(80px, 10vw, 120px);
+    }
+  }
+  
+  /* Large screens — More generous spacing */
+  @media (min-width: 1600px) {
+    :root {
+      --type-display: 5rem;
+      --type-h1: 3rem;
+      --type-body: 1.1875rem;
+      --space-page: 5rem;
+    }
+  }
+  
+  /* Ultra-wide — Cap growth */
+  @media (min-width: 2000px) {
+    :root {
+      --space-page: 6rem;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     BASE STYLES
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     ANIMATION
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  @keyframes sethael-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .sethael-animate-in {
+    animation: sethael-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  /* Stagger children */
+  .sethael-stagger > * {
+    opacity: 0;
+    animation: sethael-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .sethael-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .sethael-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+  .sethael-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+  .sethael-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+  .sethael-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+`;
 
 // Home formatter (01, 02, 03...)
 const formatIndex = (n) => String(n).padStart(2, '0');
@@ -11129,7 +13057,7 @@ const HoverLink = ({ children, onClick, style = {}, muted = false, theme }) => {
   );
 };
 
-// Category Row Component — Doug Alves style
+// Category Row Component — Doug Alves style (Responsive)
 const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, onToggle }) => {
   const [hovered, setHovered] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -11165,32 +13093,44 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
         }}
       >
         <div style={{
-          padding: '16px 48px',
+          padding: 'var(--space-element) var(--space-page)',
           display: 'grid',
-          gridTemplateColumns: '160px 1fr auto',
-          gap: '24px',
+          gridTemplateColumns: 'var(--label-col) 1fr auto',
+          gap: 'var(--gap-md)',
           alignItems: 'center'
         }}>
           <span style={{ 
-            fontSize: '13px', 
-            color: c.muted
+            fontSize: 'var(--type-small)', 
+            color: c.muted,
+            lineHeight: 'var(--row-height)',
+            height: 'var(--row-height)',
+            display: 'flex',
+            alignItems: 'center'
           }}>
             {formatIndex(index)}
           </span>
           <span style={{ 
-            fontSize: '15px', 
+            fontSize: 'var(--type-body)', 
             color: c.text,
             borderBottom: hovered ? `1px solid ${c.text}` : '1px solid transparent',
             paddingBottom: '2px',
             transition: 'border-color 0.2s ease',
-            justifySelf: 'start'
+            justifySelf: 'start',
+            lineHeight: 'var(--row-height)',
+            height: 'var(--row-height)',
+            display: 'flex',
+            alignItems: 'center'
           }}>
             {category.title}
           </span>
           <span style={{ 
-            fontSize: '13px', 
+            fontSize: 'var(--type-small)', 
             color: hovered ? c.text : c.muted,
-            transition: 'color 0.2s ease'
+            transition: 'color 0.2s ease',
+            lineHeight: 'var(--row-height)',
+            height: 'var(--row-height)',
+            display: 'flex',
+            alignItems: 'center'
           }}>
             {entries.length} entries {expanded ? '↑' : '↓'}
           </span>
@@ -11204,23 +13144,31 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
         transition: 'max-height 0.3s ease-out',
         backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
       }}>
-        <div style={{ padding: '8px 48px 24px 48px' }}>
+        <div style={{ padding: 'var(--space-element) var(--space-page) var(--space-section) var(--space-page)' }}>
           {/* Show groups if category has them */}
           {category.groups ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
               <div />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                gap: 'var(--gap-lg) var(--gap-md)',
+                width: '100%'
+              }}>
                 {category.groups.map(group => {
                   const groupEntries = entries.filter(([_, e]) => e.group === group.key);
                   const visibleEntries = groupEntries.slice(0, currentLimit);
                   const remaining = groupEntries.length - currentLimit;
                   return (
-                    <div key={group.key} style={{ minWidth: '180px' }}>
+                    <div key={group.key}>
                       <p style={{ 
-                        fontSize: '11px', 
+                        fontSize: 'var(--type-caption)', 
                         color: c.muted, 
                         letterSpacing: '0.05em',
-                        marginBottom: '8px'
+                        marginBottom: '8px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}>
                         {group.title}
                       </p>
@@ -11235,15 +13183,19 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                             display: 'block',
                             background: 'none',
                             border: 'none',
-                            padding: '4px 0',
-                            fontSize: '13px',
+                            padding: '3px 0',
+                            fontSize: 'var(--type-small)',
                             color: c.text,
                             cursor: 'pointer',
                             textAlign: 'left',
-                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%'
                           }}
                         >
-                          {entry.title.replace(/^(KAELDUR|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|TAELUN|ZANUAX|HIGH ZANUAX)\s*—\s*/, '')}
+                          {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                         </button>
                       ))}
                       {remaining > 0 && !showAll && (
@@ -11253,7 +13205,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                             setShowAll(true);
                           }}
                           style={{ 
-                            fontSize: '11px', 
+                            fontSize: 'var(--type-caption)', 
                             color: c.muted, 
                             marginTop: '4px',
                             background: 'none',
@@ -11264,7 +13216,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                             fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                           }}
                         >
-                          +{remaining} more →
+                          +{remaining} →
                         </button>
                       )}
                     </div>
@@ -11272,14 +13224,14 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                 })}
                 {/* Ungrouped entries */}
                 {entries.filter(([_, e]) => !e.group).length > 0 && (
-                  <div style={{ minWidth: '180px' }}>
+                  <div>
                     <p style={{ 
-                      fontSize: '11px', 
+                      fontSize: 'var(--type-caption)', 
                       color: c.muted, 
                       letterSpacing: '0.05em',
                       marginBottom: '8px'
                     }}>
-                      GERAL
+                      GENERAL
                     </p>
                     {entries.filter(([_, e]) => !e.group).slice(0, currentLimit).map(([entryKey, entry]) => (
                       <button
@@ -11292,30 +13244,86 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                           display: 'block',
                           background: 'none',
                           border: 'none',
-                          padding: '4px 0',
-                          fontSize: '13px',
+                          padding: '3px 0',
+                          fontSize: 'var(--type-small)',
                           color: c.text,
                           cursor: 'pointer',
                           textAlign: 'left',
-                          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '100%'
                         }}
                       >
-                        {entry.title}
+                        {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             </div>
+          ) : catKey === 'livros' && category.structure ? (
+            /* Books - show structure only */
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+              <div />
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: 'var(--gap-lg) var(--gap-md)',
+                width: '100%'
+              }}>
+                {category.structure.map(book => {
+                  // Find first chapter of this book
+                  const firstChapter = Object.entries(category.entries).find(([_, e]) => e.book === book.key);
+                  return (
+                    <div key={book.key}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (firstChapter) {
+                            onEntrySelect(catKey, firstChapter[0]);
+                          }
+                        }}
+                        style={{
+                          display: 'block',
+                          background: 'none',
+                          border: 'none',
+                          padding: '0',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                        }}
+                      >
+                        <p style={{ 
+                          fontSize: 'var(--type-body)', 
+                          color: c.text,
+                          fontWeight: 500,
+                          marginBottom: '4px'
+                        }}>
+                          {book.title}
+                        </p>
+                        <p style={{ 
+                          fontSize: 'var(--type-caption)', 
+                          color: c.muted
+                        }}>
+                          {book.volumes.length} {book.volumes.length === 1 ? 'volume' : 'volumes'} · {Object.entries(category.entries).filter(([_, e]) => e.book === book.key).length} chapters
+                        </p>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             /* No groups - show flat list in columns */
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
               <div />
               <div>
                 <div style={{ 
                   display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: '4px 24px'
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                  gap: '4px var(--gap-md)'
                 }}>
                   {entries.slice(0, showAll ? entries.length : 12).map(([entryKey, entry]) => (
                     <button
@@ -11328,15 +13336,18 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                         display: 'block',
                         background: 'none',
                         border: 'none',
-                        padding: '6px 0',
-                        fontSize: '13px',
+                        padding: '4px 0',
+                        fontSize: 'var(--type-small)',
                         color: c.text,
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
-                      {entry.title}
+                      {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                     </button>
                   ))}
                 </div>
@@ -11347,7 +13358,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                       setShowAll(!showAll);
                     }}
                     style={{ 
-                      fontSize: '12px', 
+                      fontSize: 'var(--type-caption)', 
                       color: c.muted, 
                       padding: '12px 0 0 0',
                       background: 'none',
@@ -11356,7 +13367,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
                       fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                     }}
                   >
-                    {showAll ? '← Show less' : `+${entries.length - 12} more →`}
+                    {showAll ? '← Less' : `+${entries.length - 12} →`}
                   </button>
                 )}
               </div>
@@ -11721,7 +13732,9 @@ const InteractiveTimeline = ({ theme }) => {
       </div>
 
       {/* Content Area */}
-      <div style={{
+      <div 
+        className="sethael-scroll sethael-scroll-dark"
+        style={{
         flex: 1,
         overflowY: 'auto',
         padding: '32px 40px'
@@ -12253,7 +14266,7 @@ const ReadingView = ({ entry, onClose, theme, entryKeys, currentHome, onNavigate
       </header>
 
       {/* Content — editorial margins */}
-      <main ref={contentRef} style={{ flex: 1, overflowY: 'auto' }}>
+      <main ref={contentRef} className={`sethael-scroll sethael-scroll-${theme}`} style={{ flex: 1, overflowY: 'auto' }}>
         {entry.title === 'Complete Visual Timeline' ? (
           <InteractiveTimeline theme={theme} />
         ) : (
@@ -12419,7 +14432,7 @@ const EditModal = ({ isOpen, onClose, onSave, entry, entryKey, isNew, categoryKe
         </div>
 
         {/* Form */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+        <div className={`sethael-scroll sethael-scroll-${theme}`} style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           {isNew && (
             <div style={{ marginBottom: '24px' }}>
               <label style={{ 
@@ -12573,14 +14586,78 @@ export default function SethaelWiki() {
   const [saving, setSaving] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [homeExpandedCat, setHomeExpandedCat] = useState(null);
+  const [bookMoreExpanded, setBookMoreExpanded] = useState(false);
 
   const c = palette[theme];
+
+  // Inject custom scrollbar styles
+  useEffect(() => {
+    const styleId = 'sethael-scrollbar-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        /* Custom Scrollbar — Minimal Swiss Design */
+        .sethael-scroll::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .sethael-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .sethael-scroll::-webkit-scrollbar-thumb {
+          background: rgba(128, 128, 128, 0.3);
+          border-radius: 3px;
+        }
+        .sethael-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(128, 128, 128, 0.5);
+        }
+        /* Firefox */
+        .sethael-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+        }
+        /* Dark theme adjustments */
+        .sethael-scroll-dark::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+        }
+        .sethael-scroll-dark::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.25);
+        }
+        .sethael-scroll-dark {
+          scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        /* Light theme adjustments */
+        .sethael-scroll-light::-webkit-scrollbar-thumb {
+          background: rgba(0, 0, 0, 0.15);
+        }
+        .sethael-scroll-light::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 0, 0, 0.25);
+        }
+        .sethael-scroll-light {
+          scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
+  // Inject responsive typography and layout styles
+  useEffect(() => {
+    const styleId = 'sethael-responsive-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = RESPONSIVE_STYLES;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   // Load data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const result = await storage.get(STORAGE_KEY);
+        const result = await window.storage.get(STORAGE_KEY);
         if (result && result.value) {
           const savedData = JSON.parse(result.value);
           let merged = { ...savedData };
@@ -12609,12 +14686,12 @@ export default function SethaelWiki() {
           });
           
           if (hasChanges) {
-            await storage.set(STORAGE_KEY, JSON.stringify(merged));
+            await window.storage.set(STORAGE_KEY, JSON.stringify(merged));
           }
           setWikiData(merged);
         } else {
           setWikiData(DEFAULT_WIKI_DATA);
-          await storage.set(STORAGE_KEY, JSON.stringify(DEFAULT_WIKI_DATA));
+          await window.storage.set(STORAGE_KEY, JSON.stringify(DEFAULT_WIKI_DATA));
         }
       } catch (error) {
         console.log('Initializing with default data');
@@ -12629,7 +14706,7 @@ export default function SethaelWiki() {
   const saveData = useCallback(async (newData) => {
     setSaving(true);
     try {
-      await storage.set(STORAGE_KEY, JSON.stringify(newData));
+      await window.storage.set(STORAGE_KEY, JSON.stringify(newData));
       setWikiData(newData);
       showMessage('Saved');
     } catch (error) {
@@ -12749,7 +14826,8 @@ export default function SethaelWiki() {
       backgroundColor: c.bg,
       fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
       color: c.text,
-      display: 'flex'
+      display: 'flex',
+      fontSize: 'var(--type-body)'
     }}>
       {/* Toast */}
       {message && (
@@ -12758,11 +14836,11 @@ export default function SethaelWiki() {
           top: '24px',
           left: '50%',
           transform: 'translateX(-50%)',
-          zHome: 10000,
+          zIndex: 10000,
           padding: '12px 24px',
           backgroundColor: c.text,
           color: c.bg,
-          fontSize: '13px',
+          fontSize: 'var(--type-small)',
           fontWeight: 500
         }}>
           {message}
@@ -12771,7 +14849,7 @@ export default function SethaelWiki() {
 
       {/* Sidebar */}
       <aside style={{
-        width: sidebarCollapsed ? '48px' : '220px',
+        width: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
         height: '100vh',
         position: 'fixed',
         left: 0,
@@ -12781,12 +14859,11 @@ export default function SethaelWiki() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        transition: 'width 0.2s ease'
+        transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         {/* Header with collapse toggle */}
         <div style={{ 
-          padding: sidebarCollapsed ? '24px 12px' : '24px 20px', 
-          borderBottom: `1px solid ${c.border}`,
+          padding: sidebarCollapsed ? 'var(--space-section) var(--space-element)' : 'var(--space-section) var(--space-element)', 
           display: 'flex',
           alignItems: 'center',
           justifyContent: sidebarCollapsed ? 'center' : 'space-between'
@@ -12802,10 +14879,10 @@ export default function SethaelWiki() {
                 padding: 0
               }}
             >
-              <p style={{ fontSize: '14px', fontWeight: 500, color: c.text }}>
+              <p style={{ fontSize: 'var(--type-nav)', fontWeight: 500, color: c.text }}>
                 Sethael
               </p>
-              <p style={{ fontSize: '11px', color: c.muted, marginTop: '2px' }}>
+              <p style={{ fontSize: 'var(--type-caption)', color: c.muted, marginTop: '2px' }}>
                 Wiki / Encyclopedia
               </p>
             </button>
@@ -12842,7 +14919,6 @@ export default function SethaelWiki() {
                   padding: '10px 0',
                   backgroundColor: 'transparent',
                   border: 'none',
-                  borderBottom: `1px solid ${c.border}`,
                   color: c.text,
                   fontSize: '14px',
                   outline: 'none',
@@ -12852,7 +14928,9 @@ export default function SethaelWiki() {
             </div>
 
             {/* Navigation — Typography only */}
-            <nav style={{
+            <nav 
+              className={`sethael-scroll sethael-scroll-${theme}`}
+              style={{
               flex: 1,
               overflowY: 'auto',
               padding: '8px 0'
@@ -12882,7 +14960,6 @@ export default function SethaelWiki() {
                     cursor: 'pointer',
                     fontSize: '14px',
                     color: c.text,
-                    borderBottom: `1px solid ${c.border}22`,
                     fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                   }}
                 >
@@ -12965,7 +15042,7 @@ export default function SethaelWiki() {
                                 fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                               }}
                             >
-                              {entry.title}
+                              {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                             </button>
                           ))}
 
@@ -13029,7 +15106,7 @@ export default function SethaelWiki() {
                                         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                                       }}
                                     >
-                                      {entry.title.replace(/^(KAELDUR|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|TAELUN|ZANUAX|HIGH ZANUAX)\s*—\s*/, '')}
+                                      {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                                     </button>
                                   ))}
                               </div>
@@ -13171,7 +15248,7 @@ export default function SethaelWiki() {
                             fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                           }}
                         >
-                          {entry.title}
+                          {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                         </button>
                       ))
                     )}
@@ -13187,7 +15264,6 @@ export default function SethaelWiki() {
         {/* Footer controls - always visible */}
         <div style={{
           padding: sidebarCollapsed ? '16px 12px' : '16px 20px',
-          borderTop: `1px solid ${c.border}`,
           textAlign: sidebarCollapsed ? 'center' : 'left'
         }}>
           <button
@@ -13209,51 +15285,58 @@ export default function SethaelWiki() {
 
       {/* Main Content */}
       <main style={{
-        marginLeft: sidebarCollapsed ? '48px' : '220px',
+        marginLeft: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
         flex: 1,
         minHeight: '100vh',
-        transition: 'margin-left 0.2s ease'
+        transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         {currentEntry ? (
           // Entry view — Swiss Modernist grid
           <div>
-            {/* Navigation bar */}
+            {/* Navigation bar — Sticky */}
             <div style={{ 
-              padding: '16px 48px',
+              position: 'sticky',
+              top: 0,
+              zIndex: 100,
+              padding: 'var(--space-element) var(--space-page)',
               borderBottom: `1px solid ${c.border}`,
               display: 'grid',
-              gridTemplateColumns: '160px 1fr auto',
-              gap: '24px',
-              alignItems: 'center'
+              gridTemplateColumns: 'var(--label-col) 1fr auto',
+              gap: 'var(--gap-md)',
+              alignItems: 'center',
+              background: theme === 'dark' ? 'rgba(10, 10, 10, 0.85)' : 'rgba(250, 250, 250, 0.85)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)'
             }}>
-              <span style={{ fontSize: '11px', color: c.muted, letterSpacing: '0.05em' }}>
-                NAV
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  onClick={goHome}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    color: c.muted,
-                    padding: 0,
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  Home
-                </button>
-                <span style={{ color: c.muted, fontSize: '13px' }}>/</span>
-                <span style={{ fontSize: '13px', color: c.muted }}>
+              <button
+                onClick={goHome}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 'var(--type-small)',
+                  color: c.muted,
+                  padding: 0,
+                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                  textAlign: 'left',
+                  lineHeight: 'var(--row-height)',
+                  height: 'var(--row-height)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                ← Home
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
                   {wikiData[selectedCategory]?.title}
                 </span>
-                <span style={{ color: c.muted, fontSize: '13px' }}>/</span>
-                <span style={{ fontSize: '13px', color: c.text }}>
+                <span style={{ color: c.muted, fontSize: 'var(--type-small)' }}>/</span>
+                <span style={{ fontSize: 'var(--type-small)', color: c.text }}>
                   {currentEntry.title}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '24px' }}>
+              <div style={{ display: 'flex', gap: 'var(--gap-md)' }}>
                 <button
                   onClick={() => setReadingMode(true)}
                   style={{
@@ -13288,18 +15371,18 @@ export default function SethaelWiki() {
             </div>
 
             {/* Title section */}
-            <div style={{ padding: '48px 48px 32px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px', alignItems: 'start' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>
+            <div style={{ padding: 'var(--space-page) var(--space-page) var(--space-section) var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
                   {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}.{formatIndex(Object.keys(wikiData[selectedCategory]?.entries || {}).indexOf(selectedEntry) + 1)}
                 </span>
                 <h1 style={{
-                  fontSize: '36px',
+                  fontSize: 'var(--type-h1)',
                   fontWeight: 400,
                   color: c.text,
                   letterSpacing: '-0.02em',
                   lineHeight: 1.15,
-                  maxWidth: '640px'
+                  maxWidth: 'var(--prose-max)'
                 }}>
                   {currentEntry.title}
                 </h1>
@@ -13310,38 +15393,35 @@ export default function SethaelWiki() {
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
             {/* Content with label */}
-            <div style={{ padding: '32px 48px' }}>
+            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
               {currentEntry.title === 'Complete Visual Timeline' ? (
-                <div style={{ marginLeft: '-48px', marginRight: '-48px', height: '70vh' }}>
+                <div style={{ marginLeft: 'calc(var(--space-page) * -1)', marginRight: 'calc(var(--space-page) * -1)', height: '70vh' }}>
                   <InteractiveTimeline theme={theme} />
                 </div>
               ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>Content</span>
-                <div style={{ maxWidth: '640px', lineHeight: 1.8, fontSize: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted,
+                  paddingTop: '0.35em'
+                }}>Content</span>
+                <div style={{ maxWidth: 'var(--prose-max)', lineHeight: 1.8, fontSize: 'var(--type-body)' }}>
                   {renderContentSimple(currentEntry.content, c)}
                 </div>
               </div>
               )}
             </div>
 
-            {/* Tags section */}
-            {currentEntry.tags && currentEntry.tags.length > 0 && (
+            {/* Reading time for books */}
+            {currentEntry.book && (
               <>
                 <div style={{ borderTop: `1px solid ${c.border}` }} />
-                <div style={{ padding: '24px 48px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                    <span style={{ fontSize: '13px', color: c.muted }}>Tags</span>
-                    <p style={{ fontSize: '13px', color: c.muted, lineHeight: 2 }}>
-                      {currentEntry.tags.map((tag, i) => (
-                        <span key={tag}>
-                          <HoverLink onClick={() => setSearchQuery(tag)} muted theme={theme}>
-                            {tag}
-                          </HoverLink>
-                          {i < currentEntry.tags.length - 1 && <span style={{ margin: '0 12px' }}>·</span>}
-                        </span>
-                      ))}
-                    </p>
+                <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+                    <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>Reading</span>
+                    <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
+                      ~{Math.max(1, Math.ceil(currentEntry.content.split(/\s+/).length / 200))} min
+                    </span>
                   </div>
                 </div>
               </>
@@ -13349,9 +15429,9 @@ export default function SethaelWiki() {
 
             {/* Entry navigation */}
             <div style={{ borderTop: `1px solid ${c.border}` }} />
-            <div style={{ padding: '24px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>Navigate</span>
+            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr 1fr', gap: 'var(--gap-md)' }}>
+                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>Navigate</span>
                 <div>
                   {(() => {
                     const entries = Object.keys(wikiData[selectedCategory]?.entries || {});
@@ -13409,18 +15489,23 @@ export default function SethaelWiki() {
           </div>
         ) : (
           // Home view — Swiss Modernist grid
-          <div>
+          <div className="sethael-stagger">
             {/* Hero statement */}
-            <div style={{ padding: '48px 48px 48px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>Home</span>
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)', 
+                  paddingTop: '0.35em' 
+                }}>Home</span>
                 <h1 style={{
-                  fontSize: '36px',
+                  fontSize: 'var(--type-h1)',
                   fontWeight: 400,
                   color: c.text,
-                  lineHeight: 1.25,
+                  lineHeight: 1.2,
                   letterSpacing: '-0.02em',
-                  maxWidth: '720px'
+                  maxWidth: 'var(--prose-max)'
                 }}>
                   Sethael ↳ Encyclopedia of a world governed by depletion — 57,000 years of fictional history, civilizations, languages, and chronicles.
                 </h1>
@@ -13430,21 +15515,169 @@ export default function SethaelWiki() {
             {/* Bleeding line */}
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
-            {/* Info grid — 4 columns like Doug Alves */}
-            <div style={{ padding: '32px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>Info</span>
+            {/* The Work — Featured Book */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)', 
+                  paddingTop: '0.6em' 
+                }}>Book I</span>
                 <div>
-                  <p style={{ fontSize: '14px', color: c.text, marginBottom: '4px' }}>The Silence of Sethael</p>
-                  <p style={{ fontSize: '14px', color: c.muted }}>Epic Tragedy / Literary Fantasy</p>
+                  <button
+                    onClick={() => {
+                      setExpandedCategories(prev => ({ ...prev, livros: true }));
+                      selectEntry('livros', 'vol4-opening');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'block'
+                    }}
+                  >
+                    <h2 style={{ 
+                      fontSize: 'var(--type-display)', 
+                      fontWeight: 300, 
+                      color: c.text,
+                      lineHeight: 1.05,
+                      letterSpacing: '-0.03em',
+                      marginBottom: 'var(--space-element)',
+                      transition: 'opacity 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'clamp(12px, 2vw, 24px)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      {/* Metro-style wayfinding arrow */}
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 'clamp(32px, 4vw, 48px)',
+                        height: 'clamp(32px, 4vw, 48px)',
+                        border: `2px solid ${c.text}`,
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        transition: 'all 0.2s ease'
+                      }}>
+                        <svg 
+                          width="clamp(14px, 1.5vw, 20px)" 
+                          height="clamp(14px, 1.5vw, 20px)" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke={c.text}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                      </span>
+                      <span>The Depletion</span>
+                    </h2>
+                  </button>
+                  
+                  {/* More button */}
+                  <div style={{ marginLeft: 'clamp(44px, 6vw, 72px)' }}>
+                    <button
+                      onClick={() => setBookMoreExpanded(!bookMoreExpanded)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        fontSize: 'var(--type-small)',
+                        color: c.muted,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                        transition: 'color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = c.text}
+                      onMouseLeave={(e) => e.currentTarget.style.color = c.muted}
+                    >
+                      <span style={{
+                        display: 'inline-block',
+                        transition: 'transform 0.2s ease',
+                        transform: bookMoreExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                      }}>→</span>
+                      <span>{bookMoreExpanded ? 'Less' : 'More'}</span>
+                    </button>
+                    
+                    {/* Expandable content */}
+                    <div style={{
+                      maxHeight: bookMoreExpanded ? '400px' : '0px',
+                      overflow: 'hidden',
+                      transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      marginTop: bookMoreExpanded ? 'var(--space-element)' : '0'
+                    }}>
+                      <div style={{ 
+                        paddingTop: 'var(--space-element)',
+                        borderTop: `1px solid ${c.border}`,
+                        maxWidth: 'var(--prose-max)'
+                      }}>
+                        <p style={{ 
+                          fontSize: 'var(--type-body)', 
+                          color: c.muted, 
+                          lineHeight: 1.7,
+                          marginBottom: 'var(--space-element)'
+                        }}>
+                          778 AF. The Kingdom of Duratheon stands at the edge of collapse. King Tornael dies of pneumonia 
+                          while waiting for ships that will never sail. His son, Krav XIX, inherits a broken campaign 
+                          and a treasury emptied by dreams of conquest.
+                        </p>
+                        <p style={{ 
+                          fontSize: 'var(--type-body)', 
+                          color: c.muted, 
+                          lineHeight: 1.7
+                        }}>
+                          Five parts follow the kingdom's final days — from the guest who arrives bearing false hope, 
+                          through the long march toward inevitable defeat, to the dry wood that awaits only a spark.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bleeding line */}
+            <div style={{ borderBottom: `1px solid ${c.border}` }} />
+
+            {/* Info grid — responsive columns */}
+            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'var(--label-col) repeat(auto-fit, minmax(140px, 1fr))', 
+                gap: 'var(--gap-md)',
+                alignItems: 'start'
+              }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)',
+                  height: 'var(--row-height)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>Info</span>
+                <div>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>The Silence of Sethael</p>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>Epic Tragedy / Literary Fantasy</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '14px', color: c.text, marginBottom: '4px' }}>{Object.keys(wikiData).length} Categories</p>
-                  <p style={{ fontSize: '14px', color: c.muted }}>{Object.values(wikiData).reduce((acc, cat) => acc + Object.keys(cat.entries).length, 0)} Entries</p>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>{Object.keys(wikiData).length} Categories</p>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>{Object.values(wikiData).reduce((acc, cat) => acc + Object.keys(cat.entries).length, 0)} Entries</p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '14px', color: c.text, marginBottom: '4px' }}>57,000 Years</p>
-                  <p style={{ fontSize: '14px', color: c.muted }}>5 Languages</p>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>57,000 Years</p>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>5 Languages</p>
                 </div>
               </div>
             </div>
@@ -13453,20 +15686,27 @@ export default function SethaelWiki() {
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
             {/* Axiom grid */}
-            <div style={{ padding: '32px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>The Axiom</span>
+            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)',
+                  height: 'var(--row-height)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>The Axiom</span>
                 <div>
                   <p style={{ 
-                    fontSize: '18px', 
+                    fontSize: 'var(--type-h2)', 
                     fontStyle: 'italic', 
                     color: c.text, 
-                    lineHeight: 1.6,
+                    lineHeight: 1.5,
                     marginBottom: '12px'
                   }}>
                     "Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër."
                   </p>
-                  <p style={{ fontSize: '14px', color: c.muted, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted, lineHeight: 1.6 }}>
                     Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
                   </p>
                 </div>
@@ -13477,10 +15717,24 @@ export default function SethaelWiki() {
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
             {/* Home header */}
-            <div style={{ padding: '32px 48px 16px 48px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                <span style={{ fontSize: '13px', color: c.muted }}>Home</span>
-                <span style={{ fontSize: '13px', color: c.muted }}>Categories — {Object.keys(wikiData).length} ⌐</span>
+            <div style={{ padding: 'var(--space-section) var(--space-page) var(--space-element) var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)',
+                  height: 'var(--row-height)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>Home</span>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted, 
+                  lineHeight: 'var(--row-height)',
+                  height: 'var(--row-height)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>Categories — {Object.keys(wikiData).length} ⌐</span>
               </div>
             </div>
             
@@ -13512,138 +15766,65 @@ export default function SethaelWiki() {
               }}
             />
 
-            {/* The Work - Final section */}
+            {/* Prologue - Final section */}
             <div style={{ borderTop: `1px solid ${c.border}` }}>
-              {/* Header */}
-              <div style={{ padding: '32px 48px 0 48px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                  <span style={{ fontSize: '13px', color: c.muted }}>The Work</span>
-                  <span style={{ fontSize: '13px', color: c.muted }}>Structure ⌐</span>
-                </div>
-              </div>
-
               {/* Big type section */}
-              <div style={{ padding: '48px 48px 64px 48px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                  <div></div>
+              <div style={{ padding: 'var(--space-page)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                  <span style={{ 
+                    fontSize: 'var(--type-small)', 
+                    color: c.muted, 
+                    lineHeight: 'var(--row-height)', 
+                    paddingTop: '0.6em' 
+                  }}>Prologue</span>
                   <div>
-                    {/* Prologue */}
-                    <div style={{ marginBottom: '48px' }}>
-                      <div style={{ 
-                        fontSize: '11px', 
-                        color: c.muted, 
-                        letterSpacing: '0.15em',
-                        marginBottom: '16px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Prologue
-                      </div>
-                      <button
-                        onClick={() => {
-                          setExpandedCategories(prev => ({ ...prev, books: true }));
-                          selectEntry('books', 'prologue-when-gods-labored');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          display: 'block'
-                        }}
+                    <button
+                      onClick={() => {
+                        setExpandedCategories(prev => ({ ...prev, livros: true }));
+                        selectEntry('livros', 'wgl-vi-ci');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'block'
+                      }}
+                    >
+                      <h2 style={{ 
+                        fontSize: 'var(--type-display)', 
+                        fontWeight: 300, 
+                        color: c.text,
+                        lineHeight: 1.05,
+                        letterSpacing: '-0.03em',
+                        marginBottom: 'var(--space-element)',
+                        transition: 'opacity 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.target.style.opacity = '0.6'}
+                      onMouseLeave={(e) => e.target.style.opacity = '1'}
                       >
-                        <h2 style={{ 
-                          fontSize: '48px', 
-                          fontWeight: 300, 
-                          color: c.text,
-                          lineHeight: 1.1,
-                          letterSpacing: '-0.02em',
-                          marginBottom: '16px',
-                          transition: 'opacity 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.target.style.opacity = '0.6'}
-                        onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          When Gods Labored
-                        </h2>
-                      </button>
-                      <p style={{ 
-                        fontSize: '15px', 
-                        color: c.muted, 
-                        lineHeight: 1.7,
-                        maxWidth: '480px'
-                      }}>
-                        From the Outside's eternity through the Seeder's sacrifice, the IULDAR's stewardship, 
-                        the TauTek's profanation, and into the Great Silence that erased a million years of memory.
-                      </p>
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ 
-                      width: '64px', 
-                      height: '1px', 
-                      background: c.border,
-                      marginBottom: '48px'
-                    }} />
-
-                    {/* Book I */}
-                    <div style={{ marginBottom: '48px' }}>
-                      <div style={{ 
-                        fontSize: '11px', 
-                        color: c.muted, 
-                        letterSpacing: '0.15em',
-                        marginBottom: '16px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Book I
-                      </div>
-                      <button
-                        onClick={() => {
-                          setExpandedCategories(prev => ({ ...prev, books: true }));
-                          selectEntry('books', 'the-depletion');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          display: 'block'
-                        }}
-                      >
-                        <h2 style={{ 
-                          fontSize: '48px', 
-                          fontWeight: 300, 
-                          color: c.text,
-                          lineHeight: 1.1,
-                          letterSpacing: '-0.02em',
-                          marginBottom: '16px',
-                          transition: 'opacity 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.target.style.opacity = '0.6'}
-                        onMouseLeave={(e) => e.target.style.opacity = '1'}
-                        >
-                          The Depletion
-                        </h2>
-                      </button>
-                      <p style={{ 
-                        fontSize: '15px', 
-                        color: c.muted, 
-                        lineHeight: 1.7,
-                        maxWidth: '480px'
-                      }}>
-                        The fall of Duratheon in the year 778 AF — when every creation 
-                        finally depletes itself.
-                      </p>
-                    </div>
+                        When Gods Labored
+                      </h2>
+                    </button>
+                    <p style={{ 
+                      fontSize: 'var(--type-body)', 
+                      color: c.muted, 
+                      lineHeight: 1.7,
+                      maxWidth: 'var(--prose-max)'
+                    }}>
+                      From the Outside's eternity through the Seeder's sacrifice, the IULDAR's stewardship, 
+                      the TauTek's profanation, and into the Great Silence that erased a million years of memory.
+                    </p>
 
                     {/* Status */}
                     <div style={{ 
-                      fontSize: '11px',
+                      fontSize: 'var(--type-caption)',
                       color: c.muted,
                       letterSpacing: '0.1em',
                       textTransform: 'uppercase',
-                      opacity: 0.5
+                      opacity: 0.5,
+                      marginTop: 'var(--space-section)'
                     }}>
                       Work in progress
                     </div>
@@ -13652,14 +15833,38 @@ export default function SethaelWiki() {
               </div>
 
               {/* Footer line with year */}
-              <div style={{ borderTop: `1px solid ${c.border}`, padding: '24px 48px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '24px' }}>
-                  <span style={{ fontSize: '11px', color: c.muted, opacity: 0.5 }}>©</span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: c.muted, opacity: 0.5 }}>
+              <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                  <span style={{ 
+                    fontSize: 'var(--type-caption)', 
+                    color: c.muted, 
+                    opacity: 0.5, 
+                    lineHeight: 'var(--row-height)',
+                    height: 'var(--row-height)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>©</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
+                    <span style={{ 
+                      fontSize: 'var(--type-caption)', 
+                      color: c.muted, 
+                      opacity: 0.5, 
+                      lineHeight: 'var(--row-height)',
+                      height: 'var(--row-height)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
                       The Silence of Sethael
                     </span>
-                    <span style={{ fontSize: '11px', color: c.muted, opacity: 0.5 }}>
+                    <span style={{ 
+                      fontSize: 'var(--type-caption)', 
+                      color: c.muted, 
+                      opacity: 0.5, 
+                      lineHeight: 'var(--row-height)',
+                      height: 'var(--row-height)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
                       2024 — ∞
                     </span>
                   </div>
@@ -13686,7 +15891,7 @@ export default function SethaelWiki() {
   );
 }
 
-// Simple content renderer for main view
+// Simple content renderer for main view (with responsive typography)
 function renderContentSimple(content, c) {
   const lines = content.split('\n');
   const elements = [];
@@ -13700,18 +15905,19 @@ function renderContentSimple(content, c) {
       const headers = headerRow.split('|').filter(c => c.trim()).map(c => c.trim());
       
       elements.push(
-        <div key={`table-${elements.length}`} style={{ margin: '32px 0' }}>
+        <div key={`table-${elements.length}`} style={{ margin: 'var(--space-section) 0', overflowX: 'auto' }}>
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: headers.length <= 2 ? '200px 1fr' : `repeat(${headers.length}, 1fr)`,
+            gridTemplateColumns: headers.length <= 2 ? 'minmax(120px, 200px) 1fr' : `repeat(${headers.length}, minmax(100px, 1fr))`,
             gap: '0',
             borderBottom: `1px solid ${c.border}`,
             paddingBottom: '8px',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            minWidth: 'max-content'
           }}>
             {headers.map((h, i) => (
               <span key={i} style={{ 
-                fontSize: '11px', 
+                fontSize: 'var(--type-caption)', 
                 fontWeight: 500, 
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
@@ -13724,14 +15930,14 @@ function renderContentSimple(content, c) {
             return (
               <div key={ri} style={{ 
                 display: 'grid', 
-                gridTemplateColumns: headers.length <= 2 ? '200px 1fr' : `repeat(${headers.length}, 1fr)`,
+                gridTemplateColumns: headers.length <= 2 ? 'minmax(120px, 200px) 1fr' : `repeat(${headers.length}, minmax(100px, 1fr))`,
                 gap: '0',
                 padding: '8px 0',
                 borderBottom: ri < dataRows.length - 1 ? `1px solid ${c.border}22` : 'none'
               }}>
                 {cells.map((cell, ci) => (
                   <span key={ci} style={{ 
-                    fontSize: '14px',
+                    fontSize: 'var(--type-nav)',
                     color: c.text
                   }} dangerouslySetInnerHTML={{ 
                     __html: cell
@@ -13761,13 +15967,13 @@ function renderContentSimple(content, c) {
     if (line.startsWith('**') && line.endsWith('**') && line.length < 100) {
       elements.push(
         <h2 key={idx} style={{ 
-          fontSize: '14px',
+          fontSize: 'var(--type-h3)',
           fontWeight: 500,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
           color: c.text,
-          marginTop: '48px',
-          marginBottom: '16px',
+          marginTop: 'var(--space-page)',
+          marginBottom: 'var(--space-element)',
           paddingBottom: '8px',
           borderBottom: `1px solid ${c.border}`
         }}>
@@ -13778,10 +15984,10 @@ function renderContentSimple(content, c) {
     else if (line.match(/^\*[^*]+\*$/) && !line.includes('Telenōm')) {
       elements.push(
         <p key={idx} style={{ 
-          fontSize: '16px',
+          fontSize: 'var(--type-body)',
           fontStyle: 'italic',
           color: c.muted,
-          marginBottom: '24px'
+          marginBottom: 'var(--space-section)'
         }}>
           {line.replace(/\*/g, '')}
         </p>
@@ -13790,7 +15996,7 @@ function renderContentSimple(content, c) {
     else if (line.includes('Telenōm') || line.includes('trüm fräkbaër') || line.includes('Every creation is fruit')) {
       elements.push(
         <p key={idx} style={{ 
-          fontSize: '14px',
+          fontSize: 'var(--type-nav)',
           fontStyle: 'italic',
           color: c.muted,
           marginTop: '4px',
@@ -13804,8 +16010,8 @@ function renderContentSimple(content, c) {
       elements.push(
         <div key={idx} style={{ 
           color: c.muted,
-          fontSize: '24px',
-          margin: '48px 0',
+          fontSize: 'var(--type-h2)',
+          margin: 'var(--space-page) 0',
           textAlign: 'center',
           letterSpacing: '0.5em'
         }}>
@@ -13818,7 +16024,7 @@ function renderContentSimple(content, c) {
         <hr key={idx} style={{ 
           border: 'none',
           borderTop: `1px solid ${c.border}`,
-          margin: '48px 0'
+          margin: 'var(--space-page) 0'
         }} />
       );
     }
@@ -13829,20 +16035,20 @@ function renderContentSimple(content, c) {
         .replace(/---/g, '—');
       elements.push(
         <p key={idx} style={{ 
-          fontSize: '16px',
+          fontSize: 'var(--type-body)',
           color: c.text,
           lineHeight: 1.75,
-          marginBottom: '20px'
+          marginBottom: 'var(--space-element)'
         }} dangerouslySetInnerHTML={{ __html: html }} />
       );
     }
     else if (line.startsWith('[') && line.endsWith(']')) {
       elements.push(
         <p key={idx} style={{ 
-          fontSize: '14px',
+          fontSize: 'var(--type-nav)',
           color: c.muted,
           fontStyle: 'italic',
-          margin: '48px 0'
+          margin: 'var(--space-page) 0'
         }}>
           {line}
         </p>
