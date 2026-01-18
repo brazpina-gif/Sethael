@@ -13002,6 +13002,11 @@ const RESPONSIVE_STYLES = `
     text-rendering: optimizeLegibility;
   }
   
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
   * {
     box-sizing: border-box;
   }
@@ -13984,6 +13989,10 @@ const ReadingView = ({ entry, onClose, theme, entryKeys, currentHome, onNavigate
   const contentRef = React.useRef(null);
   const c = palette[theme];
 
+  // Calculate reading time (avg 200 words per minute)
+  const wordCount = entry.content ? entry.content.split(/\s+/).length : 0;
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
@@ -14230,7 +14239,7 @@ const ReadingView = ({ entry, onClose, theme, entryKeys, currentHome, onNavigate
             {entry.title}
           </div>
           <div style={{ fontSize: '11px', color: c.muted, marginTop: '2px' }}>
-            {Math.round(progress)}%
+            {readingTime} min · {Math.round(progress)}%
           </div>
         </div>
 
@@ -14760,6 +14769,7 @@ export default function SethaelWiki() {
     setSelectedCategory(catKey);
     setSelectedEntry(entryKey);
     setSearchQuery('');
+    window.scrollTo(0, 0);
   };
 
   const goHome = () => {
@@ -15372,7 +15382,7 @@ export default function SethaelWiki() {
 
             {/* Title section */}
             <div style={{ padding: 'var(--space-page) var(--space-page) var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr auto', gap: 'var(--gap-md)', alignItems: 'start' }}>
                 <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
                   {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}.{formatIndex(Object.keys(wikiData[selectedCategory]?.entries || {}).indexOf(selectedEntry) + 1)}
                 </span>
@@ -15386,6 +15396,93 @@ export default function SethaelWiki() {
                 }}>
                   {currentEntry.title}
                 </h1>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {(() => {
+                    const entries = Object.keys(wikiData[selectedCategory]?.entries || {});
+                    const currentIdx = entries.indexOf(selectedEntry);
+                    const prevEntry = currentIdx > 0 ? entries[currentIdx - 1] : null;
+                    const nextEntry = currentIdx < entries.length - 1 ? entries[currentIdx + 1] : null;
+                    return (
+                      <>
+                        {/* Prev arrow - metro style */}
+                        <button
+                          onClick={() => prevEntry && selectEntry(selectedCategory, prevEntry)}
+                          disabled={!prevEntry}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: prevEntry ? 'pointer' : 'default',
+                            opacity: prevEntry ? 1 : 0.3,
+                            transition: 'opacity 0.2s ease'
+                          }}
+                        >
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '28px',
+                            height: '28px',
+                            border: `1.5px solid ${c.muted}`,
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease'
+                          }}>
+                            <svg 
+                              width="12" 
+                              height="12" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke={c.muted}
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                          </span>
+                        </button>
+                        
+                        {/* Next arrow - metro style */}
+                        <button
+                          onClick={() => nextEntry && selectEntry(selectedCategory, nextEntry)}
+                          disabled={!nextEntry}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: nextEntry ? 'pointer' : 'default',
+                            opacity: nextEntry ? 1 : 0.3,
+                            transition: 'opacity 0.2s ease'
+                          }}
+                        >
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '28px',
+                            height: '28px',
+                            border: `1.5px solid ${c.muted}`,
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease'
+                          }}>
+                            <svg 
+                              width="12" 
+                              height="12" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke={c.muted}
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                          </span>
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
             
@@ -15399,33 +15496,28 @@ export default function SethaelWiki() {
                   <InteractiveTimeline theme={theme} />
                 </div>
               ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted,
-                  paddingTop: '0.35em'
-                }}>Content</span>
-                <div style={{ maxWidth: 'var(--prose-max)', lineHeight: 1.8, fontSize: 'var(--type-body)' }}>
-                  {renderContentSimple(currentEntry.content, c)}
-                </div>
-              </div>
-              )}
-            </div>
-
-            {/* Reading time for books */}
-            {currentEntry.book && (
               <>
-                <div style={{ borderTop: `1px solid ${c.border}` }} />
-                <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
-                    <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>Reading</span>
-                    <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
-                      ~{Math.max(1, Math.ceil(currentEntry.content.split(/\s+/).length / 200))} min
-                    </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'baseline', marginBottom: 'var(--space-section)' }}>
+                  <span style={{ 
+                    fontSize: 'var(--type-small)', 
+                    color: c.muted
+                  }}>Content</span>
+                  <span style={{ 
+                    fontSize: 'var(--type-small)', 
+                    color: c.muted
+                  }}>
+                    {Math.max(1, Math.ceil((currentEntry.content || '').split(/\s+/).length / 200))} min read
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+                  <span></span>
+                  <div style={{ maxWidth: 'var(--prose-max)', lineHeight: 1.8, fontSize: 'var(--type-body)' }}>
+                    {renderContentSimple(currentEntry.content, c)}
                   </div>
                 </div>
               </>
-            )}
+              )}
+            </div>
 
             {/* Entry navigation */}
             <div style={{ borderTop: `1px solid ${c.border}` }} />
