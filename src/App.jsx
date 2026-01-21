@@ -16423,15 +16423,14 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
       >
         <div style={{
           padding: 'var(--space-element) var(--space-page)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: isMobile ? '12px' : '16px'
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'auto 1fr auto' : 'var(--label-col) 1fr auto',
+          gap: isMobile ? '12px' : 'var(--gap-md)',
+          alignItems: 'center'
         }}>
           <span style={{ 
-            fontSize: 'var(--type-caption)', 
-            color: c.muted,
-            minWidth: isMobile ? '20px' : '28px',
-            fontVariantNumeric: 'tabular-nums'
+            fontSize: 'var(--type-small)', 
+            color: c.muted
           }}>
             {formatIndex(index)}
           </span>
@@ -16441,7 +16440,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             borderBottom: hovered ? `1px solid ${c.text}` : '1px solid transparent',
             paddingBottom: '2px',
             transition: 'border-color 0.2s ease',
-            flex: 1
+            justifySelf: 'start'
           }}>
             {category.title}
           </span>
@@ -16465,7 +16464,8 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
         <div style={{ padding: 'var(--space-element) var(--space-page) var(--space-section) var(--space-page)' }}>
           {/* Show groups if category has them */}
           {category.groups ? (
-            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+              {!isMobile && <div />}
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
@@ -16582,7 +16582,8 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             </div>
           ) : catKey === 'livros' && category.structure ? (
             /* Books - show structure only */
-            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+              {!isMobile && <div />}
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -16633,57 +16634,60 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             </div>
           ) : (
             /* No groups - show flat list in columns */
-            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                gap: '4px var(--gap-md)'
-              }}>
-                {entries.slice(0, showAll ? entries.length : 12).map(([entryKey, entry]) => (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+              {!isMobile && <div />}
+              <div>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                  gap: '4px var(--gap-md)'
+                }}>
+                  {entries.slice(0, showAll ? entries.length : 12).map(([entryKey, entry]) => (
+                    <button
+                      key={entryKey}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEntrySelect(catKey, entryKey);
+                      }}
+                      style={{
+                        display: 'block',
+                        background: 'none',
+                        border: 'none',
+                        padding: '4px 0',
+                        fontSize: 'var(--type-small)',
+                        color: c.text,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
+                    </button>
+                  ))}
+                </div>
+                {entries.length > 12 && (
                   <button
-                    key={entryKey}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEntrySelect(catKey, entryKey);
+                      setShowAll(!showAll);
                     }}
-                    style={{
-                      display: 'block',
+                    style={{ 
+                      fontSize: 'var(--type-caption)', 
+                      color: c.muted, 
+                      padding: '12px 0 0 0',
                       background: 'none',
                       border: 'none',
-                      padding: '4px 0',
-                      fontSize: 'var(--type-small)',
-                      color: c.text,
                       cursor: 'pointer',
-                      textAlign: 'left',
-                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
+                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                     }}
                   >
-                    {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
+                    {showAll ? '← Less' : `+${entries.length - 12} →`}
                   </button>
-                ))}
+                )}
               </div>
-              {entries.length > 12 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAll(!showAll);
-                  }}
-                  style={{ 
-                    fontSize: 'var(--type-caption)', 
-                    color: c.muted, 
-                    padding: '12px 0 0 0',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  {showAll ? '← Less' : `+${entries.length - 12} →`}
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -19298,131 +19302,126 @@ export default function SethaelWiki() {
             </div>
           </div>
         ) : (
-          // Home view — Full-width typographic layout
+          // Home view — Swiss Grid: label column + full-width content
           <div className="sethael-stagger">
             
             {/* ═══════════════════════════════════════════════════════════════
-                1. PREMISE — Full width, label above
+                1. PREMISE — Label aligned to top
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              {!isMobile && <span style={{ 
-                fontSize: 'var(--type-caption)', 
-                color: c.muted,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                display: 'block',
-                marginBottom: 'var(--space-element)'
-              }}>About</span>}
-              <p style={{
-                fontSize: 'var(--type-h2)',
-                fontWeight: 400,
-                color: c.text,
-                lineHeight: 1.4,
-                marginBottom: 'var(--space-element)',
-                maxWidth: '85ch'
-              }}>
-                The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
-              </p>
-              <p style={{
-                fontSize: 'var(--type-body)',
-                color: c.muted,
-                lineHeight: 1.7,
-                maxWidth: '75ch'
-              }}>
-                A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
-              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted,
+                  paddingTop: '0.15em'
+                }}>About</span>}
+                <div>
+                  <p style={{
+                    fontSize: 'var(--type-h2)',
+                    fontWeight: 400,
+                    color: c.text,
+                    lineHeight: 1.4,
+                    marginBottom: 'var(--space-element)'
+                  }}>
+                    The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
+                  </p>
+                  <p style={{
+                    fontSize: 'var(--type-body)',
+                    color: c.muted,
+                    lineHeight: 1.7
+                  }}>
+                    A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                2. THE AXIOM — FULL WIDTH, no constraints
+                2. THE AXIOM — Full width, no prose-max
                ═══════════════════════════════════════════════════════════════ */}
-            <div style={{ padding: 'var(--space-page)', paddingTop: 'var(--space-section)', paddingBottom: 'var(--space-section)' }}>
-              {!isMobile && <span style={{ 
-                fontSize: 'var(--type-caption)', 
-                color: c.muted,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                display: 'block',
-                marginBottom: 'var(--space-element)'
-              }}>The Axiom</span>}
-              <p style={{
-                fontSize: 'clamp(1.75rem, 4vw + 0.5rem, 4.5rem)',
-                fontWeight: 300,
-                color: c.text,
-                lineHeight: 1.12,
-                letterSpacing: '-0.02em',
-                maxWidth: '100%'
-              }}>
-                Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
-              </p>
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted,
+                  paddingTop: '0.25em'
+                }}>The Axiom</span>}
+                <p style={{
+                  fontSize: 'clamp(1.75rem, 4vw + 0.5rem, 4.5rem)',
+                  fontWeight: 300,
+                  color: c.text,
+                  lineHeight: 1.12,
+                  letterSpacing: '-0.02em'
+                }}>
+                  Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
+                </p>
+              </div>
             </div>
 
             {/* Bleeding line */}
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
             {/* ═══════════════════════════════════════════════════════════════
-                3. BEGIN READING — Full width CTA
+                3. BEGIN READING
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              {!isMobile && <span style={{ 
-                fontSize: 'var(--type-caption)', 
-                color: c.muted,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                display: 'block',
-                marginBottom: 'var(--space-element)'
-              }}>Begin</span>}
-              <button
-                onClick={() => {
-                  setExpandedCategories(prev => ({ ...prev, livros: true }));
-                  selectEntry('livros', 'vol4-opening');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 'clamp(12px, 2vw, 20px)',
-                  transition: 'opacity 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              >
-                {/* Circle arrow */}
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 'clamp(40px, 4vw, 52px)',
-                  height: 'clamp(40px, 4vw, 52px)',
-                  border: `1.5px solid ${c.text}`,
-                  borderRadius: '50%',
-                  flexShrink: 0
-                }}>
-                  <svg 
-                    width="clamp(14px, 1.5vw, 20px)" 
-                    height="clamp(14px, 1.5vw, 20px)" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke={c.text}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                  </svg>
-                </span>
-                <span style={{
-                  fontSize: 'var(--type-h1)',
-                  fontWeight: 400,
-                  color: c.text,
-                  letterSpacing: '-0.01em'
-                }}>
-                  Read Chapter I
-                </span>
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                {!isMobile && <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>Begin</span>}
+                <button
+                  onClick={() => {
+                    setExpandedCategories(prev => ({ ...prev, livros: true }));
+                    selectEntry('livros', 'vol4-opening');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'clamp(12px, 2vw, 20px)',
+                    transition: 'opacity 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  {/* Circle arrow */}
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 'clamp(40px, 4vw, 52px)',
+                    height: 'clamp(40px, 4vw, 52px)',
+                    border: `1.5px solid ${c.text}`,
+                    borderRadius: '50%',
+                    flexShrink: 0
+                  }}>
+                    <svg 
+                      width="clamp(14px, 1.5vw, 20px)" 
+                      height="clamp(14px, 1.5vw, 20px)" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke={c.text}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </span>
+                  <span style={{
+                    fontSize: 'var(--type-h1)',
+                    fontWeight: 400,
+                    color: c.text,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Read Chapter I
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Bleeding line */}
@@ -19451,47 +19450,55 @@ export default function SethaelWiki() {
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                5. CLOSING QUOTE — Full width
+                5. CLOSING QUOTE
                ═══════════════════════════════════════════════════════════════ */}
-            <div style={{ padding: 'var(--space-page)', paddingTop: 'var(--space-section)', paddingBottom: 'var(--space-section)' }}>
-              <blockquote style={{
-                margin: 0,
-                padding: 0,
-                maxWidth: '70ch'
-              }}>
-                <p style={{
-                  fontSize: 'var(--type-h2)',
-                  fontStyle: 'italic',
-                  color: c.text,
-                  lineHeight: 1.5,
-                  marginBottom: '12px'
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <div />}
+                <blockquote style={{
+                  margin: 0,
+                  padding: 0
                 }}>
-                  "The question is never whether we fall. The question is what remains when we do."
-                </p>
-                <cite style={{
-                  fontSize: 'var(--type-small)',
-                  color: c.muted,
-                  fontStyle: 'normal'
-                }}>
-                  — Vaethor Zumax, Letter to the King
-                </cite>
-              </blockquote>
+                  <p style={{
+                    fontSize: 'var(--type-h2)',
+                    fontStyle: 'italic',
+                    color: c.text,
+                    lineHeight: 1.5,
+                    marginBottom: '12px'
+                  }}>
+                    "The question is never whether we fall. The question is what remains when we do."
+                  </p>
+                  <cite style={{
+                    fontSize: 'var(--type-small)',
+                    color: c.muted,
+                    fontStyle: 'normal'
+                  }}>
+                    — Vaethor Zumax, Letter to the King
+                  </cite>
+                </blockquote>
+              </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                6. FOOTER — Simple full width
+                6. FOOTER
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-caption)', 
                   color: c.muted, 
                   opacity: 0.5
-                }}>
-                  © A work in progress. Literary fantasy.
-                </span>
-                <span style={{ 
-                  fontSize: 'var(--type-caption)', 
+                }}>©</span>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
+                  <span style={{ 
+                    fontSize: 'var(--type-caption)', 
+                    color: c.muted, 
+                    opacity: 0.5
+                  }}>
+                    {isMobile ? '© ' : ''}A work in progress. Literary fantasy.
+                  </span>
+                  <span style={{ 
+                    fontSize: 'var(--type-caption)', 
                   color: c.muted, 
                   opacity: 0.5
                 }}>
