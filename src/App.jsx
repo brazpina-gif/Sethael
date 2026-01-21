@@ -1,6 +1,139 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════════
+// ANIMATED NUMBER COMPONENT — Cronômetro Style
+// ═══════════════════════════════════════════════════════════════════════
+
+const AnimatedNumber = ({ value, duration = 1500 }) => {
+  const [displayValue, setDisplayValue] = useState('0');
+  const elementRef = useRef(null);
+  const animationRef = useRef(null);
+  
+  useEffect(() => {
+    // Reset on value change
+    setDisplayValue('0');
+    
+    const stringValue = String(value);
+    const hasPercent = stringValue.includes('%');
+    const hasComma = stringValue.includes(',');
+    const hasPlus = stringValue.includes('+');
+    const hasInfinity = stringValue.includes('∞');
+    const hasM = stringValue.includes('M');
+    const hasDash = stringValue.includes('-') && !stringValue.startsWith('-');
+    
+    if (hasInfinity) {
+      setDisplayValue('∞');
+      return;
+    }
+    
+    // Handle ranges like "80-90M"
+    if (hasDash) {
+      const parts = stringValue.split('-');
+      const firstNum = parseFloat(parts[0].replace(/[^0-9.]/g, '')) || 0;
+      const secondPart = parts[1];
+      const secondNum = parseFloat(secondPart.replace(/[^0-9.]/g, '')) || 0;
+      const suffix = secondPart.replace(/[0-9.]/g, '');
+      
+      const formatRange = (n1, n2) => {
+        return `${Math.floor(n1)}-${Math.floor(n2)}${suffix}`;
+      };
+      
+      let animated = false;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && !animated) {
+              animated = true;
+              const startTime = Date.now();
+              const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                setDisplayValue(formatRange(firstNum * eased, secondNum * eased));
+                if (progress < 1) {
+                  animationRef.current = requestAnimationFrame(animate);
+                } else {
+                  setDisplayValue(formatRange(firstNum, secondNum));
+                }
+              };
+              animationRef.current = requestAnimationFrame(animate);
+            }
+          });
+        },
+        { threshold: 0.3 }
+      );
+      
+      if (elementRef.current) observer.observe(elementRef.current);
+      return () => {
+        observer.disconnect();
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      };
+    }
+    
+    // Extract numeric part
+    const numericString = stringValue.replace(/[^0-9.]/g, '');
+    const targetNumber = parseFloat(numericString) || 0;
+    
+    // Format function
+    const formatNumber = (num) => {
+      let result = '';
+      if (hasComma) {
+        result = Math.floor(num).toLocaleString('en-US');
+      } else if (numericString.includes('.')) {
+        result = num.toFixed(1);
+      } else {
+        result = Math.floor(num).toString();
+      }
+      if (hasM) result += 'M';
+      if (hasPercent) result += '%';
+      if (hasPlus) result += '+';
+      return result;
+    };
+    
+    let animated = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !animated) {
+            animated = true;
+            
+            const startTime = Date.now();
+            const animate = () => {
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              
+              const currentValue = targetNumber * eased;
+              setDisplayValue(formatNumber(currentValue));
+              
+              if (progress < 1) {
+                animationRef.current = requestAnimationFrame(animate);
+              } else {
+                setDisplayValue(formatNumber(targetNumber));
+              }
+            };
+            
+            animationRef.current = requestAnimationFrame(animate);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+    
+    return () => {
+      observer.disconnect();
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [value, duration]);
+  
+  return <span ref={elementRef}>{displayValue}</span>;
+};
+
+// ═══════════════════════════════════════════════════════════════════════
 // TIMELINE DATA — Eras of Sethael
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -70,10 +203,10 @@ function HomeTimeline({ theme, onEraSelect }) {
   const [isAnimating, setIsAnimating] = useState(false);
   
   const c = theme === 'dark' ? {
-    bg: '#0a0a0a',
+    bg: '#080706',
     text: '#e5e5e5',
     muted: '#737373',
-    border: '#262626'
+    border: '#1f1d1b'
   } : {
     bg: '#fafafa',
     text: '#171717',
@@ -428,6 +561,15 @@ const DEFAULT_WIKI_DATA = {
   cosmology: {
     title: "Cosmology",
     icon: "Calendar",
+    landing: {
+      subtitle: "The Architecture of Existence",
+      description: "The cosmological framework of Sethael spans from the timeless void before creation to the inevitable depletion that governs all things. Here lies the fundamental axiom, the five orders of IULDAR, the progression of eras, and the metaphysical boundaries between what is and what could be.",
+      stats: [
+        { value: "57,000", label: "Years of History" },
+        { value: "5", label: "Cosmic Eras" },
+        { value: "5", label: "Orders of IULDAR" }
+      ]
+    },
     groups: [
       { key: "fundamentos", title: "FOUNDATIONS" },
       { key: "eras", title: "THE ERAS" },
@@ -569,14 +711,14 @@ Ends when peoples reinvent writing and begin to record history.
 | 44 AF | Duratheon Vael I dies |
 | 45-63 AF | Tharel Vael builds the 7 Great Temples |
 | 137 AF | House Senvarak coup |
-| 140-218 AF | Senara Senvarak "a Iluminada" reina |
+| 140-218 AF | Senara Senvarak "the Illuminated" reigns |
 | 218 AF | House Thurnavel coup |
 | 315-385 AF | Kravorn Vael II "o Subjugador" (70 anos) |
 | 350-400 AF | Kaeldur migration to The Spine |
 | ~650 AF | Iron of Kravaal **DEPLETED** |
-| 653-704 AF | Vaelan Vael "o Amado" reina |
-| 654 AF | Vaelan contrai NAKH-IS (the Depletion) |
-| 704 AF | Torn XVII suicida-se |
+| 653-704 AF | Vaelan Vael "the Beloved" reigns |
+| 654 AF | Vaelan contracts NAKH-IS (the Depletion) |
+| 704 AF | Torn XVII commits suicide |
 | 740-778 AF | Tornael "o Expansionista" reina |
 | 762 AF | Beginning of chronic trade deficit |
 | 777 AF | Tornael prepares infrastructure for campaign |
@@ -597,7 +739,7 @@ Ends when peoples reinvent writing and begin to record history.
 |---------|-----------|-----------|
 | **Eras (0-V)** | Framework cosmological | Leitor/Autor |
 | **AF (Anno Fundationis)** | Dataction in-world | Personagens |
-| **BF (Before Founding)** | Eventos pré-reino | Estudiosos |
+| **BF (Before Founding)** | Pre-kingdom events | Scholars |
 
 **There is no universal calendar.** Different civilizations count time differently.
 
@@ -643,7 +785,7 @@ Ends when peoples reinvent writing and begin to record history.
 
 ## ERA III — A PROFANATION
 *"When mortals went too far"*
-**Duration:** Decades (muito breve)
+**Duration:** Decades (very brief)
 
 | Event | Description |
 |--------|-----------|
@@ -661,10 +803,10 @@ Ends when peoples reinvent writing and begin to record history.
 
 | Event | Description |
 |--------|-----------|
-| Colapso total | Nenhuma civilizaction |
+| Colapso total | No civilization |
 | IULDAR petrified or hidden | World empty of guides |
 | Memory lost | All knowledge of previous eras disappears |
-| Ondas migratory | Povos fragmentam-se, esquecem |
+| Migratory waves | Peoples fragment, forget |
 
 ---
 
@@ -672,7 +814,7 @@ Ends when peoples reinvent writing and begin to record history.
 *"When mortals began anew"*
 **Duration:** ~3,000 years until the present
 
-### PRÉ-REINO (BF)
+### PRE-KINGDOM (BF)
 
 | Ano | Event |
 |-----|--------|
@@ -698,7 +840,7 @@ Ends when peoples reinvent writing and begin to record history.
 | Ano | Event | Governante |
 |-----|--------|------------|
 | 137 AF | House Senvarak coup | — |
-| 140-218 AF | "A Iluminada" — 78 anos, 12.000 executions | Senara Senvarak |
+| 140-218 AF | "The Illuminated" — 78 years, 12,000 executions | Senara Senvarak |
 | 218 AF | House Thurnavel coup | — |
 | 218-315 AF | Domain Thurnavel | Various |
 
@@ -710,7 +852,7 @@ Ends when peoples reinvent writing and begin to record history.
 | 315-350 AF | Northern Massacre | — |
 | 350-400 AF | Kaeldur migration to The Spine | — |
 | 386-500 AF | Consolidaction post-Kravorn | Various |
-| 494-653 AF | "Centuries Dourados" — relativa paz | Various |
+| 494-653 AF | "Golden Centuries" — relative peace | Various |
 | ~650 AF | **Iron of Kravaal DEPLETED** | — |
 
 **ERA DYNASTIC IV — DECLINE (653-778 AF)**
@@ -718,7 +860,7 @@ Ends when peoples reinvent writing and begin to record history.
 | Ano | Event | Governante |
 |-----|--------|------------|
 | 653-704 AF | "The Beloved" — loved without boundaries | Vaelan Vael |
-| 654 AF | Vaelan contrai NAKH-IS (the Depletion) | — |
+| 654 AF | Vaelan contracts NAKH-IS (the Depletion) | — |
 | 704 AF | Suicide — threw himself from Tower of Kings | Torn XVII |
 | 704-740 AF | Instabilidade — rei financeiramente fraco | Aldaran Vael |
 | 740-778 AF | "The Expansionist" — prepares war | Tornael |
@@ -737,7 +879,7 @@ Ends when peoples reinvent writing and begin to record history.
 | Multiple IULDAR existed | One god: Sthendur |
 | ~1 million years of silence | "Time before the tribes had names" |
 | TAELUN was coded by trauma | Language evolved naturally |
-| O Semeador criou tudo | Sthendur criou tudo |
+| The Seeder created everything | Sthendur created everything |
 | TauTek existed | No memory |
 
 ---
@@ -757,291 +899,387 @@ Ends when peoples reinvent writing and begin to record history.
       "nomenclatura": {
         group: "referencia",
         title: "Naming System — Complete Guide",
-        content: `**NAMING IN SETHAEL**
-*A Guide to Creating Rich, Varied Names*
+        content: `**SISTEMA DE NOMENCLATURA DE SETHAEL**
+*Complete Guide to Names by Region, People, and Social Class*
 
 ---
 
-## THE PROBLEM WITH MONOTONY
+# PART I: THE SIX PHONETIC SYSTEMS
 
-Duratheon is a 778-year-old empire built on conquest, migration, and trade. Names should reflect:
-- **Historical layers** — different eras left different linguistic sediments
-- **Social stratification** — nobles, merchants, artisans, laborers sound different
-- **Regional origins** — coastal, mountain, plains, foreign
-- **Ethnic backgrounds** — conquerors, conquered, immigrants, outsiders
-
-**Rule:** If all names sound the same, the world feels flat.
+Each people developed distinct sound patterns based on:
+- **Climate and geography** — guttural sounds in the cold, fluid in the heat
+- **Religion and values** — "sacred" vs "profane" sounds
+- **Contact with other peoples** — loans, hybridization
+- **Social class** — elite imitates the capital, common folk maintain roots
 
 ---
 
-## THE SEVEN PHONETIC FAMILIES
+## 1. DURATHEON — The Imperial System
 
-### 1. ARCHAIC NOBILITY (Pre-Kravorn Era)
-**Sound:** Soft, flowing, Latin/Romance influence
-**Who uses it:** Ancient houses, old aristocracy, traditional families
-**Characteristics:** Vowel-heavy, melodic, dignified
+### Base Phonetics (ZANUAX)
+**Origin:** Descendant of primordial TAELUN, filtered through 778 years of isolated development.
 
-| First Names | Surnames |
-|-------------|----------|
-| Cassian | Aldaran |
-| Severin | Coravel |
-| Aldric | Melloren |
-| Miren | Valantis |
-| Corin | Sevanar |
-| Lucien | Dorienne |
-| Elowen | Amareth |
-| Theron | Calissian |
+| Element | Description |
+|----------|-----------|
+| Vowels | Long with umlaut: ä, ë, ï, ö, ü, ō |
+| Consonants | Hard: K, TH, V, Z |
+| Endings | -ael, -orn, -eth, -ar |
+| Structure | NAME + SURNAME (or HOUSE) |
 
-**Sounds to use:** soft C, L, R, N, vowel clusters (ae, ie, ou)
-**Avoid:** harsh K, hard G, consonant clusters
+### RESERVED ROOTS (NEVER VIOLATE)
 
----
-
-### 2. MILITARY/KRAVORN ERA
-**Sound:** Hard, Germanic/Norse influence
-**Who uses it:** Military houses, generals, warriors, northern provinces
-**Characteristics:** Consonant-heavy, abrupt, powerful
-
-| First Names | Surnames |
-|-------------|----------|
-| Sigmar | Gravorn |
-| Ragnor | Stennvik |
-| Gundar | Kolrath |
-| Bjorn | Thurgard |
-| Hrothgar | Ironmark |
-| Valdis | Kraggen |
-| Tormund | Steinholt |
-| Grimwald | Ashburn |
-
-**Sounds to use:** hard G, K, TH, R, -orn, -ard, -vik, -mark
-**Avoid:** soft vowels, flowing syllables
+| Root | Reserved For | NEVER Use In |
+|------|----------------|---------------|
+| **VAEL-** | Royal House only | Any other character |
+| **STHEND-** | Religion only | Secular people or places |
+| **THUL-** | Sacred places | Common people |
+| **-AEL** | Realeza/divino | Plebeus |
+| **SETH-** | O mundo (Sethael) | Pessoas |
 
 ---
 
-### 3. MERCANTILE/COASTAL (Mediterranean)
-**Sound:** Greek/Italian influence, merchant class
-**Who uses it:** Traders, shipowners, port administrators, new money
-**Characteristics:** Musical, practical, cosmopolitan
+### REGIONAL VARIATIONS OF DURATHEON
 
-| First Names | Surnames |
-|-------------|----------|
-| Demos | Kyrian |
-| Kyros | Thessalon |
-| Nikos | Pelagios |
-| Theron | Andreou |
-| Stavros | Karamanlis |
-| Alexios | Mavros |
-| Panos | Kallistos |
-| Demetrios | Nikolaides |
+#### A) VAELHEM THEL (Capital — 500.000)
+Mix of all influences. Elite imitates the archaic; common folk speak hybrid.
 
-**Sounds to use:** -os, -is, -ou, K, TH, soft vowels
-**Avoid:** harsh consonant clusters
+| Class | Pattern | Examples |
+|--------|--------|----------|
+| Royalty | -AEL mandatory | Tornael, Kravael |
+| High nobility | Softened archaic | Cassian, Aldric, Severin |
+| Nobreza menor | Misturado | Luxaren, Regulus |
+| Mercadores | Costeiro/Grego | Demos, Kyros, Nikos |
+| Workers | Short, practical | Bren, Mak, Tam |
+| Assimilated Vethurim | Hybrid | Tariq Senthek, Farid Corvain |
 
----
+**RULE:** In the capital, the surname indicates origin; the first name indicates aspiration.
 
-### 4. VETHURIM (Immigrants/Outsiders)
-**Sound:** Arabic/Persian/Moorish influence
-**Who uses it:** Craftsmen, textile workers, shipbuilders, scholars from the coast
-**Characteristics:** Liquid consonants, flowing, exotic to Duratheon ears
+#### B) KRAVETHORN (Porto Militar — 70.000)
+Hard, Germanic, military sound. Honors Kravorn.
 
-| First Names | Surnames |
-|-------------|----------|
-| Tariq | Bashani |
-| Zuhair | Khaledi |
-| Kamil | Rashidi |
-| Nasir | Almani |
-| Farid | Sadouri |
-| Jamal | Harrouzi |
-| Rashid | Kassani |
-| Omar | Benfarid |
+| Type | Pattern | Examples |
+|------|--------|----------|
+| Officers | KRAV- as honor | Kraveth, Kravuum |
+| Sailors | Nordic | Sigmar, Ragnor, Bjorn |
+| Surnames | Hard compounds | Ironmark, Stennvik, Kolrath |
 
-**Sounds to use:** -iq, -ir, -id, -ani, -idi, soft H, liquid L/R
-**Note:** Vethurim build the best ships and weave the finest textiles. Duratheon depends on them but despises them.
+**Phonetics:** Heavy consonants (GR, KR, STR, TH). Short vowels. Endings in -vik, -mark, -gard, -orn.
 
----
+#### C) VELUTHAAR (Porto Comercial Sul — 40.000)
+Mediterranean, mercantile, cosmopolitan. Strong Vethurim influence.
 
-### 5. COMMON/WORKING CLASS
-**Sound:** Short, practical, Anglo-Saxon influence
-**Who uses it:** Soldiers, servants, artisans, farmers, laborers
-**Characteristics:** One or two syllables, no pretension, functional
+| Type | Pattern | Examples |
+|------|--------|----------|
+| Armadores | Grego | Kyros, Demos, Stavros |
+| Merchants | Mixed | Nikos Pelagios |
+| Local Vethurim | Softened Arabic | Tariq, Nasir, Kamil |
+| Surnames | Maritime | Pelagios, Tessalon |
 
-| First Names | Surnames |
-|-------------|----------|
-| Bren | Thatcher |
-| Mak | Smithson |
-| Stenn | Warden |
-| Venner | Cooper |
-| Coll | Fletcher |
-| Tam | Miller |
-| Renn | Stone |
-| Garth | Marsh |
+**Phonetics:** Endings in -os, -is, -ou. Open vowels. Musical rhythm.
 
-**Sounds to use:** single syllables, occupational surnames, -er, -son, -man
-**Avoid:** elaborate suffixes, multiple syllables
+#### D) KRAVAAL (Minas Esgotadas — 60.000)
+Working-class, pragmatic. Functional names, not decorative.
 
----
+| Type | Pattern | Examples |
+|------|--------|----------|
+| Miners | Monosyllabic | Bren, Stenn, Coll |
+| Foremen | Hybrid | Garth Ironmark |
+| Surnames | Occupational | Smithson, Thatcher, Stone |
 
-### 6. EASTERN/KAELDUR (Mountain People)
-**Sound:** Celtic/Gaelic influence with harsh edges
-**Who uses it:** The Kaeldur (People of Fire), mountain dwellers, northern resistance
-**Characteristics:** Consonant clusters, guttural, rhythmic
+#### E) ZUMARAK (Agricultural — 30,000)
+Rural, conservative, preserved archaic. Speaks as the capital spoke 200 years ago.
 
-| First Names | Surnames |
-|-------------|----------|
-| Brennan | Kaelrath |
-| Cormac | Dunmore |
-| Fintan | Blackthorn |
-| Seamus | Ironforge |
-| Ronan | Stormhold |
-| Declan | Ashwood |
-| Niall | Fireborn |
-| Ciaran | Coldheart |
+| Type | Pattern | Examples |
+|------|--------|----------|
+| Fazendeiros | Antigo simplificado | Aldwen, Corin, Miren |
+| Surnames | Geographic | Marsh, Field, Hillborn |
 
-**Sounds to use:** -an, -ac, -in, compound surnames, nature references
-**Note:** Kaeldur names often reference fire, iron, or mountains — their survival elements.
+#### F) SENVAREK (Pesca — 25.000)
+Coastal, practical, with Vethurim loanwords.
+
+| Type | Pattern | Examples |
+|------|--------|----------|
+| Fishermen | Short + maritime | Tam Netsman, Renn Saltborn |
+| Surnames | Sea and work | Netsman, Saltborn, Tidecaller |
 
 ---
 
-### 7. CLERICAL/RELIGIOUS
-**Sound:** Latinized, formal, ritualistic
-**Who uses it:** Priests, scholars, librarians, temple officials
-**Characteristics:** Three syllables common, -us/-ar endings, solemn
+## 2. KAELDUR — The Fire People
 
-| First Names | Surnames |
-|-------------|----------|
-| Verathar | Senthek |
-| Justinian | Ecclesius |
-| Septimus | Canonar |
-| Aurelius | Scriptoris |
-| Benedictus | Sacreval |
-| Ignatius | Templum |
-| Cornelius | Archivum |
-| Theodorus | Sanctar |
+### Base Phonetics (KAELDREK)
+**Origin:** Developed in isolation in the mountains for 400 years.
 
-**Sounds to use:** -us, -ar, -ius, Latin roots
-**Note:** Religious names often become surnames over generations.
+**Characteristics:**
+- Guttural consonants: KH, VR, hard TH
+- Short, sharp vowels
+- Structure: NAME + CLANNAME
+- No soft sounds (P, B, M are rare)
+- Percussive rhythm (like hammering metal)
 
----
+### Name Elements
 
-## MIXING AND MATCHING
+| Element | Meaning | Examples |
+|----------|-------------|----------|
+| VRETH- | Strength, mountain | Vreth, Vrethek |
+| KAEL- | Fogo | Kaelthen, Kaelnar |
+| THOR- | Honor, sacrifice | Thorvek, Thorak |
+| SKAR- | Scar, survival | Skarlen, Skael |
+| -KHEN | Guardian | Thaelkhen |
+| -NAR | Master | Kaelnar (king = master of fire) |
+| -VEK | Jovem guerreiro | Thorvek |
 
-Real societies don't have clean categories. Use combinations:
+**Male names:** Vreth, Thorvek, Kaelthen, Brennak, Skarlen
+**Female names:** Skael, Vraela, Thaelkhen, Kaelwen, Vrethis
 
-| Character | Origin Mix | Name | Meaning |
-|-----------|-----------|------|---------|
-| Noble with military ancestor | Archaic + Kravorn | Lucien Gravorn | Soft first name, hard surname |
-| Merchant's daughter married to noble | Mercantile + Archaic | Thessa Aldaran | Coastal wife in old family |
-| Vethurim scholar in court | Vethurim + Clerical | Tariq Senthek | Immigrant in religious role |
-| Common soldier knighted | Common + Military | Stenn Ironmark | Elevated but roots show |
-| Coastal noble | Archaic + Mercantile | Severin Pelagios | Old blood, sea money |
+### Lugares Kaeldur
 
----
-
-## GEOGRAPHICAL SOUND PATTERNS
-
-| Region | Dominant Sound | Example Names |
-|--------|---------------|---------------|
-| **Vaelhem Thel (Capital)** | Archaic + Mixed | All types mingle here |
-| **Northern Provinces** | Kravorn Era | Sigmar, Ragnor, Gundar |
-| **Veluthaar (South Coast)** | Mercantile + Vethurim | Kyros, Tariq, Demos |
-| **Western Plains** | Common | Bren, Mak, Tam |
-| **Eastern Mountains** | Kaeldur | Cormac, Brennan, Fintan |
-| **Temple Districts** | Clerical | Verathar, Justinian |
+| Structure | Meaning | Examples |
+|-----------|-------------|----------|
+| -THREK | Fortaleza, bunker | Kael-threk |
+| -LAER | Hall, chamber | Vrethlaer, Aelvlaer, Durlaer |
+| -SKEL | Entrada, portal | Thalskel |
+| VRETH- | Grande, principal | Vrethkaeldur (a cordilheira) |
 
 ---
 
-## HOUSE NAMES VS PERSONAL NAMES
+## 3. VETHURIM — The Wind People
 
-**Old Houses** (founded pre-Kravorn):
-- Surnames sound archaic: Aldaran, Coravel, Sevanar
-- Members may have modern first names
+### Base Phonetics
+**Origin:** Descendants of the "wind peoples" of Ungavel. Arab/Persian influence.
 
-**Military Houses** (founded during expansion):
-- Surnames sound hard: Gravorn, Kolrath, Stennvik
-- Often compound words (Iron+mark, Storm+hold)
+**Characteristics:**
+- Liquid consonants: R, L, aspirated H
+- Long and fluid vowels
+- Endings: -iq, -ir, -id, -ani, -idi
+- Prefixos: AL-, BEN-, ABU-
 
-**Mercantile Houses** (new money):
-- Surnames may be occupational origins: Tessalon (textile), Pelagios (sea)
-- First names trend cosmopolitan
+### Name Structure
 
-**Immigrant Families**:
-- Keep ethnic surnames: Bashani, Khaledi, Rashidi
-- May adopt local first names for assimilation: "Corin Bashani"
+| Type | Structure | Example |
+|------|-----------|---------|
+| Tradicional | Nome + ben + Pai | Tariq ben Rashid |
+| Geographic | Name + al-City | Farid al-Keth |
+| Clan | Name + Clan | Kamil Bashani |
+| Feminine | Name + bint + Father | Layla bint Omar |
 
----
+**Male names:** Tariq, Nasir, Kamil, Farid, Rashid, Zuhair, Jamal, Omar
+**Female names:** Layla, Fatima, Amira, Zahra, Samira, Nadia
+**Clan surnames:** Bashani, Khaledi, Rashidi, Almani, Sadouri, Kassani
 
-## QUICK REFERENCE TABLE
+### Places in Vethurack
 
-| Need a name for... | Use family... | Sound like... |
-|-------------------|---------------|---------------|
-| Ancient noble | 1 (Archaic) | Cassian Aldaran |
-| General | 2 (Military) | Ragnor Kolrath |
-| Merchant | 3 (Mercantile) | Nikos Thessalon |
-| Shipbuilder | 4 (Vethurim) | Tariq Bashani |
-| Soldier | 5 (Common) | Bren Thatcher |
-| Kaeldur warrior | 6 (Eastern) | Cormac Dunmore |
-| Priest | 7 (Clerical) | Verathar Senthek |
-| Mixed origin | Combine 2 families | Lucien Ironmark |
+| City | Meaning | Function |
+|--------|-------------|--------|
+| **Thul-Varen** | Trade Port | Banking center |
+| **Keth-Arum** | Place of Timbers | Shipyards |
+| **Thornask** | Shadow Market | Labor trade |
 
----
+### Vethurim in Duratheon (Hybridization)
 
-## AVOIDING REPETITION
+| Generation | Pattern | Example |
+|---------|--------|---------|
+| 1st (immigrant) | Vethurim name + origin | Tariq al-Keth |
+| 2nd (child) | Hybrid name + fixed surname | Farid Bashani |
+| 3rd+ (assimilated) | Local name + Vethurim surname | Corin Bashani |
+| Fully assimilated | Local name + local surname | Aldric Saltborn |
 
-**The -avel/-orn/-eth Trap:**
-We overuse certain suffixes. Solutions:
-
-| Instead of | Try |
-|-----------|-----|
-| -avel | -aran, -ien, -os, -ani |
-| -orn | -vik, -mark, -gard, -hold |
-| -eth | -ic, -ian, -ar, -id |
-| -ar | -ius, -on, -ou, -en |
-
-**Sound Diversity Checklist:**
-Before finalizing a name, ask:
-1. Does it sound like other names in the same scene?
-2. Does it fit the character's social class?
-3. Does it reflect their regional/ethnic origin?
-4. Would it be memorable to readers?
+**Vaethor Zumax:** Perfect example of hybridization — Duratheon name with Vethurim echo, surname from Zumarack (immigrant village).
 
 ---
 
-## EXISTING CANON NAMES (For Reference)
+## 4. ORVAINÊ — The Observers
 
-| Name | Family Type | Notes |
-|------|-------------|-------|
-| Tornael Vael | Archaic | Royal house |
-| Senthara | Noble | Queen, diplomatic |
-| Aelara | Archaic | Princess |
-| Kravorn | Military | The Subjugator |
-| Vaethor Zumax | Mixed | Vethurim in clerical role |
-| Luxaren Thalorn | Mercantile + Naval | New money naval house |
-| Velira Sethak | Mercantile | Merchant family |
-| Vreth Kaeldur | Eastern | Mountain king |
-| Kethvar Kethnar | Military | Mining administrator |
+### Base Phonetics (ORVAINOIS)
+**Origin:** Island isolation + focus on refinement. French influence.
+
+**Characteristics:**
+- Sons nasais: -aine, -enne, -on
+- Soft consonants: V, L, rolling R
+- Elegance above all
+- Nunca sons guturais (considerados vulgares)
+- Structure: NAME + "de" + MAISON
+
+### As Cinco Maisons
+
+| Maison | Specialty | Example |
+|--------|---------------|---------|
+| Valtaire | Sovereign loans | Lucien de Valtaire |
+| Sevrenne | Intelligence | Margaux de Sevrenne |
+| Doranthis | Maritime trade | Cassien de Doranthis |
+| Aurivel | Precious metals | Théodore de Aurivel |
+| Caelinthe | Mercenaries | Vivienne de Caelinthe |
+
+**Male names:** Lucien, Cassien, Théodore, Émile, Laurent, René
+**Female names:** Margaux, Vivienne, Céline, Amélie, Aurélie, Sylvaine
+
+**RULE:** In Orvainê, the surname (Maison) is more important than the personal name.
 
 ---
 
-## CREATING NEW NAMES: ALGORITHM
+## 5. LANDS BEYOND — O Mundo Desconhecido
 
-1. **Determine social position** → Pick primary family
-2. **Check regional origin** → Modify or add secondary family
-3. **Consider era of founding** → Older = softer sounds
-4. **Check for repetition** → Avoid same suffix as nearby characters
-5. **Say it aloud** → Does it flow? Is it memorable?
+### VAELORN (Kingdom that does not know Duratheon exists)
 
-**Example:**
-- Need: Naval shipbuilder, high skill, Vethurim origin
-- Primary: Vethurim (4)
-- Secondary: Mercantile (3) for coastal trade
-- Result: **Tariq Bashani** or **Farid Pelagios**
+**Phonetic theory:** Descends from the same tribes as Duratheon, but remained in the Lands Beyond. Their language is a "cousin" of ZANUAX — more archaic, without the military hardness of Kravorn.
 
-**Example:**
-- Need: Old noble, mineral wealth, now poor
-- Primary: Archaic (1)
-- Secondary: Military (2) for northern mines
-- Result: **Aldric Stennvik** or **Severin Kolrath**`,
-        tags: ["nomenclatura", "nomes", "referencia", "worldbuilding", "guide"]
+| Duratheon | Vaelorn (cognato) |
+|-----------|-------------------|
+| VAEL | VAEL (identical) |
+| -orn (military) | -wen (soft) |
+| KRAV- | CRAV- (softer) |
+| THUL- | TUL- (simplificado) |
+
+**Nomes:** Vaelwen, Tularen, Sethen, Craven (masc.) / Aelwen, Vaelith, Tulis (fem.)
+
+**RULE:** Vaelorn sounds like "Duratheon if Kravorn had never existed."
+
+---
+
+## 6. ANCIENT PEOPLES (Era II — Historical Reference)
+
+These names survive in fragments — ancient place names, religious titles, surname roots:
+
+| People | Original region | Sound | Fragments |
+|------|-----------------|-----|------------|
+| KETHRAN | Montanhas | Celta duro | Keth-, -ran |
+| THULVAREN | Forests | Elvish | Thul-, -varen |
+| AKRELAN | Costas | Grego arcaico | Akre-, -lan |
+| TAUTEK | Plains | Technical, cold | Tau-, -tek |
+
+---
+
+# PART II: DIFFERENTIATION RULES
+
+## Regra 1: LUGARES vs PESSOAS
+
+| Category | Structure | Examples |
+|-----------|-----------|----------|
+| COMPOUND PLACES | XXX-YYY (hyphen) | Vel-Nakh, Kael-threk |
+| LUGARES simples | Duas palavras | Vaelhem Thel, Lands Beyond |
+| PEOPLE | Never hyphen | Senthara, Vaethor |
+| COSMIC | CAPITALS or apostrophe | IULDAR, Thul'Kar |
+
+## Regra 2: MESMA CENA = SONS DIFERENTES
+
+Before naming characters in a scene:
+1. Do the names rhyme? → Change one
+2. Start the same? → Change one
+3. Same number of syllables? → Consider varying
+4. Reader can distinguish out loud? → Final test
+
+**RUIM:** Theron, Lady Corvain, Thaelor conversavam.
+**BOM:** Aldric, Lady Corvain, Maestro Duanax conversavam.
+
+## Regra 3: CLASSE SOCIAL NO SOM
+
+| Class | Syllables | Complexity | Example |
+|--------|---------|--------------|---------|
+| Royalty | 3-4 | High, unique sounds | Tornael Vael |
+| Alta nobreza | 2-3 | Elegante | Cassian Aldaran |
+| Nobreza menor | 2-3 | Misturada | Luxaren Thalorn |
+| Merchants | 2-3 | Cosmopolitan | Kyros Pelagios |
+| Trabalhadores | 1-2 | Funcional | Bren Stone |
+
+## Regra 4: GEOGRAFIA NO SOM
+
+| Origin | Characteristic | How it sounds |
+|--------|----------------|----------|
+| Capital | Misturado, "correto" | Neutro |
+| Military north | Hard, Germanic | Aggressive |
+| Commercial south | Mediterranean | Musical |
+| Agricultural countryside | Archaic, soft | Old-fashioned |
+| Fishing coast | Short, practical | Direct |
+| Foreign | Clearly different | Exotic |
+
+---
+
+# PART III: CANONICAL RENAMINGS
+
+## Personagens RENOMEADOS
+
+| Anterior | Problema | NOVO NOME |
+|----------|----------|-----------|
+| Setharen Kravos | Confuses with Sethael | **KEPT** (author preferred to keep) |
+| Velira Sethak | Sethak → Sethael | **Velira Tessalon** ✓ |
+| Theron Agrias | Confuses with Thornavel | **Cassien Agrias** ✓ |
+| Lady Thornavel | Confuses with Theron | **Lady Corvain** ✓ |
+| Thaelor Duanax (maestro) | = Thaelor Venmuth (pintor) | **Maestro Duanax** ✓ |
+| General Kraveth Vaelmar | Confuses with Krav | **General Vaelmar** ✓ |
+| Lord Velaren Keth | Confuses with Velira | **Lord Kethmar** ✓ |
+| Lord Tharek Senvar | Confuses with Senthara | **Lord Tharek Kallistos** ✓ |
+
+## Personagens MANTIDOS
+
+| Nome | Por Que Funciona |
+|------|------------------|
+| Senthara | Unique, royal feminine, memorable |
+| Tornael | -AEL marca realeza |
+| Krav | Curto, marca juventude |
+| Aelara | Royal feminine, distinct from mother |
+| Vaethor Zumax | Perfect hybrid (assimilated Vethurim) |
+| Vreth | Authentic Kaeldur |
+| Luxaren | Soa "novo rico" |
+| Thorvek | Kaeldur, -VEK marca jovem guerreiro |
+| Skael | Kaeldur feminine, SKAR- = survival |
+
+---
+
+# PARTE IV: LISTAS DE NOMES PRONTOS
+
+## DURATHEON — Nobreza Antiga
+**Male:** Cassian, Aldric, Severin, Corin, Lucien, Aurelian
+**Female:** Elowen, Miren, Isara, Caelia, Lirien, Amareth
+**Surnames:** Aldaran, Corvain, Melloren, Valantis, Sevanar, Dorienne
+
+## DURATHEON — Militar
+**Male:** Sigmar, Ragnor, Gundar, Bjorn, Hrothgar, Valdis, Tormund
+**Female:** Sigrid, Brunhild, Astrid, Freya, Helga
+**Surnames:** Gravorn, Stennvik, Kolrath, Thurgard, Ironmark, Kraggen
+
+## DURATHEON — Mercantil
+**Male:** Demos, Kyros, Nikos, Stavros, Alexios, Panos
+**Female:** Thessa, Kyra, Calla, Doria, Melina
+**Surnames:** Pelagios, Tessalon, Kallistos, Nikolaides, Andreou
+
+## DURATHEON — Comum
+**Male:** Bren, Mak, Stenn, Coll, Tam, Renn, Garth
+**Female:** Nell, Meg, Bess, Wren, Liss
+**Surnames:** Thatcher, Smithson, Stone, Miller, Cooper, Fletcher
+
+## VETHURIM
+**Male:** Tariq, Nasir, Kamil, Farid, Rashid, Zuhair, Jamal, Omar
+**Female:** Layla, Amira, Zahra, Samira, Nadia, Fatima
+**Surnames:** Bashani, Khaledi, Rashidi, Almani, Sadouri, Kassani
+
+## KAELDUR
+**Male:** Vreth, Thorvek, Kaelthen, Brennak, Skarlen, Vraek
+**Female:** Skael, Vraela, Thaelkhen, Kaelwen, Vrethis, Thornae
+**Clannames:** Kaeldur, Vrethkhen, Thornarak, Skarlaer
+
+## ORVAINÊ
+**Male:** Lucien, Cassien, Théodore, Émile, Laurent, René
+**Female:** Margaux, Vivienne, Céline, Amélie, Aurélie, Sylvaine
+**Maisons:** de Valtaire, de Sevrenne, de Doranthis, de Aurivel, de Caelinthe
+
+---
+
+# CHECKLIST FINAL
+
+Before using a name:
+
+☐ Sounds different from other names in the same scene?
+☐ Reflects the character's social class?
+☐ Reflects the region of origin?
+☐ Avoids reserved roots (VAEL-, SETH-, STHEND-)?
+☐ Would be memorable for a reader?
+☐ Can I pronounce it out loud without stumbling?
+☐ If a place, has hyphen or two words?
+☐ If a person, does NOT have hyphen?
+
+---
+
+*"A name is the first thing a reader learns about a character. If it confuses the reader, you've lost before you began."*`,
+        tags: ["nomenclature", "names", "reference", "worldbuilding", "guide", "system"]
       },
       "casas-duratheon": {
         group: "referencia",
@@ -1060,64 +1298,64 @@ Before finalizing a name, ask:
         ┌───────────────┼───────────────┐
         │               │               │
    CASAS MAIORES   CASAS MENORES   CASAS MERCANTIS
-   (Conselho Real)  (Nobreza)      (Sem título)
+   (Royal Council)  (Nobility)      (Without title)
 \`\`\`
 
-**Casas Maiores:** Têm assento no Conselho Real, controlam esferas de poder essenciais.
-**Casas Menores:** Nobreza sem assento no Conselho, mas com títulos e terras.
-**Casas Mercantis:** Riqueza sem título formal — comerciantes, artesãos, intermediários.
+**Major Houses:** Have seats on the Royal Council, control essential spheres of power.
+**Minor Houses:** Nobility without seats on the Council, but with titles and lands.
+**Merchant Houses:** Wealth without formal title — merchants, artisans, intermediaries.
 
 ---
 
-## A CASA REAL
+## THE ROYAL HOUSE
 
 ### HOUSE VAEL — Os Acumuladores
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Significado | De VAEL- (acumular, possuir) |
-| Fundação | Ano 1 AF — Duratheon Vael I |
-| Sede | Palácio de Vaelhem Thel |
-| Cores | Branco e Dourado |
-| Símbolo | Seis pilares sob um sol |
-| Lema | "Dürärōm" — "Duraremos para sempre" |
+| Meaning | From VAEL- (to accumulate, possess) |
+| Foundation | Year 1 AF — Duratheon Vael I |
+| Seat | Palace of Vaelhem Thel |
+| Colors | White and Gold |
+| Symbol | Six pillars under a sun |
+| Motto | "Dürärōm" — "We shall endure forever" |
 
-**Padrão de nomes:**
-- Masculinos: terminam em -ael ou -orn (sagrado/nobre)
-- Femininos: terminam em -ela ou -ara
-- Raízes preferidas: TORN-, KRAV-, DUR-, VAEL-
+**Naming pattern:**
+- Male: end in -ael or -orn (sacred/noble)
+- Feminine: end in -ela or -ara
+- Preferred roots: TORN-, KRAV-, DUR-, VAEL-
 
 **Membros conhecidos:**
-| Nome | Posição | Era |
+| Name | Position | Era |
 |------|---------|-----|
-| Torn Vael | Fundador da linhagem | ~800 BF |
+| Torn Vael | Founder of the lineage | ~800 BF |
 | Duratheon Vael I | Primeiro rei | 1-44 AF |
 | Kravorn Vael II | "O Subjugador" | 315-385 AF |
-| Vaelan Vael | "O Amado" | 653-704 AF |
-| Aldaran Vael | Rei da instabilidade | 704-740 AF |
+| Vaelan Vael | "The Beloved" | 653-704 AF |
+| Aldaran Vael | King of instability | 704-740 AF |
 | Tornael Vael | "O Expansionista" | 740-778 AF |
-| Krav Vael (XIX) | Príncipe, depois rei | 778 AF |
+| Krav Vael (XIX) | Prince, later king | 778 AF |
 | Senthara | Rainha consorte | 778 AF |
-| Aelara Vael | Princesa, 12 anos | 778 AF |
+| Aelara Vael | Princess, 12 years old | 778 AF |
 
 ---
 
 ## AS CASAS MAIORES
 
-### HOUSE THALORN — Os do Profundo
+### HOUSE THALORN — The Deep Ones
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Naval — portos, frota, comércio marítimo |
-| Significado | THAL- (profundo) + -orn (nobre) |
+| Sphere | Naval — ports, fleet, maritime trade |
+| Meaning | THAL- (deep) + -orn (noble) |
 | Sede | Kravethorn (porto militar), Veluthaar (porto comercial) |
-| Cores | Azul-marinho e Prata |
+| Colors | Navy Blue and Silver |
 | Lema | "Thalōm säbärōm" — "Conhecemos o profundo" |
 
-**Poder:** Controlam a frota mercante e os portos do reino. Administram o comércio marítimo, as taxas portuárias, e a logística naval.
+**Power:** They control the merchant fleet and the kingdom's ports. They administer maritime trade, port fees, and naval logistics.
 
 **Membro conhecido:**
-- **Luxaren Thalorn** — Administrador dos portos de Veluthaar. Homem de ~35 anos, rosto estreito, nariz pontudo. Casado com Velira Sethak. Inseguro, controlador. "Um bom marido — se chamarmos assim quem provê conforto e posição."
+- **Luxaren Thalorn** — Port administrator of Veluthaar. Man of ~35 years, narrow face, pointed nose. Married to Velira Tessalon. Insecure, controlling. "A good husband — if we call that someone who provides comfort and position."
 
 ---
 
@@ -1125,35 +1363,35 @@ Before finalizing a name, ask:
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Contratos — justiça, transações, disputas legais |
-| Significado | CORV- (corvo, observador) + -ain (agente) |
-| Sede | Tribunal de Vaelhem Thel |
-| Cores | Preto e Branco |
-| Lema | "Toda transação tem seu preço" |
+| Sphere | Contracts — justice, transactions, legal disputes |
+| Meaning | CORV- (raven, observer) + -ain (agent) |
+| Seat | Court of Vaelhem Thel |
+| Colors | Black and White |
+| Motto | "Every transaction has its price" |
 
-**Poder:** Controlam os contratos. Toda transação comercial em Duratheon precisa do selo Corvain para ter validade legal. Heranças, disputas de terra, acordos mercantis — tudo passa por eles. Cada selo, uma taxa. Cada disputa, uma porcentagem. A família não conquista territórios — cobra para que outros conquistem legalmente.
+**Power:** They control the contracts. Every commercial transaction in Duratheon needs the Corvain seal to be legally valid. Inheritances, land disputes, merchant agreements — everything passes through them. Every seal, a fee. Every dispute, a percentage. The family doesn't conquer territories — they charge so others can conquer legally.
 
-**Riqueza:** Provavelmente a família mais rica do reino depois dos Vael. Séculos de acumulação silenciosa.
+**Wealth:** Probably the richest family in the kingdom after the Vaels. Centuries of silent accumulation.
 
 **Membro conhecido:**
-- **Regulus Corvain** — ~50 anos. Famoso por seu pragmatismo. Não usa roupas coloridas — sempre preto, sempre a mesma roupa. Diz que pensar em vestimenta é perda de tempo que poderia ser gasto revisando contratos. Sorri sem mostrar os dentes.
+- **Regulus Corvain** — ~50 years old. Famous for his pragmatism. Doesn't wear colorful clothes — always black, always the same outfit. Says that thinking about clothing is wasted time that could be spent reviewing contracts. Smiles without showing teeth.
 
 ---
 
-### HOUSE STENNVIK — Os das Montanhas de Ferro
+### HOUSE STENNVIK — Those of the Iron Mountains
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Mineração — ferro, metais, recursos do subsolo |
-| Significado | STENN- (pedra/aço) + -vik (fortaleza) |
-| Sede | Minas do Leste (esgotadas) |
-| Cores | Cinza e Ferrugem |
+| Sphere | Mining — iron, metals, underground resources |
+| Meaning | STENN- (stone/steel) + -vik (fortress) |
+| Seat | Eastern Mines (depleted) |
+| Colors | Grey and Rust |
 | Lema | "Do fundo, a força" |
 
-**Poder:** Administram as minas do leste — que já foram a maior fonte de ferro do reino. As minas estão praticamente esgotadas desde ~650 AF. A casa declina junto com seus recursos.
+**Power:** They administer the eastern mines — which were once the kingdom's largest source of iron. The mines have been practically depleted since ~650 AF. The house declines along with its resources.
 
 **Membro conhecido:**
-- **Aldric Stennvik** — 72 anos, sem filhos, sem herdeiros diretos. Era sábio, ou tinha sido. Já não se importa com o destino do império. "Estou velho. Honra, reino, legado — tudo besteira e vaidade." Quer apenas garantir que viverá bem os anos que lhe restam.
+- **Aldric Stennvik** — 72 years old, no children, no direct heirs. He was wise, or had been. He no longer cares about the empire's fate. "I'm old. Honor, kingdom, legacy — all nonsense and vanity." He just wants to ensure he'll live well for the years he has left.
 
 ---
 
@@ -1161,17 +1399,17 @@ Before finalizing a name, ask:
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Militar — comando dos exércitos |
-| Fundação | ~50 AF — generais de Duratheon Vael I |
-| Sede | Fortaleza de Kravaal (norte) |
-| Cores | Vermelho e Preto |
-| Símbolo | Espada sobre escudo |
+| Sphere | Military — command of the armies |
+| Foundation | ~50 AF — generals of Duratheon Vael I |
+| Seat | Fortress of Kravaal (north) |
+| Colors | Red and Black |
+| Symbol | Sword over shield |
 | Lema | "Krävärōm" — "Conquistaremos" |
 
-**Poder:** Comando militar tradicional. Os generais do reino vêm desta casa há gerações.
+**Power:** Traditional military command. The kingdom's generals have come from this house for generations.
 
 **Membro conhecido:**
-- **General Kraveth Vaelmar** — Comanda a campanha de 778 AF. Autor da carta do norte após a derrota.
+- **General Vaelmar** — Commands the campaign of 778 AF. Author of the letter from the north after the defeat.
 
 ---
 
@@ -1179,54 +1417,54 @@ Before finalizing a name, ask:
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Arquitetura — construções, templos, obras públicas |
-| Fundação | ~80 AF — construtores do primeiro templo |
-| Sede | Guilda dos Construtores, Vaelhem Thel |
-| Cores | Cinza e Marrom |
-| Símbolo | Martelo e esquadro |
+| Sphere | Architecture — constructions, temples, public works |
+| Foundation | ~80 AF — builders of the first temple |
+| Seat | Builders Guild, Vaelhem Thel |
+| Colors | Grey and Brown |
+| Symbol | Hammer and square |
 | Lema | "Dür trē dür" — "Pedra é pedra" |
 
-**Poder:** Constroem tudo que é permanente no reino — templos, palácios, muralhas, monumentos.
+**Power:** They build everything permanent in the kingdom — temples, palaces, walls, monuments.
 
 **Membro conhecido:**
-- **Sthenmar Duravel** — Mestre construtor responsável pela reforma do Grande Templo de Sthendur.
+- **Sthenmar Duravel** — Master builder responsible for the renovation of the Great Temple of Sthendur.
 
 ---
 
-### HOUSE SENTHOR — Os Guardiões do Saber
+### HOUSE SENTHOR — The Keepers of Knowledge
 
 | Aspecto | Detalhe |
 |---------|---------|
 | Esfera | Conhecimento — bibliotecas, escribas, arquivos |
-| Fundação | ~200 AF — sob Senara Senvarak |
-| Sede | Grande Biblioteca de Vaelhem Thel |
-| Cores | Cinza e Dourado |
-| Símbolo | Livro aberto com pena |
+| Foundation | ~200 AF — under Senara Senvarak |
+| Seat | Great Library of Vaelhem Thel |
+| Colors | Grey and Gold |
+| Symbol | Open book with quill |
 | Lema | "Sënthäräk, dürärōm" — "Preservamos, duramos" |
 
-**Poder:** Guardam os arquivos, mantêm os registros, preservam o conhecimento.
+**Power:** They guard the archives, maintain the records, preserve knowledge.
 
-**Nota:** Vaethor Zumax serve como Mestre da Biblioteca, mas não é da Casa Senthor — é Vethurim.
+**Note:** Vaethor Zumax serves as Master of the Library, but he is not of House Senthor — he is Vethurim.
 
 ---
 
 ## AS CASAS MENORES
 
-### HOUSE AGRIAS — Os Senhores dos Mercados
+### HOUSE AGRIAS — The Lords of the Markets
 
 | Aspecto | Detalhe |
 |---------|---------|
 | Esfera | Mercados — abastecimento urbano |
-| Origem | Concessão de Aldaran Vael (~720 AF) |
-| Sede | Mercados de Vaelhem Thel |
-| Cores | Verde e Bronze |
+| Origin | Concession from Aldaran Vael (~720 AF) |
+| Seat | Markets of Vaelhem Thel |
+| Colors | Green and Bronze |
 
-**Poder:** Controlam os dezessete mercados de Vaelhem Thel — onde 900.000 pessoas compram comida. Controlam licenças (cada banca paga taxa semanal), balanças oficiais, e o fluxo de intermediários. Em cada etapa, uma margem. Em cada margem, uma fração para os Agrias.
+**Power:** They control the seventeen markets of Vaelhem Thel — where 900,000 people buy food. They control licenses (each stall pays a weekly fee), official scales, and the flow of intermediaries. At each stage, a margin. In each margin, a fraction for the Agrias.
 
-**Origem da riqueza:** O monopólio foi concessão de Aldaran Vael ao avô de Theron, em troca de um empréstimo que nunca foi cobrado. Uma tarefa considerada menor pelas casas maiores — nobres não pisam em mercados. Mas 900.000 pessoas comprando comida todos os dias gera renda considerável.
+**Origin of wealth:** The monopoly was a concession from Aldaran Vael to Cassien's grandfather, in exchange for a loan that was never collected. A task considered minor by the major houses — nobles don't step foot in markets. But 900,000 people buying food every day generates considerable income.
 
 **Membro conhecido:**
-- **Theron Agrias** — ~40 anos, boa aparência, ama a família. Sente necessidade de estar perto das casas maiores, mesmo sabendo que sua fortuna vem do povo. "Alguns dizem que ele ri para ouvir. Que não fala para observar. Que não usa as roupas mais nobres para ser intencionalmente subestimado. É o que dizem. Mas talvez ele seja apenas uma pessoa simples, que quer fazer parte da corte."
+- **Cassien Agrias** — ~40 years old, good-looking, loves his family. Feels the need to be close to the major houses, even knowing his fortune comes from the common people. "Some say he smiles to listen. That he doesn't speak to observe. That he doesn't wear the noblest clothes to be intentionally underestimated. That's what they say. But perhaps he's just a simple person who wants to be part of the court."
 
 ---
 
@@ -1234,119 +1472,119 @@ Before finalizing a name, ask:
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Diplomacia — relações externas |
+| Sphere | Diplomacy — foreign relations |
 | Sede | Vaelhem Thel |
 
 **Membro mencionado:**
-- **Lady Thornavel** — Nobre da corte, mencionada por usar tecidos supostamente de Vethurack (provavelmente imitação de Veluthaar).
+- **Lady Corvain** — Court noble, mentioned for wearing fabrics supposedly from Vethurack (probably imitation from Veluthaar).
 
 ---
 
-## AS CASAS MERCANTIS (Sem Título de Nobreza)
+## THE MERCHANT HOUSES (Without Noble Title)
 
-### HOUSE SETHAK — Os Senhores do Trigo
+### HOUSE SETHAK — The Lords of Wheat
 
 | Aspecto | Detalhe |
 |---------|---------|
-| Esfera | Comércio de grãos — trigo, cereais |
-| Sede | Portos do sul |
+| Sphere | Grain trade — wheat, cereals |
+| Seat | Southern ports |
 
-**Poder:** A frota de Dureth Sethak carrega metade do trigo que alimenta a capital.
+**Power:** The fleet of Dureth Tessalon carries half the wheat that feeds the capital.
 
 **Membros conhecidos:**
-- **Dureth Sethak** — Mestre mercador, pai de Velira.
-- **Velira Sethak (Thalorn)** — Filha, casada com Luxaren Thalorn. Amiga próxima da rainha Senthara.
+- **Dureth Tessalon** — Master merchant, father of Velira.
+- **Velira Tessalon (Thalorn)** — Daughter, married to Luxaren Thalorn. Close friend of Queen Senthara.
 
 ---
 
 ### ARTESÃOS E CONSTRUTORES VETHURIM
 
-Não são uma "casa" no sentido formal, mas os Vethurim dominam certos ofícios essenciais:
+They are not a "house" in the formal sense, but the Vethurim dominate certain essential trades:
 
-| Ofício | Reputação | Ironia |
+| Craft | Reputation | Irony |
 |--------|-----------|--------|
-| Tecelagem | Os melhores tapetes do mundo | O tapete do Thul-Vaelhem é Vethurim |
-| Construção naval | Os melhores navios | A frota de Tornael foi construída por eles |
-| Têxteis | "Curiosidades exóticas" | A nobreza compra sem admitir a origem |
+| Weaving | The best carpets in the world | The Thul-Vaelhem carpet is Vethurim |
+| Shipbuilding | The best ships | Tornael's fleet was built by them |
+| Textiles | "Exotic curiosities" | Nobility buys without admitting the origin |
 
 **Membro conhecido:**
-- **Tariq Bashani** — Construtor-chefe da frota real. Tolerado porque indispensável. Jamais seria bem-vindo no salão do palácio.
+- **Tariq Bashani** — Chief builder of the royal fleet. Tolerated because indispensable. Would never be welcome in the palace hall.
 
 ---
 
 ## DINÂMICAS DE PODER
 
-### Riqueza vs. Prestígio
+### Wealth vs. Prestige
 
-| Casa | Riqueza | Prestígio | Tensão |
+| House | Wealth | Prestige | Tension |
 |------|---------|-----------|--------|
 | Vael | Imensa | Máximo | O trono esvazia o tesouro |
-| Corvain | Imensa | Alto | Dinheiro de "papelada" |
-| Thalorn | Alta | Médio | Novos ricos do comércio |
-| Agrias | Alta | Baixo | Fortuna vem do povo |
+| Corvain | Immense | High | "Paperwork" money |
+| Thalorn | High | Medium | New rich from trade |
+| Agrias | High | Low | Fortune comes from the people |
 | Stennvik | Declinante | Alto (histórico) | Minas esgotadas |
-| Sethak | Alta | Nenhum (mercantil) | Alimentam o reino sem título |
+| Tessalon | High | None (merchant) | Feed the kingdom without title |
 
-### Dependências Ocultas
+### Hidden Dependencies
 
-O reino depende de pessoas que despreza:
+The kingdom depends on people it despises:
 
-| Dependência | Quem fornece | Status social |
+| Dependency | Who provides | Social status |
 |-------------|--------------|---------------|
-| Navios | Vethurim (Tariq Bashani) | Imigrantes desprezados |
+| Ships | Vethurim (Tariq Bashani) | Despised immigrants |
 | Tapetes, têxteis | Vethurim | "Curiosidades exóticas" |
-| Trigo | Casa Sethak | Mercadores sem título |
+| Wheat | House Tessalon | Merchants without title |
 | Comida urbana | Casa Agrias | "Tarefa menor" |
 
 **Frase definidora:**
-"O Vethurim? Impressionante como dependemos dessa gente."
-"Impressionante como fingimos que não."
+"The Vethurim? Impressive how we depend on these people."
+"Impressive how we pretend we don't."
 
 ---
 
 ## GEOGRAFIA DO PODER
 
-| Região | Casas dominantes | Recursos |
+| Region | Dominant Houses | Resources |
 |--------|------------------|----------|
-| Vaelhem Thel (capital) | Vael, Corvain, Agrias | Administração, contratos, mercados |
-| Veluthaar (sul) | Thalorn, Sethak | Portos, comércio, trigo |
-| Minas do Leste | Stennvik | Ferro (esgotado) |
-| Kravethorn (norte) | Kraveth, Thalorn | Porto militar, exército |
-| Vel-Zumarakh (bairro pobre) | Ninguém | Miséria, 900.000 bocas |
+| Vaelhem Thel (capital) | Vael, Corvain, Agrias | Administration, contracts, markets |
+| Veluthaar (south) | Thalorn, Tessalon | Ports, trade, wheat |
+| Eastern Mines | Stennvik | Iron (depleted) |
+| Kravethorn (north) | Kraveth, Thalorn | Military port, army |
+| Vel-Zumarakh (poor quarter) | Nobody | Misery, 900,000 mouths |
 
 ---
 
 ## CASAMENTOS E ALIANÇAS
 
-Os casamentos raramente são por amor:
+Marriages are rarely for love:
 
 | União | Motivo | Resultado |
 |-------|--------|-----------|
-| Luxaren Thalorn + Velira Sethak | Naval + Grãos = controle de abastecimento | Casamento funcional, sem afeto |
-| Tornael Vael + Senthara | Aliança política (casa de origem de Senthara desconhecida) | Ela é mais inteligente que ele |
+| Luxaren Thalorn + Velira Tessalon | Naval + Grain = supply control | Functional marriage, without affection |
+| Tornael Vael + Senthara | Political alliance (Senthara's house of origin unknown) | She is more intelligent than him |
 
-**Padrão:** Casas maiores casam entre si ou absorvem casas menores ricas. Casas mercantis compram entrada na nobreza através de dotes e empréstimos.
+**Pattern:** Major houses marry among themselves or absorb wealthy minor houses. Merchant houses buy entry into nobility through dowries and loans.
 
 ---
 
 ## A CORTE NO DUATHEL
 
-O Duathel (quarto dia da semana) revela a hierarquia:
+The Duathel (fourth day of the week) reveals the hierarchy:
 
-| Posição no salão | Quem ocupa |
+| Position in the hall | Who occupies |
 |------------------|------------|
-| Trono norte | Rei (ou vazio) |
-| Ao lado do trono | Rainha, herdeiros |
+| North throne | King (or empty) |
+| Beside the throne | Queen, heirs |
 | Mesa principal | Casas maiores |
-| Entre as colunas | Casas menores |
-| Junto às paredes | Casas mercantis com convite |
+| Between the columns | Minor houses |
+| Along the walls | Merchant houses with invitation |
 | Servindo | Criados (alguns Vethurim) |
 
-**O que não se vê:** Os mercados onde Agrias lucra. Os portos onde Thalorn cobra. As minas vazias de Stennvik. O bairro Vel-Zumarakh onde 900.000 pessoas sobrevivem.
+**What is not seen:** The markets where Agrias profits. The ports where Thalorn charges. The empty mines of Stennvik. The Vel-Zumarakh quarter where 900,000 people survive.
 
-**O que se discute:** Tecidos. Música. Escândalos. A campanha (quando o rei está presente).
+**What is discussed:** Fabrics. Music. Scandals. The campaign (when the king is present).
 
-**O que não se discute:** A dívida do reino. O esgotamento das minas. A dependência dos Vethurim. Os mendigos que "embelezam" as ruas sendo removidos.`,
+**What is not discussed:** The kingdom's debt. The depletion of the mines. The dependence on the Vethurim. The beggars who "beautify" the streets being removed.`,
         tags: ["casas", "nobreza", "duratheon", "referencia", "worldbuilding", "politica"]
       },
       "iuldar": {
@@ -1366,7 +1604,7 @@ O Duathel (quarto dia da semana) revela a hierarquia:
 
 **Destino**
 Hunted by the TauTek in Era III. Dead or dormant. Their echoes remain in current myths and religions — but no one knows the true origin.`,
-        tags: ["iuldar", "cosmology", "deuses"]
+        tags: ["iuldar", "cosmology", "gods"]
       },
       "titans": {
         group: "seres",
@@ -1401,7 +1639,7 @@ The Titans represent what happens when tools are corrupted for purposes never in
 | Ordem | Children | Nota |
 |-------|--------|------|
 | **Kraeth** (9 lesser) | 9 | Wings, affinity with stone and sky |
-| **Thul'Kar** (muitos) | 8 | Gentis, pacientes, radiavam calor |
+| **Thul'Kar** (many) | 8 | Gentle, patient, radiated warmth |
 | **Grande Kraeth** | 0 | Peso emocional impediu reproduction |
 | **Veluth** | 0 | Natureza difusa incompatible |
 | **Abyrn** | 0 | Profundezas impractical |
@@ -1509,6 +1747,15 @@ The history of Duratheon mirrors that of the TauTek — rise, consumption, deple
   geografia: {
     title: "Geography",
     icon: "Globe",
+    landing: {
+      subtitle: "The Shape of the World",
+      description: "Sethael is a world of separated landmasses, treacherous channels, and civilizations shaped by the barriers between them. From the vast Lands Beyond to the isolated kingdom of Duratheon, geography determines destiny.",
+      stats: [
+        { value: "40,000", label: "km Circumference" },
+        { value: "5", label: "Major Landmasses" },
+        { value: "68%", label: "Ocean Coverage" }
+      ]
+    },
     entries: {
       "sethael-planeta": {
         title: "Planet Sethael",
@@ -1652,6 +1899,15 @@ Impossible to defend. Impossible to maneuver. Impossible to retreat.`,
   povos: {
     title: "Peoples",
     icon: "Users",
+    landing: {
+      subtitle: "The Nations of Sethael",
+      description: "From the mountain forges of the Kaeldur to the fallen grandeur of Duratheon, the peoples of Sethael carry the weight of the axiom in their blood. Each civilization rises, creates, and inevitably depletes itself.",
+      stats: [
+        { value: "80-90M", label: "World Population" },
+        { value: "5", label: "Major Peoples" },
+        { value: "778 AF", label: "Current Year" }
+      ]
+    },
     groups: [
       { key: "kaeldur", title: "KAELDUR" },
       { key: "duratheon", title: "DURATHEON" },
@@ -1813,14 +2069,14 @@ They did not meet Duratheon in open battle. They let the cold do the first slaug
 **The result:**
 - ~150,000 Duratheon soldiers killed (half by cold, half in combat)
 - King Krav XIX captured
-- General Kraveth Vaelmar captured
+- General Vaelmar captured
 - Duratheon's military capacity eliminated
 - No Kaeldur invasion necessary — Duratheon will collapse on its own`,
         tags: ["kaeldur", "history", "massacre", "migration"]
       },
       "kaeldur-bunkers": {
         group: "kaeldur",
-        title: "KAELDUR — Architecture & Bunkers",
+        title: "KAELDUR — Geography",
         content: `*"Vrethak-thul, kael-khen, na-skar."*
 *"Deep stone, fire together, not-cold."*
 — Inscription at the entrance of Kaelthrek
@@ -1924,7 +2180,7 @@ Kaeldur architecture exists for one purpose: **survival**.
       },
       "kaeldur-religiao": {
         group: "kaeldur",
-        title: "KAELDUR — Religion",
+        title: "KAELDUR — Culture",
         content: `*"Kaelthur vel. Vrethak dur. Skarveth tau."*
 *"Kaelthur lives. Vrethak resists. Skarveth observes."*
 — The Three Truths
@@ -2025,7 +2281,7 @@ The Kaeldur **have no clear doctrine of afterlife**. What happens after death is
       },
       "kaeldur-metalurgia": {
         group: "kaeldur",
-        title: "KAELDUR — Metallurgy & Oaths",
+        title: "KAELDUR — Traditions",
         content: `*"Vrakh threk, vrakh kael, vrakh dur."*
 *"I swear by metal, by fire, by stone."*
 — Opening of the Vrakhthrek ceremony
@@ -2147,7 +2403,7 @@ The Kaeldur believe that oaths can be broken — by the person, and consequently
       },
       "kaeldur-reis": {
         group: "kaeldur",
-        title: "KAELDUR — Chronicle of Kings",
+        title: "KAELDUR — Government",
         content: `*"Kaelnar na-dur-eth. Kaelnar vel-eth. Ekkhen kaelnar-eth."*
 *"The fire-master was not born. The fire-master was chosen. We are the fire-master."*
 — Saying of the Elders about royalty
@@ -2265,7 +2521,7 @@ The Kaeldur do not have hereditary kings. Their rulers — titled **Kaelnar** (f
       },
       "kaeldur-idioma": {
         group: "kaeldur",
-        title: "KAELDUR — Kaeldrek Language",
+        title: "KAELDUR — Language",
         content: `*"Kael-khen. Vreth-dur. Vrakh threk."*
 *"Fire together. Strength resists. The metal is sworn."*
 — Traditional Kaeldur greeting
@@ -2432,7 +2688,7 @@ Where ZANUAX evolved toward ornamentation and bureaucratic precision, Kaeldrek r
       },
       "kaeldur-sociedade": {
         group: "kaeldur",
-        title: "KAELDUR — Society & Culture",
+        title: "KAELDUR — Society",
         content: `**Social Structure and Way of Life**
 
 ---
@@ -2586,7 +2842,7 @@ The Kaelvreth brought reports of eastern firearms. The Kaeldur study this techno
       },
       "duratheon-reino": {
         group: "duratheon",
-        title: "DURATHEON — Kingdom",
+        title: "DURATHEON — Overview",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
@@ -2599,15 +2855,19 @@ The Kaelvreth brought reports of eastern firearms. The Kaeldur study this techno
 **As Seis Cidades**
 | Cidade | Pop. | Function |
 |--------|------|--------|
-| ★ Vaelhem Thel | 500K | Capital |
-| ⚓ Kravethorn | 70K | Porto militar — ÚNICO PONTO DE EXIT |
-| ⛏ Kravaal | 60K | Minas (esgotadas) |
-| 🌾 Zumarak | 30K | Agricultura |
-| ⚓ Veluthaar | 40K | Marble, porto sul |
-| 🐟 Senvarek | 25K | Pesca |
+| Vaelhem Thel | 500K | Capital |
+| Kravethorn | 70K | Porto militar — ÚNICO PONTO DE EXIT |
+| Kravaal | 60K | Minas (esgotadas) |
+| Zumarak | 30K | Agricultura |
+| Veluthaar | 40K | Marble, porto sul |
+| Skelmaar | 20K | Porto oeste — antiga rota para Vethurack |
+| Senvarek | 25K | Pesca |
+
+**Skelmaar — The Old Western Port**
+Skelmaar was once the primary entry point for immigrants from Vethurack. In the old days, before the southern routes through Veluthaar grew rich and dominant, Vethurim boats landed at Skelmaar and travelers walked eleven days to reach the capital. The port declined as Veluthaar rose, but Skelmaar retains a significant Vethurim community and serves as a waypoint for coastal trade. Vaethor Zumax's father landed here when he first arrived in Duratheon.
 
 **Economia (778 AF)**
-- Minas de ferro/cobre: **ESGOTADAS** (~650 AF)
+- Iron/copper mines: **DEPLETED** (~650 AF)
 - Baspear comercial: **DEFICIT CHRONIC** (15 anos)
 
 **Duratheon is isolated. The only exit to Lands Beyond is by SEA CROSSING via Kravethorn. Route through the frozen north is impossible (-50°C a -70°C).**`,
@@ -2615,18 +2875,18 @@ The Kaelvreth brought reports of eastern firearms. The Kaeldur study this techno
       },
       "duratheon-calendario": {
         group: "duratheon",
-        title: "DURATHEON — THUL-ZUNAR Calendar",
+        title: "DURATHEON — Calendar",
         content: `**The Stone Calendar (Stone Reckoning)**
 
 *"STHENDUR TAU ZA ZUNAR. ZA ZUNAR TAU STHENDUR."*
-*"Sthendur observa o tempo. O tempo observa por Sthendur."*
+*"Sthendur observes time. Time observes through Sthendur."*
 
-| Sistema | Name | Reference |
+| System | Name | Reference |
 |---------|------|------------|
-| Oficial | THUL-ZUNAR | Foundation do Reino (Ano 1 AF) |
+| Official | THUL-ZUNAR | Foundation of the Kingdom (Year 1 AF) |
 
-**AF = Anno Fundationis** — Ano da Foundation
-Ano atual: **778 AF** (campanha de Krav XIX destroyed)
+**AF = Anno Fundationis** — Year of the Foundation
+Current year: **778 AF** (Krav XIX's campaign destroyed)
 
 ---
 
@@ -2748,9 +3008,9 @@ The night between IULTHUR-THUL and 1 Tornavel. According to tradition, it is whe
 |-------|------------------|
 | Coronations | 1 Tornavel (1st day of year) |
 | Royal weddings | SETHARUL-THUL (2nd sacred day) |
-| Campanhas militares | Apost 1 Kravethor (nunca before do summer) |
-| Tratados | 15 Velakhem (festival da prosperidade) |
-| Funerais reais | Dentro de 6 dias, memory em IULTHUR-THUL |
+| Military campaigns | Post 1 Kravethor (never before summer) |
+| Treaties | 15 Velakhem (prosperity festival) |
+| Royal funerals | Within 6 days, memorial in IULTHUR-THUL |
 
 ---
 
@@ -2762,21 +3022,21 @@ The night between IULTHUR-THUL and 1 Tornavel. According to tradition, it is whe
 | 44 | Duratheon Vael I dies |
 | 137 | Jakaelor Vael morre; Senvarak tomam poder |
 | 218 | Senara Senvarak morre; golpe Thurnavel |
-| 315 | Thurnavel derrubados; Kravorn Vael II assume (aos 19) |
+| 315 | Thurnavel overthrown; Kravorn Vael II assumes power (at 19) |
 | 385 | Kravorn Vael II dies (age 89) |
 | 654 | Vaelan Vael contrai NAKH-IS |
 | 704 | Torn XVII comete suicide |
 | 777 | Present — Tornael prepares invasion |
 | 778+ | Campanha planejada |
 
-**Subdivisions de Era**
+**Era Subdivisions**
 | Era | Anos AF | Name |
 |-----|---------|------|
-| I | 1-44 | Era do Fundador |
+| I | 1-44 | Era of the Founder |
 | II | 45-137 | Reino Inicial |
 | III | 138-218 | Crise Senvarak |
 | IV | 219-314 | Usurpaction Thurnavel |
-| V | 315-385 | Era do Subjugador (Kravorn II) |
+| V | 315-385 | Era of the Subjugator (Kravorn II) |
 | VI | 386-777 | Centuries Dourados |
 | VII | 778+ | O Colapso |
 
@@ -2784,26 +3044,26 @@ The night between IULTHUR-THUL and 1 Tornavel. According to tradition, it is whe
 
 **HORAS DO DIA**
 
-12 horas de luz + 12 horas de darkness (horas variables conforme estaction)
+12 hours of light + 12 hours of darkness (variable hours according to season)
 
 | Period | Horas | Name |
 |---------|-------|------|
-| Aurora | 1ª do dia | TORN-THORAK |
+| Dawn | 1st of day | TORN-THORAK |
 | Manhã | 2ª-4ª | SETH-THORAK |
 | Meio-dia | 5ª-7ª | KRAV-THORAK |
 | Tarde | 8ª-10ª | VEL-THORAK |
 | Entardecer | 11ª-12ª | DUR-THORAK |
-| Twilight | 1ª da noite | THURN-THORAK |
+| Twilight | 1st of night | THURN-THORAK |
 | Noite | 2ª-10ª | SKEL-THORAK |
 | Noite profunda | 11ª-12ª | NAKH-THORAK |
 
-**Sinais de Tempo (na capital e cidades maiores)**
+**Time Signals (in the capital and major cities)**
 | Sinal | Hora | Method |
 |-------|------|--------|
-| Sino da aurora | 1ª do dia | Sinos do templo |
-| Corneta do meio-dia | 6ª do dia | Cornetas militares |
-| Sino do twilight | 1ª da noite | Sinos do templo |
-| Tambor da meia-noite | 6ª da noite | Tambores das torres |
+| Dawn bell | 1st of day | Temple bells |
+| Midday horn | 6th of day | Military horns |
+| Twilight bell | 1st of night | Temple bells |
+| Midnight drum | 6th of night | Tower drums |
 
 ---
 
@@ -2811,9 +3071,9 @@ The night between IULTHUR-THUL and 1 Tornavel. According to tradition, it is whe
 
 | Tipo | Example |
 |------|---------|
-| Formal | "O tenth quinto dia de Kravethor, no seven hundredth seventieth seventh ano da Foundation" |
+| Formal | "The fifteenth day of Kravethor, in the seven hundred seventy-seventh year of the Foundation" |
 | Pattern | "15 Kravethor 777 AF" |
-| Coloquial | "Tenth quinto de Kravethor" |
+| Colloquial | "Fifteenth of Kravethor" |
 | Militar | "K-15-777" |
 
 ---
@@ -2824,9 +3084,9 @@ Every 4 years, a sixth sacred day is added: **STHENDUR-THUL** (Sthendur's Own Da
 
 This day falls between IULTHUR-THUL and the Night of Descent. On this day, ALL activity ceases — not even priests perform rituals. The kingdom waits in silence.
 
-Anos com STHENDUR-THUL: 4, 8, 12... 776, 780, 784...
+Years with STHENDUR-THUL: 4, 8, 12... 776, 780, 784...
 **777 AF does NOT have a sixth sacred day.**`,
-        tags: ["calendar", "duratheon", "tempo", "thul-zunar", "meses", "festivais"]
+        tags: ["calendar", "duratheon", "time", "thul-zunar", "months", "festivals"]
       },
       "duratheon-doencas": {
         group: "duratheon",
@@ -2896,7 +3156,7 @@ The Faith of Sthendur teaches that disease is Sthendur's sovereign will — not 
       },
       "duratheon-dinastia": {
         group: "duratheon",
-        title: "DURATHEON — Dynasty",
+        title: "DURATHEON — Government",
         content: `**68 Rulers in ~1,891 Years**
 
 *"Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër."*
@@ -2990,7 +3250,7 @@ The Faith of Sthendur teaches that disease is Sthendur's sovereign will — not 
       },
       "duratheon-arte": {
         group: "duratheon",
-        title: "DURATHEON — Art & Culture",
+        title: "DURATHEON — Culture",
         content: `**The Doctrine of White and the Arts of the Kingdom**
 
 ---
@@ -3136,7 +3396,7 @@ The doctrine creates visual unity — all the kingdom aspires to the capital's a
       "duratheon-sociedade": {
         group: "duratheon",
         title: "DURATHEON — Society",
-        content: `**As Classes do Reino**
+        content: `**The Classes of the Kingdom**
 
 ---
 
@@ -3145,11 +3405,11 @@ The doctrine creates visual unity — all the kingdom aspires to the capital's a
 | Classe | Population | Status Legal | Realidade Economic |
 |--------|-----------|--------------|---------------------|
 | Casa Real | ~50 | Autoridade absoluta | Riqueza imensa |
-| Alta Nobreza | ~2.000 | Direitos plenos, assentos no conselho | Muito ricos |
+| High Nobility | ~2,000 | Full rights, council seats | Very rich |
 | Baixa Nobreza | ~20.000 | Direitos plenos | Ricos a comfortable |
 | Elite Mercantil | ~10.000 | Direitos limitados, poder economic | Ricos |
 | Profissionais | ~50.000 | Citizens, alguns direitos | Comfortable |
-| Artisans | ~200.000 | Citizens, direitos de guilda | Lutando |
+| Artisans | ~200,000 | Citizens, guild rights | Struggling |
 | Fazendeiros | ~3.000.000 | Cidadania limitada | Subsistence |
 | Trabalhadores | ~2.000.000 | Direitos minimum | Pobres |
 | **Os Velados** | ~2.500.000 | **Nenhum status legal** | Desesperados |
@@ -3159,20 +3419,20 @@ The doctrine creates visual unity — all the kingdom aspires to the capital's a
 
 **OS VELADOS (THE VEILS)**
 
-Abehind das fachadas de marble, em becos, cellars e spaces esquecidos, vivem os Velados — os pobres, os not-registrados, os invisible.
+Behind the marble facades, in alleys, cellars and forgotten spaces, live the Veiled — the poor, the unregistered, the invisible.
 
 | Metric | Value |
 |---------|-------|
-| Population estimada | ~250.000 (só na capital) |
-| Status legal | Nenhum — oficialmente not existem |
+| Estimated population | ~250,000 (capital only) |
+| Legal status | None — officially do not exist |
 | Location | Cellars, becos, buildings abandonados, spaces between muros |
-| Ocupaction | Trabalho daily, begging, crime, prostitution, remotion de lixo |
-| Expectativa de vida | ~30 anos |
+| Occupation | Daily labor, begging, crime, prostitution, waste removal |
+| Life expectancy | ~30 years |
 
-**A Doutrina da Beleza** exige que Vaelhem seems perfeito:
+**The Doctrine of Beauty** requires Vaelhem to seem perfect:
 - Nenhuma pobreza visible
-- Nenhum mendigo nas ruas principais (punido com steelites)
-- Nenhuma roupa surrada nos distritos nobres (entrada negada)
+- No beggars on main streets (punished with whips)
+- No worn clothes in noble districts (entry denied)
 - Nenhuma construction not autorizada (demolida imediatamente)
 
 *The poor exist — someone must carry stone, clean streets, remove trash. But they must be invisible. They emerge at night, work in the hours before dawn, and disappear before the nobles wake.*
@@ -3184,9 +3444,9 @@ Abehind das fachadas de marble, em becos, cellars e spaces esquecidos, vivem os 
 *"Sthendur chooses whom he chooses. The noble was born noble because Sthendur willed it. The slave was born slave because Sthendur willed it. To challenge the order is to challenge Sthendur himself."*
 — Book of Stone, Commentary on the Fifth Pillar
 
-Esta interpretaction é... conveniente para a nobreza.
+This interpretation is... convenient for the nobility.
 
-Alguns sacerdotes argumentam que o Quarto Pilar (VELAKUM — Prosperar Juntos) exige cuidado com os pobres. Eles not are populares na corte.
+Some priests argue that the Fourth Pillar (VELAKUM — Prosper Together) requires care for the poor. They are not popular at court.
 
 ---
 
@@ -3194,40 +3454,40 @@ Alguns sacerdotes argumentam que o Quarto Pilar (VELAKUM — Prosperar Juntos) e
 
 Every king since Duratheon Vael has been crowned by the High Reader of Sthendur:
 
-1. **Leitura de nuvens ao amanhecer** — Alto Leitor declara aprovaction de Sthendur
-2. **Procession** ao Pilar de Thurnavel (Grande Templo)
-3. **Unction** com óleo e pó de pedra na testa
+1. **Cloud reading at dawn** — High Reader declares Sthendur's approval
+2. **Procession** to the Pillar of Thurnavel (Great Temple)
+3. **Unction** with oil and stone dust on the forehead
 4. **Cinco Juramentos** — rei jura defender each Pilar
-5. **Coroa** colocada pelo Alto Leitor
+5. **Crown** placed by the High Reader
 6. **Proclamaction:** *"STHENDUR TAUVAR [NOME]. [NOME] TREUL VAELOR THEL."*
 
 **Os Cinco Juramentos**
 1. "Expandirei o reino." (TORNAVEL)
 2. "Plantarei semente, conhecimento e lei." (SETHARUL)
-3. "No serei conquistado, nem deixarei o reino ser." (NAKRAVEX)
-4. "Prosperarei com meu povo, not contra ele." (VELAKUM)
-5. "Sustentarei o que Sthendur me deu." (IULTHUR)
+3. "I will not be conquered, nor will I let the kingdom be." (NAKRAVEX)
+4. "I shall prosper with my people, not against them." (VELAKUM)
+5. "I shall sustain what Sthendur gave me." (IULTHUR)
 
 ---
 
 **O PROBLEMA DOS REIS MALVADOS**
 
-A Fé luta com reis malvados que prosperaram:
+The Faith struggles with wicked kings who prospered:
 
 | King | Crime | Result |
 |-----|-------|-----------|
-| Krav Vael II | Matou irhands | Reinou bem, morreu natural |
+| Krav Vael II | Killed siblings | Ruled well, died naturally |
 | Senara Senvarak | 12.000 executions | 78 years of reign |
 | Kravorn Vael II | 670.000 mortos | Viveu até 89 |
 
-*Resolution dos sacerdotes: "Sthendur julga em seu own tempo. A Descida virá. Nobody escapa para sempre."*
+*Resolution of the priests: "Sthendur judges in his own time. The Descent will come. Nobody escapes forever."*
 
-Mas a Descida never vem.`,
-        tags: ["sociedade", "duratheon", "classes", "velados", "coroaction", "teologia"]
+But the Descent never comes.`,
+        tags: ["society", "duratheon", "classes", "veiled", "coronation", "theology"]
       },
       "duratheon-deplecao": {
         group: "duratheon",
-        title: "DURATHEON — Depletion Crisis",
+        title: "DURATHEON — History",
         content: `**The Kingdom That Consumes Itself**
 
 ---
@@ -3318,7 +3578,7 @@ From the 777 AF letter of Vaethor Zumax:
       },
       "duratheon-vaelhem": {
         group: "duratheon",
-        title: "DURATHEON — Vaelhem Thel",
+        title: "DURATHEON — Geography",
         content: `**The White City**
 
 *"DURATHEON TREUL VAELOR THEL. SA AEL TREUL ZA ZUN."*
@@ -3428,40 +3688,40 @@ In deliberate contrast with the white city, built in **black basalt**.
 | Temple | Dedication | Height | Characteristic |
 |--------|------------|--------|----------------|
 | **Pillar of Thurnavel** | The Prophet | 55m | "Petrified" pillar of the prophet |
-| Vault das Hands | Sustento | 46m | Dome esculpida as hands |
-| Templo do Julgamento | A Descida | 37m | Statue de Sthendur (18m) |
-| Templo dos Cinco Pilares | Mandamentos | 30m | Cinco torres |
-| Templo do Vento | Leitura de Nuvens | 27m | Teto aberto |
-| Templo da Aurora | Culto Matinal | 24m | Orientaction leste |
+| Vault of Hands | Sustenance | 46m | Dome sculpted as hands |
+| Temple of Judgment | The Descent | 37m | Statue of Sthendur (18m) |
+| Temple of the Five Pillars | Commandments | 30m | Five towers |
+| Temple of the Wind | Cloud Reading | 27m | Open ceiling |
+| Temple of the Dawn | Morning Worship | 24m | East orientation |
 | Silent Temple | Contemplation | 21m | Nobody speaks |
 
 **O Contraste:**
-- Cidade secular: Marble branco, ouro, aspirando para cima
-- Distrito sagrado: Basalto negro, prata, pressionando para baixo
+- Secular city: White marble, gold, aspiring upward
+- Sacred district: Black basalt, silver, pressing downward
 
-*Os faithful entendem: we built em branco para mostrar que not somos Sthendur. Os templos em negro mostram where Sthendur habita.*
+*The faithful understand: we built in white to show we are not Sthendur. The temples in black show where Sthendur dwells.*
 
 ---
 
 **A CIDADE OCULTA — OS VEILS**
 
-Abehind das fachadas de marble vivem os Velados — ~250.000 invisible.
+Behind the marble facades live the Veiled — ~250,000 invisible.
 
 | Metric | Value |
 |---------|-------|
 | Population | ~250.000 |
-| Status legal | **Nenhum** — not existem oficialmente |
+| Legal status | **None** — do not officially exist |
 | Location | Cellars, becos, spaces between paredes |
 | Ocupaction | Trabalho daily, begging, crime |
-| Expectativa de vida | ~30 anos |
+| Life expectancy | ~30 years |
 
-**A Doutrina da Beleza** exige que Vaelhem seems perfeita:
-- Nenhum mendigo nas ruas principais (chicoteado)
-- Nenhuma roupa surrada em distritos nobres (entrada negada)
+**The Doctrine of Beauty** requires Vaelhem to seem perfect:
+- No beggars on main streets (whipped)
+- No worn clothes in noble districts (entry denied)
 - Nenhuma construction not autorizada (demolida)
 
-*Os pobres emergem à noite, trabalham before do amanhecer, e desaparecem before dos nobres acordarem.*`,
-        tags: ["vaelhem", "capital", "duratheon", "palace", "templos", "cidade"]
+*The poor emerge at night, work before dawn, and disappear before the nobles wake.*`,
+        tags: ["vaelhem", "capital", "duratheon", "palace", "temples", "city"]
       },
 
       // ==================== VETHURACK ====================
@@ -3472,11 +3732,11 @@ Abehind das fachadas de marble vivem os Velados — ~250.000 invisible.
 
 | Parameter | Value |
 |-----------|-------|
-| Location | Sudoeste de Duratheon, through do canal |
+| Location | Southwest of Duratheon, across the channel |
 | Clima | Equatorial, quente, árido |
 | Terreno | Praias, desertos, areia, pouca pedra |
 | Population | ~500 mil |
-| Governo | Confederaction de cidades-estado |
+| Government | Confederation of city-states |
 
 ---
 
@@ -3484,18 +3744,18 @@ Abehind das fachadas de marble vivem os Velados — ~250.000 invisible.
 
 Vethurack is a great landmass to the southwest of Duratheon. Equatorial climate, hot, beaches to the north, vast deserts inland. Little stone, no marble — constructions in adobe, leather, imported wood.
 
-"Eles not have marble," disse Tornael uma vez. "Constroem em lama e couro enquanto we we built em pedra que durará mil anos."
+"They have no marble," Tornael said once. "They build in mud and leather while we build in stone that will last a thousand years."
 
 ---
 
 **O POVO VETHURIM**
 
-Os Vethurim are descendentes dos antigos "povos do vento" de Ungavel — nomads que atravessaram desertos seguindo correntes de ar. Sua cultura valoriza:
+The Vethurim are descendants of the ancient "wind peoples" of Ungavel — nomads who crossed deserts following air currents. Their culture values:
 
 - **Radical hospitality** — denying water to a traveler is worse than murder
-- **Adaptabilidade** — a survival no deserto exige flexibilidade
-- **Impermanence** — habilidades valem more que posses
-- **Leitura do sky** — sensibilidade atmospheric quase presciente
+- **Adaptability** — survival in the desert requires flexibility
+- **Impermanence** — skills are worth more than possessions
+- **Reading the sky** — almost prescient atmospheric sensitivity
 
 ---
 
@@ -3504,10 +3764,10 @@ Os Vethurim are descendentes dos antigos "povos do vento" de Ungavel — nomads 
 Duratheon always desprezou Vethurack:
 - "Mercadores e escravistas"
 - "Povo estranho, cultura estranha"
-- Sem riquezas que Duratheon considerasse valiosas
+- Without riches that Duratheon would consider valuable
 - Distance maritime tornava contato difficult
 
-Nos centuries passados, havia rotas comerciais minimum e imigration ocasional. À medida que Duratheon se imperializou, as rotas diminished. Vethurack tornou-se each vez more distante e esquecido.
+In past centuries, there were minimum trade routes and occasional immigration. As Duratheon imperialized, the routes diminished. Vethurack became increasingly distant and forgotten.
 
 ---
 
@@ -3517,13 +3777,13 @@ Nos centuries passados, havia rotas comerciais minimum e imigration ocasional. �
 |--------|--------|
 | Thul-Varen | Centro banking, casas financeiras |
 | Keth-Arum | Estaleiros, construction naval |
-| Thornask | Mercados, trade de trabalho |
+| Thornask | Markets, labor trade |
 
 ---
 
 **IMIGRANTES EM DURATHEON**
 
-Alguns Vethurim emigraram para Duratheon ao longo dos centuries, estabelecendo-se em vilas costeiras as **Zumarack**. Mantiveram costumes, patterns de tecelagem, e o *thurnakh* — cabelo branco hereditary, "marca dos nascidos between mundos."
+Some Vethurim emigrated to Duratheon over the centuries, settling in coastal villages as **Zumarack**. They maintained customs, weaving patterns, and the *thurnakh* — hereditary white hair, "mark of those born between worlds."
 
 The most famous son of Vethurim immigrants was **Vaethor Zumax**, who became Master of the Great Library of Duratheon.`,
         tags: ["vethurack", "vethurim", "ilha", "deserto", "trade"]
@@ -3538,14 +3798,14 @@ The most famous son of Vethurim immigrants was **Vaethor Zumax**, who became Mas
 
 ---
 
-**O Centro Financeiro Oculto do Mundo**
+**The Hidden Financial Center of the World**
 
 | Parameter | Value |
 |-----------|-------|
-| Location | Ilha a oeste, beyond das ilhas menores |
+| Location | Island to the west, beyond the lesser islands |
 | Clima | Temperado maritime |
 | Population | ~800 mil |
-| Governo | Oligarquia banking (Conselho das Casas) |
+| Government | Banking oligarchy (Council of Houses) |
 | Army | Nenhum own |
 | Riqueza | Poderiam comprar Duratheon three vezes |
 
@@ -3557,7 +3817,7 @@ Os Orvaini not conquistam. No guerreiam. No aparecem.
 
 Eles **observam**. Eles **financiam**. Eles **sabem**.
 
-Enquanto Duratheon gastava decades preparando campanhas militares, Orvainê acumulava informaction. Enquanto reinos sangravam em guerras de conquista, Orvainê emprestava ouro a all os lados — com juros.
+While Duratheon spent decades preparing military campaigns, Orvainê accumulated information. While kingdoms bled in wars of conquest, Orvainê lent gold to all sides — with interest.
 
 ---
 
@@ -3573,7 +3833,7 @@ Orvainê has no king or supreme noble. It is governed by a council of **Maisons*
 | Maison Aurivel | Metais preciosos |
 | Maison Caelinthe | Contratos mercenaries |
 
-Decisions are tomadas por consenso financeiro. Quem controla more capital, controla more votos.
+Decisions are made by financial consensus. Whoever controls more capital, controls more votes.
 
 ---
 
@@ -3584,7 +3844,7 @@ Orvainê not maintains forces armadas owns. Se precisam de strength militar:
 - **Compram mercenaries** de qualquer origem
 - **Financiam armies** de nations aliadas
 - **Contratam escravos de guerra** through de Thornask
-- **Manipulam conflitos** para que outros lutem por eles
+- **They manipulate conflicts** so others fight for them
 
 *"Why bleed when you can pay others to bleed?"*
 
@@ -3592,14 +3852,14 @@ Orvainê not maintains forces armadas owns. Se precisam de strength militar:
 
 **CONHECIMENTO COMO PODER**
 
-A Maison Sevrenne maintains a greater rede de informantes do mundo conhecido:
+The Maison Sevrenne maintains the greatest network of informants in the known world:
 
-- Spies em all corte de Duratheon
-- Agentes nos mercados de Vethurack
+- Spies in every Duratheon court
+- Agents in Vethurack markets
 - Observadores nas rotas de Lands Beyond
-- Registros de all transaction significativa em three continentes
+- Records of every significant transaction in three continents
 
-Eles sabiam da campanha de Tornael before que Tornael a anunciasse. Sabiam que falharia before que partisse. E posicionaram-se para lucrar com o colapso.
+They knew of Tornael's campaign before Tornael announced it. They knew it would fail before it departed. And they positioned themselves to profit from the collapse.
 
 ---
 
@@ -3607,24 +3867,24 @@ Eles sabiam da campanha de Tornael before que Tornael a anunciasse. Sabiam que f
 
 | Naction | Relaction |
 |-------|---------|
-| Duratheon | Desprezam, mas financiam discretamente |
+| Duratheon | They despise, but finance discreetly |
 | Vethurack | Parceiros comerciais, intermedailys |
 | Lands Beyond | Connections antigas, rotas estabelecidas |
 | Kaeldur | Desconhecidos — very isolados |
 
-Orvainê permanece neutra em conflitos. Financia all os lados. Lucra com a guerra without participar dela.
+Orvainê remains neutral in conflicts. Finances all sides. Profits from war without participating in it.
 
 ---
 
 **LANGUAGE: ORVAINOIS**
 
-Os Orvaini falam **Orvainois** — uma language de sonoridade francesa arcaica, com roots latinas. Distinta de all as languages derivadas do TAELUN.
+The Orvaini speak **Orvainois** — a language of archaic French sonority, with Latin roots. Distinct from all languages derived from TAELUN.
 
-Exemplos:
+Examples:
 - *Maison* — Casa (banking)
 - *L'or* — O ouro
 - *Sevrenne* — Severidade, rigor
-- *Caelinthe* — Sky clear (metaphor para clareza)
+- *Caelinthe* — Sky clear (metaphor for clarity)
 
 The language is deliberately obscure to foreigners. Negotiations in Orvainois are impenetrable for those not trained.
 
@@ -3645,17 +3905,17 @@ The language is deliberately obscure to foreigners. Negotiations in Orvainois ar
 
 **O SEGREDO DE ORVAINÊ**
 
-A maioria em Duratheon never ouviu falar de Orvainê. Os que ouviram pensam ser uma pequena ilha de comerciantes without importance.
+Most in Duratheon have never heard of Orvainê. Those who have think it is a small island of merchants without importance.
 
 This is intentional.
 
-Orvainê cultiva irrelevance aparente. Quanto menos attention receberem, more livremente operam. Quando Setharen Kravos reorganizar os restos de Duratheon, o ouro virá de Orvainê — e poucos will know a origem.`,
+Orvainê cultivates apparent irrelevance. The less attention they receive, the more freely they operate. When Setharen Kravos reorganizes the remains of Duratheon, the gold will come from Orvainê — and few will know its origin.`,
         tags: ["orvaine", "orvaini", "finances", "ouro", "oligarquia", "orvainois"]
       },
 
       "vaelorn": {
         group: "vaelorn",
-        title: "VAELORN — Kingdom",
+        title: "VAELORN — Overview",
         content: `**Fundamental Data**
 
 | Parameter | Value |
@@ -3671,7 +3931,7 @@ Orvainê cultiva irrelevance aparente. Quanto menos attention receberem, more li
 
 Vaelorn is one of the great kingdoms of Lands Beyond. Descendants of tribes who remained on the east side of The Spine during the Second Dispersion (Era II).
 
-Enquanto os ancestrais de Duratheon cruzaram The Spine para o oeste, os ancestrais de Vaelorn permaneceram nas plains fertile do leste. Desenvolveram uma civilizaction agricultural prosperous, com estruturas political complexas.
+While Duratheon's ancestors crossed The Spine to the west, Vaelorn's ancestors remained on the fertile plains of the east. They developed a prosperous agricultural civilization, with complex political structures.
 
 ---
 
@@ -3703,8 +3963,8 @@ Vaelorn has not yet been developed in detail. Elements to define:
 - Specific political system
 - Cultura e religion
 - History detalhada
-- Relations com outros reinos de Lands Beyond
-- Papel na narrativa futura`,
+- Relations with other kingdoms of Lands Beyond
+- Role in future narrative`,
         tags: ["vaelorn", "reino", "lands beyond"]
       }
     }
@@ -3712,8 +3972,29 @@ Vaelorn has not yet been developed in detail. Elements to define:
   personagens: {
     title: "Characters",
     icon: "Crown",
+    landing: {
+      subtitle: "The Faces of History",
+      description: "Kings and commoners, warriors and scholars — the characters of Sethael carry the narrative of depletion on their shoulders. From the doomed ambition of Tornael to the silent endurance of The Seven, each life is a thread in the greater tapestry.",
+      stats: [
+        { value: "50+", label: "Named Characters" },
+        { value: "9", label: "Factions" },
+        { value: "7", label: "POV Characters" }
+      ]
+    },
+    groups: [
+      { key: "royal-family", title: "ROYAL FAMILY" },
+      { key: "house-vael", title: "HOUSE VAEL" },
+      { key: "kaeldur", title: "KAELDUR" },
+      { key: "council", title: "COUNCIL" },
+      { key: "great-houses", title: "GREAT HOUSES" },
+      { key: "lords", title: "LORDS" },
+      { key: "military", title: "MILITARY" },
+      { key: "the-seven", title: "THE SEVEN (LEGION 24)" },
+      { key: "primordial", title: "PRIMORDIAL" }
+    ],
     entries: {
       "tornael": {
+        group: "royal-family",
         title: "Tornael Vael (Krav XIX)",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -3722,24 +4003,25 @@ Vaelorn has not yet been developed in detail. Elements to define:
 | House | House Vael |
 | Father | Aldaran Vael |
 | Reign | 740 AF — 778 AF |
-| Age em 778 AF | ~52 anos |
+| Age in 778 AF | ~52 years |
 | Wife | Queen Senthara |
 | Children | Krav (15), Aelara (12) |
 
 **Personality**
-- Obcecado com grandeza
+- Obsessed with greatness
 - Ignora conselhos
-- Acredita ser predestinado
-- Despreza os Kaeldur
+- Believes he is predestined
+- Despises the Kaeldur
 
 **A Campanha de 778 AF**
 Tornael personally led 285,000 men through Kaelthrek Holds. The campaign was destroyed by the Kaeldur. Tornael died of pneumonia during the march, seven days after leaving the capital. His son Krav XIX assumed command.
 
 **Legacy**
-Preparou a guerra por 38 anos (15 sob seu pai, mais 23 de seu próprio reinado). Esvaziou o tesouro. Esgotou as províncias. Plantou as sementes da queda de Duratheon.`,
+Prepared the war for 38 years (15 under his father, plus 23 of his own reign). Emptied the treasury. Depleted the provinces. Planted the seeds of Duratheon's fall.`,
         tags: ["tornael", "rei", "house vael", "campanha"]
       },
-      "maela": {
+      "senthara": {
+        group: "royal-family",
         title: "Queen Senthara",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -3749,165 +4031,301 @@ Preparou a guerra por 38 anos (15 sob seu pai, mais 23 de seu próprio reinado).
 | Children | Krav (filho, 15 anos), Aelara (filha, 12 anos) |
 
 **Appearance**
-Olhos escuros, profundos — os mesmos olhos que a filha herdou.
+Dark, deep eyes — the same eyes her daughter inherited.
 
 **Personality**
 - Pragmática, reflexiva
-- Mais inteligente que o marido
-- Vê a ruína se aproximando
-- Faz perguntas que ninguém quer responder
+- More intelligent than her husband
+- Sees the ruin approaching
+- Asks questions no one wants to answer
 
 **Relationships**
-- Velira Sethak: amiga próxima, uma das poucas com quem fala honestamente
-- Vaethor Zumax: conselheiro, "o único homem no palácio que lhe dizia verdades que ela não queria ouvir"
+- Velira Tessalon: close friend, one of the few with whom she speaks honestly
+- Vaethor Zumax: advisor, "the only man in the palace who told her truths she didn't want to hear"
 
 **Defining Moment**
-No Duathel de 778 AF, sete dias após a partida do rei, Senthara olhou para o espaço vazio no topo da lareira — reservado para a conquista que ainda não aconteceu — e se perguntou, pela primeira vez em anos, se algum dia aconteceria.
+On the Duathel of 778 AF, seven days after the king's departure, Senthara looked at the empty space at the top of the fireplace — reserved for the conquest that hadn't happened yet — and wondered, for the first time in years, if it ever would.
 
 **Defining Quote**
-"É estranho como nos acostumamos a tudo. Ao que é ruim e ao que é bom. A vida parece sempre voltar ao mesmo lugar. Como se nada do que fizéssemos mudasse coisa alguma."`,
-        tags: ["maela", "rainha", "house vael", "the-depletion"]
+"It's strange how we get used to everything. To what is bad and what is good. Life seems to always return to the same place. As if nothing we did changed anything at all."`,
+        tags: ["senthara", "queen", "house vael", "the-depletion"]
       },
       "skael": {
+        group: "kaeldur",
         title: "Skael",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Filha do Kaelnar |
+| Title | Young Kaeldur woman |
 | Age | 17 anos |
-| Father | Thaelkhen (Kaelnar dos Kaeldur) |
+| Mother | Thaelkhen |
 | People | Kaeldur |
 
-**Position**
-Filha de Thaelkhen, o líder Kaeldur. Uma jovem de dezessete anos que cresceu nas montanhas, entre o fogo e o gelo.
+**Appearance**
+Sharp eyes, sharper than her mother's. Can spot distant figures on the mountain paths before anyone else.
 
-**Note**
-Personagem a ser desenvolvida em capítulos futuros.`,
+**Personality**
+Curious, persistent, gentle when she chooses to be. Interested in the southern "guest" (Krav).
+
+**In Part II (First Fruit)**
+Goes with her mother to gather the first berries of spring. Spots the guards bringing a southern prisoner from Thallaer. Asks her mother if she should try to speak with Krav.
+
+**Defining Quote**
+"The finder gives to those she loves. That is my rule." (giving the first berry to her mother)`,
         tags: ["skael", "kaeldur", "thaelkhen"]
       },
       "thaelkhen": {
-        title: "Kaelnar Thaelkhen",
+        group: "kaeldur",
+        title: "Thaelkhen",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Kaelnar (Rei) dos Kaeldur |
-| Governo | Eleito pelo conselho |
-| Age | ~45 anos |
+| Title | Kaeldur woman |
+| People | Kaeldur |
+| Age | ~40 anos |
 | Daughter | Skael (17 anos) |
 
-**Personality**
-- Estrategista brilhante
-- Paciente
-- Lembra do Massacre
-- Quer justice, not genocide
+**Role**
+Mother of Skael. A common Kaeldur woman who raised her daughter in the harsh environment of Vrethkaeldur.
 
-**A Victory de 778 AF**
-Thaelkhen planejou a emboscada em Kaelthrek Holds. Destruiu o army de Duratheon without perder more de 2.000 guerreiros. Capturou o príncipe Krav.
+**Relationship with Skael**
+Thaelkhen taught her daughter the ways of the Kaeldur — how to find the first berries of spring, how to survive the long winter, how to see beauty in function. "The finder gives to those she loves. That is my rule."
 
-**Dilema**
-What to do with Krav? Killing him brings satisfaction, but solves nothing. Keeping him alive gives negotiating power. Thaelkhen is pragmatic.`,
-        tags: ["thaelkhen", "kaelnar", "kaeldur", "skael"]
+**In Part II (First Fruit)**
+Appears gathering the first spring berries with her daughter Skael. Discusses the southern "guest" (Krav) and Maela's care for him.`,
+        tags: ["thaelkhen", "kaeldur", "skael", "mother"]
       },
       "setharen-kravos": {
+        group: "council",
         title: "Setharen Kravos",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Minister das Finances |
+| Title | Minister of Finances |
 | Loyalty | Duratheon (nominalmente) |
 | Age | ~60 anos |
 
 **Personality**
 - Frio, calculista
 - Sem family (esposa morreu há 31 anos)
-- Vê o colapso as oportunidade
+- Sees collapse as opportunity
 - "No sou cruel. Sou livre."
 
 **Plano**
-Setharen orquestrou o colapso de Duratheon. No causou os eventos — only posicionou-se para lucrar com eles. Sua proposta: dividir o reino em three territories funcionais.
+Setharen orchestrated the collapse of Duratheon. He didn't cause the events — only positioned himself to profit from them. His proposal: divide the kingdom into three functional territories.
 
 **Defining Quote**
-"A history not é feita por quem age, mas por quem permanece."`,
+"History is not made by those who act, but by those who remain."`,
         tags: ["setharen", "ministro", "conspiraction"]
       },
       "vaethor-zumax": {
+        group: "council",
         title: "Vaethor Zumax",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Master da Grande Biblioteca |
-| Position | Guardian dos Arquivos Reais |
-| Age | 81 anos (em 777 AF) |
-| Origin | Zumarack, costa sul de Duratheon |
-| Ethnicity | Vethurim (filho de imigrantes) |
+| Title | Master of the Great Library |
+| Position | Guardian of the Royal Archives |
+| Age | 81 years (in 777 AF) |
+| Origin | Zumarack, southern coast of Duratheon |
+| Ethnicity | Vethurim (son of immigrants) |
 
 **Appearance**
-Pele morena — "a cor da areia ao entardecer", as ele same descreve. Cabelo branco since jovem, not por idade, mas por heritage: os Vethurim chamam de *thurnakh*, a marca dos nascidos between mundos. Olhos escuros. Hands trembling na velhice, mas caligrafia still precisa.
+Brown skin — "the color of sand at dusk." White hair since youth, not from age, but from heritage: the Vethurim call it *thurnakh*, the mark of those born between worlds. Dark eyes. Hands trembling with age, but calligraphy still precise. Always impeccably dressed: blue velvet robes with embroidery in gold, a crystal lens on a golden chain.
 
 **Origins**
-Vaethor was born in Zumarack, an immigrant village on the south coast of Duratheon. His parents came from Vethurack — the great equatorial island that Duratheon despises. His father was a farmer; he worked the same fields to which his own father had fled. His mother wove carpets in the old patterns — patterns that nobles bought as "exotic curiosities" without knowing the artisan lived three streets from the port.
+Vaethor's father arrived in Duratheon as a young man from Vethurack. He landed at Skelmaar — the old western port — and walked eleven days to reach the capital. In Vaelhem Thel, he saw the white walls, the training fields, the soldiers drilling the same formations. He thought: "This is a kingdom that knows what it is. This is a place that endures."
 
-The name Zumax is not Durathek. It never was.
+He never returned to the capital. He found a community of Vethurim, followed them south to Zumarack, worked the fields, died there with an accent he never lost and stories he never stopped telling.
 
-**Ascension**
-Aos doze anos, Vaethor chegou à capital carregando cartas de recomendaction de um estudioso provincial que vira algo nele. Passou decades apagando seu sotaque. Estudou ferozmente. Encontrou mentores. Recebeu oportunidades — por grace, effort e sorte.
+Vaethor was born in Zumarack. At twelve years old, he arrived at the capital carrying letters of recommendation from a provincial scholar. He walked past many trees near the training fields — perhaps one was the tree his father had described. Perhaps none were.
 
-O avô de Tornael deu-lhe seu first cargo. O pai de Tornael deu-lhe a biblioteca. Tornael deu-lhe cinquenta anos de service.
+**The Masters Before Him**
+The exchange between library and throne is older than any living person:
+- **Master Verathar Senthek** (~335 AF) — Philosopher, author of *Thel'Nakhbaer* (The Book of Depletion). Advised Tornael's great-grandfather on the Eastern Consolidation.
+- **Master Korathen** — Advised Tornael's grandfather before the Second Fleet. His counsel shaped the campaign that followed.
+- **Vaethor Zumax** (current) — Served under Tornael's father and Tornael. His letters were kept and annotated by Tornael's father. They were ignored by Tornael.
 
-**Personality**
-- Erudito profundo, conhecedor de all os arquivos do reino
-- Leal, mas not cego — vê o que os conselheiros se recusam a ver
-- Carrega a perspectiva de um estrangeiro que se tornou insider
-- Pragmatic, mas com compassion genuine pelos que sofrem
-- No teme a morte — teme morrer without ter tentado
+**The Letter of 777 AF**
+Two months after the army departed, Vaethor wrote his final letter to King Tornael. Before the letter:
+- He requested audience three times; three times refused
+- He wrote twice to the Royal Council; no response
+- He spoke with Vice-Counselor Setharen Kravos four times; agreement, no action
+- He spent many evenings with Queen Senthara; she understood, but had no power
 
-**A Carta de 777 AF**
-Aos 81 anos, Vaethor escreveu uma carta ao King Tornael implorando que cancelasse a campanha militar. A carta continha:
-- Analysis historical de reis passados (todos viraram pó)
-- Dados about o custo da guerra
-- Alertas about os Kaeldur e Lands Beyond
-- Revelaction de sua own origem Vethurim
-- Informations about armas de fogo no leste
+The letter contained:
+- A record of his failed attempts (for posterity)
+- Historical analysis of past kings (Torn Vael, Kravorn)
+- His trust in the generals regarding the northern crossing
+- His fear of what lay in Lands Beyond (weapons of fire, scarred survivors)
+- His father's story — never before shared with anyone in the palace
+- An appeal for the royal family, the city, the army
 
-The letter was never read by Tornael. Or was read and ignored.
+**Vaethor's Blindness**
+Vaethor feared Lands Beyond. He trusted the generals about the northern passage through Kaelthrek. He did not know — could not know — that the Kaeldur would destroy the army before it ever reached Lands Beyond.
 
-**Legacy**
-A carta de Vaethor sobreviveu aos arquivos. Foi encontrada decades after por historiadores que a preservaram as testemunho de uma voz que tentou — e falhou — em impedir a catastrophe.
+His tragedy is not that he warned and was ignored. His tragedy is that he was looking in the wrong direction.
+
+**Motivation (Unspoken)**
+Vaethor never admitted his true motivation, perhaps not even to himself. He wanted to be like Verathar and Korathen — masters who were heard by kings. He wanted the tradition of library-and-throne to continue. He wrote for the archive as much as for the king — "because writing things down is all he ever knew how to do."
 
 **Defining Quote**
-"Eu vim a este reino without nada beyond de cartas e fome. Esta carta é meu pagamento final."`,
-        tags: ["vaethor", "zumax", "biblioteca", "vethurim", "carta"]
+*"Perhaps this letter will survive in the archive. Perhaps someone, someday, will find it among the records and know that the warnings were spoken. That the patterns were visible to those who looked."*`,
+        tags: ["vaethor", "zumax", "library", "vethurim", "letter", "skelmaar", "korathen", "verathar"]
       },
-      "vreth": {
-        title: "Vreth",
+      "maestro-duanax": {
+        group: "council",
+        title: "Maestro Duanax",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Court Conductor / Maestro |
+| Position | Director of the Royal Orchestra |
+| Years of Service | 23 years |
+| Era | 778 AF |
+
+**Appearance**
+White hair tied neatly at the nape of his neck.
+
+**Career**
+Has served the court for twenty-three years. Has outlived three patrons, two queens, and one execution. Survivors learn to read the room — Duanax reads it better than most.
+
+**In Part I (The Empty Space)**
+Conducts the orchestra during the Duathel dinner. The piece is new — the violins rise and fall uncertainly at first, then find their rhythm. A choir of twelve voices joins them.
+
+**What He Plays**
+*Glōrïäy ad Tornael. Glōrïäy ad vaëlōr. Glōrïäy ad fïlïël Sthendurël.*
+Words most nobles do not understand. Words they mouth anyway.`,
+        tags: ["duanax", "maestro", "orchestra", "court", "the-depletion"]
+      },
+      "thaelor-venmuth": {
+        group: "council",
+        title: "Thaelor Venmuth",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Court Painter / Art Instructor |
+| Position | Painting teacher to Princess Aelara |
+| Era | 778 AF |
+
+**Role**
+Teaches Princess Aelara the art of painting. A patient instructor who understands that technique is only part of art — the rest is seeing.
+
+**Philosophy**
+"It is shadow that shapes. It is darkness that pulls things into relief. The deeper one enters the dark, the more clearly the world reveals itself. Light merely touches the surface. Shadow gives weight. Shadow gives volume. Shadow gives truth."
+
+**In Part I (Shadow and Light)**
+Gives a painting lesson to Aelara. Teaches her about shadow and light while, unknown to her, her father lies dead in Kravethorn and her world is about to collapse.
+
+**The Irony**
+Aelara paints a dead horse and calls it "tragedy." She thinks she understands loss because a horse threw her once. Thaelor cannot tell her that real tragedy waits in the wings.`,
+        tags: ["thaelor-venmuth", "painter", "teacher", "aelara", "the-depletion"]
+      },
+      "vreth-kaeldur": {
+        group: "kaeldur",
+        title: "Vreth Kaeldur III — Kaelnar",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | Kaelnar (King) of the Kaeldur |
+| Full Name | Vreth Kaeldur III |
+| People | Kaeldur |
+| Age | ~55 anos |
+| Era | 778 AF |
+
+**Appearance**
+Long grey hair falling past his shoulders. Beard thick enough to trap crumbs. Wrapped in furs even in warm rooms.
+
+**Personality**
+- Patient, observant
+- Studies the outside world through traveler reports
+- Pragmatic — thinks of worst possibilities
+- Genuinely cares for his people
+- Brilliant strategist
+- Remembers the Massacre
+
+**Philosophy**
+"The world is large, and we are small, and we must never forget it."
+
+**The Victory of 778 AF**
+Vreth planned the ambush at Kaelthrek Holds. Destroyed the army of Duratheon without losing more than 2,000 warriors. Captured Prince Krav.
+
+**In Part II**
+Receives the captured Prince Krav in the Hall of Fire. Offers him hospitality despite being the enemy's heir. Later, in "The Seed," tells Krav that Duratheon has fallen and offers him a new name: Krav Kaeldur.
+
+**On Krav**
+Vreth sees Krav as a "seed" — fragile like saplings, but capable of growing where trees cannot. "Seeds carry no memory of softer soil. Seeds do not expect gentleness."
+
+**Defining Quote**
+"You are not khenskar. Not yet. Not while you sit in this hall."`,
+        tags: ["vreth", "kaelnar", "kaeldur", "the-depletion"]
+      },
+      "maela": {
+        group: "kaeldur",
+        title: "Maela",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | People | Kaeldur |
-| Title | Leader / Elder |
+| Status | Widow |
+| Husband | Thorvek (deceased) |
+| Son | Young boy (unnamed) |
 | Era | 778 AF |
 
-**Role in History**
-Vreth is a Kaeldur leader who appears in Part II of The Depletion. He receives the young captured prince in the Hall of Fire and offers him hospitality despite being the enemy's son.
+**Tragedy**
+Maela's husband Thorvek was killed by Prince Krav during the battle that destroyed the southern army. She was widowed and her son made fatherless by the same boy she now cares for.
 
-**Defining Quote**
-"You are not khenskar. Not yet. Not while you sit in this hall."`,
-        tags: ["vreth", "kaeldur", "the-depletion"]
+**Role**
+Despite everything, Maela prepares Krav's food every day. With great care. The Kaeldur do not hate men for doing what men do when cornered.
+
+**Philosophy**
+"Khenskar, nakh-skar — without community, without even death. We survive together or we do not survive at all. And survival requires that we carry our burdens rather than let them carry us."
+
+**In Part II**
+Tends to Krav with studied indifference — not anger, not hostility, but not trust either. The General Kraveth Vaelmar tries to thank her; she does not give him trust.
+
+**What She Represents**
+Maela embodies the Kaeldur way: hatred burns the one who holds it. She chose to see Krav as another victim of a war he did not choose.`,
+        tags: ["maela", "kaeldur", "thorvek", "widow", "the-depletion"]
+      },
+      "thorvek": {
+        group: "kaeldur",
+        title: "Thorvek",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| People | Kaeldur |
+| Status | Deceased |
+| Wife | Maela |
+| Son | Young boy (unnamed) |
+| Death | 778 AF, Battle against Duratheon |
+
+**Death**
+Thorvek was one of the Kaeldur's best warriors. He was killed by Prince Krav during the chaos of the final battle — the same battle that destroyed the southern army.
+
+**The Irony**
+Krav was fourteen years old, small, broken. Thorvek was experienced, strong. But war is not like training. "Thorvek might have hesitated. Might have seen a boy instead of an enemy. Might have given him one moment too many."
+
+**Legacy**
+His widow Maela now cares for his killer. His son grows up fatherless. The Kaeldur do not seek revenge — but they do not forget.`,
+        tags: ["thorvek", "kaeldur", "warrior", "maela", "the-depletion"]
       },
       "torn-vael": {
+        group: "house-vael",
         title: "Torn Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Fundador da House Vael |
+| Title | Founder of House Vael |
 | Era | ~800 BF |
-| Papel | Senhor tribal que unificou clans |
+| Role | Tribal lord who unified clans |
 
 **Legacy**
-Torn Vael fundou a linhagem que eventualmente governaria Duratheon por millennia. De senhores tribais a reis.`,
+Torn Vael founded the lineage that would eventually rule Duratheon for millennia. From tribal lords to kings.`,
         tags: ["torn-vael", "house-vael", "fundador", "era-tribal"]
       },
       "duratheon-vael-i": {
+        group: "house-vael",
         title: "Duratheon Vael I",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -3917,10 +4335,11 @@ Torn Vael fundou a linhagem que eventualmente governaria Duratheon por millennia
 | House | House Vael |
 
 **Legacy**
-O first rei que deu nome ao reino. Fundou a Era V e estabeleceu a capital em Vaelhem Thel.`,
+The first king who gave name to the kingdom. Founded Era V and established the capital in Vaelhem Thel.`,
         tags: ["duratheon-vael", "house-vael", "primeiro-rei", "fundaction"]
       },
       "tharel-vael": {
+        group: "house-vael",
         title: "Tharel Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -3930,18 +4349,19 @@ O first rei que deu nome ao reino. Fundou a Era V e estabeleceu a capital em Vae
 | House | House Vael |
 
 **Legacy**
-Construtor dos 7 Grandes Templos. Estabeleceu a infraestrutura religiosa do reino.`,
-        tags: ["tharel-vael", "house-vael", "templos"]
+Builder of the 7 Great Temples. Established the religious infrastructure of the kingdom.`,
+        tags: ["tharel-vael", "house-vael", "temples"]
       },
       "senara-senvarak": {
+        group: "primordial",
         title: "Senara Senvarak — The Illuminated",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Queen de Duratheon, "A Iluminada" |
+| Title | Queen of Duratheon, "The Illuminated" |
 | Birth | ~122 AF |
-| Coronation | 140 AF (aos 18 anos) |
-| Morte | 218 AF (aos 96 anos) |
+| Coronation | 140 AF (at 18 years) |
+| Death | 218 AF (at 96 years) |
 | Reign | 78 anos |
 | House | House Senvarak |
 
@@ -3949,68 +4369,78 @@ Construtor dos 7 Grandes Templos. Estabeleceu a infraestrutura religiosa do rein
 The coup of 137 AF overthrew House Vael. Three years of consolidation. Senara was crowned in 140 AF, still young.
 
 **The Reign**
-Segundo reinado more longo da history. Fundou 5 universidades. Expandiu a Grande Biblioteca. Ordenou more de 12.000 executions — 154 por ano em average.
+Second longest reign in history. Founded 5 universities. Expanded the Great Library. Ordered more than 12,000 executions — 154 per year on average.
 
 **Death**
-Morreu aos 96 anos lendo um tratado about justice. Suas últimas palavras: "Ainda not terminei."
+Died at 96 years reading a treatise on justice. Her last words: "I'm not finished yet."
 
 **Legacy**
-Iluminada e sangrenta. Conhecimento e terror em igual medida.`,
-        tags: ["senara-senvarak", "house-senvarak", "golpe", "rainha", "iluminada"]
+Illuminated and bloody. Knowledge and terror in equal measure.`,
+        tags: ["senara-senvarak", "house-senvarak", "coup", "queen", "illuminated"]
       },
       "kravorn-vael-ii": {
+        group: "house-vael",
         title: "Kravorn Vael II — The Subjugator",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | Title | King de Duratheon, "O Subjugador" |
 | Birth | ~296 AF |
-| Coronation | 315 AF (aos 19 anos) |
-| Morte | 385 AF (aos 89 anos) |
+| Coronation | 315 AF (at 19 years) |
+| Death | 385 AF (at 89 years) |
 | Reign | 70 anos |
 | House | House Vael |
 
 **The Reign**
-O reinado more longo da history de Duratheon. Kravorn assumiu jovem after derrubar os Thurnavel e governou com hand de ferro por sete decades.
+The longest reign in Duratheon's history. Kravorn assumed power young after overthrowing the Thurnavel and ruled with an iron hand for seven decades.
 
 **The Terror of the North**
 Kravorn is responsible for approximately 670,000 deaths in the northern campaigns. He massacred entire populations, burned villages, poisoned wells. The Kaeldur never forgot.
 
 **Death**
-Morreu aos 89 anos. Chronicles registram "fall de escada" — possivelmente eufemismo para assassinato ou suicide.
+Died at 89 years old. Chronicles record "fall from stairs" — possibly euphemism for murder or suicide.
 
 **Legacy**
-Estabilizou Duratheon after o caos Thurnavel, mas plantou as sementes do ódio que eventualmente destruiriam o reino.`,
+Stabilized Duratheon after the Thurnavel chaos, but planted the seeds of hatred that would eventually destroy the kingdom.`,
         tags: ["kravorn-vael", "house-vael", "subjugador", "massacres"]
       },
       "vaelan-vael": {
+        group: "house-vael",
         title: "Vaelan Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | Title | King de Duratheon |
 | House | House Vael |
-| Event | Contraiu NAKH-IS em 654 AF |
+| Event | Contracted NAKH-IS in 654 AF |
 
 **Meaning**
-Primeiro rei a contrair "The Depletion" (NAKH-IS), a disease que simboliza o esgotamento do reino.`,
+First king to contract "The Depletion" (NAKH-IS), the disease that symbolizes the kingdom's exhaustion.`,
         tags: ["vaelan-vael", "house-vael", "nakh-is", "depletion"]
       },
-      "lord-velaren": {
-        title: "Lord Velaren",
+      "lord-kethmar": {
+        group: "lords",
+        title: "Lord Kethmar",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
+| Full Name | Lord Kethmar (formerly Velaren Keth) |
 | Title | Lord de Duratheon |
+| Age | 71 anos |
 | Era | 778 AF |
 
 **Papel**
-Nobre da corte de Duratheon. Aparece em dialogues com Setharen about o futuro do reino.
+A 71-year-old noble who has seen four kings rise and three fall. Appears in "Dry Wood" questioning Setharen about the kingdom's future. Skeptical but pragmatic.
 
-*No data yet — character mentioned in The Depletion.*`,
-        tags: ["velaren", "nobre", "the-depletion"]
+**Notable quotes**
+"Dry wood burns. But someone must strike the spark."
+"And someone must ensure the buckets are empty when the neighbors come running."
+
+*Character from The Depletion, Part II, Chapter VI (Dry Wood).*`,
+        tags: ["kethmar", "nobre", "the-depletion", "dry-wood"]
       },
       "lord-thaevor": {
+        group: "lords",
         title: "Lord Thaevor",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -4020,75 +4450,118 @@ Nobre da corte de Duratheon. Aparece em dialogues com Setharen about o futuro do
 | Era | 778 AF |
 
 **Context**
-Mencionado as estando longe de casa during a campanha de Tornael. Sua family sofreu tragedy em sua absence.
+Mentioned as being away from home during Tornael's campaign. His family suffered tragedy in his absence.
 
 *No data yet — character mentioned in The Depletion.*`,
         tags: ["thaevor", "nobre", "campanha"]
       },
       "general-garek": {
+        group: "military",
         title: "General Garek",
         content: `*No data yet.*
 
-Mencionado as general nas forces de Duratheon.`,
+Mentioned as general in Duratheon's forces.`,
         tags: ["garek", "general", "militar"]
       },
-      "general-kraveth": {
-        title: "General Kraveth",
-        content: `*No data yet.*
+      "general-kraveth-vaelmar": {
+        group: "military",
+        title: "General Kraveth Vaelmar",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | General of Duratheon |
+| Full Name | Kraveth Vaelmar |
+| Origin | Outskirts of Vaelhem Thel |
+| Father | Thoren Vaelmar (farmer) |
+| Wife | Velara |
+| Daughters | Tornela, Sethara, Jakenna |
+| Era | 778 AF |
 
-Mencionado as general nas forces de Duratheon.`,
-        tags: ["kraveth", "general", "militar"]
+**Background**
+Not born to nobility. His father was a farmer, "not educated, but honorable." Of six siblings, Kraveth was the only one to pursue military career — "he wasn't the most intelligent of his siblings." The others studied and became members of the court through universities.
+
+**Military Career**
+Built a brilliant career without epic glories. Before the northern campaign, there were no great battles — only regional conflicts, minor revolts, border tensions. Rose slowly through the hierarchy, campaign after campaign, scar after scar.
+
+**The Campaign**
+One of the king's generals. Not the most important. Left behind a wife and three daughters with a promise: "I'll return before summer."
+
+**Prisoner**
+Captured by the Kaeldur after the disaster. Held in Thallaer through winter, then brought to Kaelthrek in spring. Writes letters to Queen Senthara — letters that arrive too late, or not at all.
+
+**In Part II**
+Reunites with Krav in Kaelthrek. Shares memories of the march, the delays, the king's death. Eventually departs south with 17 other officers, leaving Krav behind.
+
+**Defining Moment**
+"I would rather die than risk your life again. I will take my own life before I lead you on another journey without destination."
+
+**The Promise**
+"If Duratheon is safe for you, we will return. We will come back for you."`,
+        tags: ["kraveth-vaelmar", "general", "military", "prisoner", "the-depletion"]
       },
       "general-kravuum": {
+        group: "military",
         title: "General Kravuum",
         content: `*No data yet.*
 
-Mencionado as general nas forces de Duratheon.`,
+Mentioned as general in Duratheon's forces.`,
         tags: ["kravuum", "general", "militar"]
       },
       "captain-tornaven": {
+        group: "military",
         title: "Captain Tornaven",
         content: `*No data yet.*
 
-Mencionado as captain nas forces de Duratheon.`,
+Mentioned as captain in Duratheon's forces.`,
         tags: ["tornaven", "captain", "militar"]
       },
-      "king-taelor": {
-        title: "King Taelor",
-        content: `*No data yet.*
+      "king-taelor-vael": {
+        group: "house-vael",
+        title: "King Taelor Vael",
+        content: `**Fundamental Data**
+| Parameter | Value |
+|-----------|-------|
+| Title | King of Duratheon |
+| House | House Vael |
+| Era | ~3 generations before 778 AF |
+| Legacy | Built the harbor city of Taelorn |
 
-King historical de Duratheon, mencionado em registros.`,
-        tags: ["taelor", "rei", "historical"]
+**The Dream**
+Taelor stood on a cliff overlooking the sea and declared that from Taelorn, Duratheon would reach the eastern shores. He dreamed of conquest by water, of trade routes spanning the known world.
+
+**Taelorn**
+He commissioned:
+- A lighthouse of white stone, nearly as high as the Towers of Sthendur
+- Docks capable of holding two hundred ships
+- A city designed for thousands
+
+**Failure**
+Taelor died before the first ship was completed. His son abandoned the project. His grandson turned resources elsewhere.
+
+**Legacy**
+Taelorn became a monument to ambition unrealized. A city built for thousands, inhabited by hundreds. The conspirators of "Dry Wood" chose it for their meeting precisely because it was forgotten.
+
+**The Vel-Nakh Expeditions**
+Taelor sent 17 expeditions through the Strait of Vel-Nakh. All were lost. His son sent 12 more. The sea does not negotiate.`,
+        tags: ["taelor-vael", "house-vael", "taelorn", "king", "historical"]
       },
       "lady-velathra": {
+        group: "lords",
         title: "Lady Velathra",
         content: `*No data yet.*
 
-Nobre de Duratheon mencionada nos manuscritos.`,
-        tags: ["velathra", "nobre"]
-      },
-      "princess-vaela": {
-        title: "Princess Aelara",
-        content: `*No data yet.*
-
-Princess historical de Duratheon.`,
-        tags: ["vaela", "princesa", "house-vael"]
-      },
-      "queen-senthara": {
-        title: "Queen Senthara",
-        content: `*No data yet.*
-
-Queen historical de Duratheon.`,
-        tags: ["senthara", "rainha"]
+Noble of Duratheon mentioned in the manuscripts.`,
+        tags: ["velathra", "noble"]
       },
       "durel": {
+        group: "primordial",
         title: "Durel",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | People | TauTek |
-| Era | Era III — Era da Profanaction |
-| Significado do nome | DUR (endure) + EL (agentive) = "O que Endura" |
+| Era | Era III — Era of Profanation |
+| Name meaning | DUR (endure) + EL (agentive) = "The One Who Endures" |
 
 **Role in History**
 Durel was a central figure among the TauTek. Born weak, he developed skills of observation and connection that made him influential. He created an information network between the tribes.
@@ -4098,69 +4571,60 @@ After his death, his followers formed the SENDAR (Preservers), who eventually co
         tags: ["durel", "tautek", "era-iii", "sendar"]
       },
       "sarnar": {
+        group: "primordial",
         title: "Sarnar of the Akrelan",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | People | Akrelan (povo costeiro) |
 | Era | Era III |
-| Significado do nome | SAR (move forward) + NAR (agentive) = "O que Advances" |
+| Name meaning | SAR (move forward) + NAR (agentive) = "The One Who Advances" |
 
 **Role in History**
-O greater explorador dos Akrelan. Navegou more longe que qualquer outro, mapeou costas desconhecidas, estabeleceu rotas comerciais com povos distantes.
+The greatest explorer of the Akrelan. Sailed farther than any other, mapped unknown coasts, established trade routes with distant peoples.
 
 **Legacy**
 He expanded the conception of the known world. His stories of strange lands — floating ice, flying fish, dancing lights in the sky — were preserved in the chronicles.`,
-        tags: ["sarnar", "akrelan", "explorador", "era-iii"]
+        tags: ["sarnar", "akrelan", "explorer", "era-iii"]
       },
       "durenkar": {
+        group: "primordial",
         title: "Durenkar of the Vethurim",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| People | Vethurim (povo do deserto) |
+| People | Vethurim (desert people) |
 | Era | Era III |
-| Significado do nome | DUR (endure) + elementos de coragem |
+| Name meaning | DUR (endure) + elements of courage |
 
 **Role in History**
-Leader que guiou seu povo through do Red Sand Sea during a great seca, when os oasis secaram. A travessia deveria ser impossible.
+Leader who guided his people through the Red Sand Sea during a great drought, when the oases dried up. The crossing should have been impossible.
 
 **The Price**
-Metade de seu povo morreu na travessia — incluindo dois de seus filhos, sua esposa, seus pais. Mas a outra metade sobreviveu.
+Half of his people died in the crossing — including two of his children, his wife, his parents. But the other half survived.
 
 **Legacy**
 Because of Durenkar, the Vethurim continued. The price was terrible, but the alternative was extinction.`,
         tags: ["durenkar", "vethurim", "deserto", "era-iii", "travessia"]
       },
       "jakaelor-vael": {
+        group: "house-vael",
         title: "Jakaelor Vael",
         content: `*No data yet.*
 
-Membro da House Vael mencionado nos registros dynastic.`,
+Member of House Vael mentioned in dynastic records.`,
         tags: ["jakaelor", "house-vael"]
       },
-      "aelara-vael": {
-        title: "Aelara Vael",
-        content: `*No data yet.*
-
-Membro da House Vael mencionado nos registros dynastic.`,
-        tags: ["aelara", "house-vael"]
-      },
       "thoren-vael": {
+        group: "house-vael",
         title: "Thoren Vael",
         content: `*No data yet.*
 
-Membro da House Vael mencionado nos registros dynastic.`,
+Member of House Vael mentioned in dynastic records.`,
         tags: ["thoren", "house-vael"]
       },
-      "senthara-vael": {
-        title: "Senthara Vael",
-        content: `*No data yet.*
-
-Membro da House Vael mencionado nos registros dynastic.`,
-        tags: ["senthara", "house-vael"]
-      },
       "lord-senvar": {
+        group: "lords",
         title: "Lord Senvar",
         content: `*No data yet.*
 
@@ -4168,20 +4632,23 @@ Nobre de Duratheon mencionado nos manuscritos.`,
         tags: ["senvar", "nobre"]
       },
       "lord-varek": {
+        group: "lords",
         title: "Lord Varek",
         content: `*No data yet.*
 
 Nobre de Duratheon mencionado nos manuscritos.`,
         tags: ["varek", "nobre"]
       },
-      "lord-tharek": {
-        title: "Lord Tharek",
+      "lord-kallistos": {
+        group: "lords",
+        title: "Lord Kallistos",
         content: `*No data yet.*
 
 Nobre de Duratheon mencionado nos manuscritos.`,
         tags: ["tharek", "nobre"]
       },
       "lord-durathen": {
+        group: "lords",
         title: "Lord Durathen",
         content: `*No data yet.*
 
@@ -4189,6 +4656,7 @@ Nobre de Duratheon mencionado nos manuscritos.`,
         tags: ["durathen", "nobre"]
       },
       "aldaran-vael": {
+        group: "house-vael",
         title: "Aldaran Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -4199,98 +4667,102 @@ Nobre de Duratheon mencionado nos manuscritos.`,
 | Successor | Tornael Vael (filho) |
 
 **Context**
-Aldaran reinou durante o período de instabilidade que seguiu o suicídio de Torn XVII. Foi um rei financeiramente fraco — precisou de empréstimos da burguesia emergente para manter o reino.
+Aldaran reigned during the period of instability that followed the suicide of Torn XVII. He was a financially weak king — he needed loans from the emerging bourgeoisie to maintain the kingdom.
 
 **Legacy**
-Concedeu o monopólio dos mercados de Vaelhem Thel ao avô de Theron Agrias, em troca de um empréstimo que nunca foi cobrado. Uma decisão que enriqueceu uma família menor às custas do controle real sobre o abastecimento da capital.
+Granted the monopoly of the Vaelhem Thel markets to Cassien Agrias's grandfather, in exchange for a loan that was never collected. A decision that enriched a minor family at the expense of royal control over the capital's supply.
 
 **Morte**
-Morreu em 740 AF. Seu filho Tornael assumiu e imediatamente começou a preparar a campanha que destruiria o reino.`,
+Died in 740 AF. His son Tornael took over and immediately began preparing the campaign that would destroy the kingdom.`,
         tags: ["aldaran-vael", "house-vael", "rei", "instabilidade"]
       },
       "luxaren-thalorn": {
+        group: "great-houses",
         title: "Luxaren Thalorn",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Lord, administrador dos portos de Veluthaar |
+| Title | Lord, administrator of the ports of Veluthaar |
 | House | House Thalorn (naval) |
 | Age | ~35 anos |
-| Wife | Velira Sethak |
+| Wife | Velira Tessalon |
 
 **Position**
-Casa Thalorn controla a frota mercante e os portos do sul. Luxaren administra Veluthaar, o maior porto comercial do reino.
+House Thalorn controls the merchant fleet and the southern ports. Luxaren administers Veluthaar, the kingdom's largest commercial port.
 
 **Personality**
 - Inseguro, controlador
-- Ressente a proximidade da esposa com a rainha
-- "Um bom marido — se chamarmos assim quem provê conforto e posição"
-- Reputação de certa... aspereza quando contrariado
+- Resents his wife's closeness to the queen
+- "A good husband — if we call that someone who provides comfort and position"
+- Reputation for certain... sharpness when contradicted
 
 **Appearance**
-Homem de talvez trinta e cinco anos, rosto estreito, nariz pontudo. O tipo de feições que parecem permanentemente ofendidas por algo. Veste-se na última moda da capital — veludo azul, bordados em prata, calções justos demais.
+A man of perhaps thirty-five years, narrow face, pointed nose. The type of features that seem permanently offended by something. Dresses in the latest capital fashion — blue velvet, silver embroidery, pants too tight.
 
 **Defining Moment**
-No Duathel de 778 AF, tentou ordenar que Velira o acompanhasse. A rainha Senthara interveio: "Velira permanecerá ao meu lado esta noite. Talvez esta semana."`,
+On the Duathel of 778 AF, he tried to order Velira to accompany him. Queen Senthara intervened: "Velira will remain at my side tonight. Perhaps this week."`,
         tags: ["luxaren-thalorn", "house-thalorn", "nobre", "velira", "the-depletion"]
       },
-      "velira-sethak": {
-        title: "Velira Sethak (Thalorn)",
+      "velira-tessalon": {
+        group: "great-houses",
+        title: "Velira Tessalon (Thalorn)",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Birth Name | Velira Sethak |
+| Birth Name | Velira Tessalon |
 | Married Name | Velira Thalorn |
-| Father | Dureth Sethak (mercador, frota de trigo) |
+| Father | Dureth Tessalon (mercador, frota de trigo) |
 | Husband | Luxaren Thalorn |
 | Status em 778 AF | Grávida |
 
 **Position**
-Filha de família mercantil rica (Casa Sethak controla metade do trigo que alimenta a capital), casou-se com Luxaren Thalorn por conveniência social. Usa sempre azul-marinho — a cor da casa do marido.
+Daughter of a rich merchant family (House Tessalon controls half the wheat that feeds the capital), she married Luxaren Thalorn for social convenience. Always wears navy blue — the color of her husband's house.
 
 **Relationship with Senthara**
-Amiga próxima da rainha. Uma das poucas pessoas com quem Senthara fala honestamente.
+Close friend of the queen. One of the few people with whom Senthara speaks honestly.
 
 **Personality**
 - Perceptiva, gentil
-- Suporta o marido com paciência
-- "Ele é um bom homem. Ele apenas... precisa de mim."
+- Endures her husband with patience
+- "He is a good man. He just... needs me."
 
 **Defining Quote**
-Quando Senthara perguntou por que se casou com Luxaren:
-"Ele não é cruel. Ele é apenas... fraco."
-"Não. Bem... ele precisa de mim."`,
-        tags: ["velira-sethak", "velira-thalorn", "maela", "the-depletion"]
+When Senthara asked why she married Luxaren:
+"He is not cruel. He is just... weak."
+"No. Well... he needs me."`,
+        tags: ["velira-sethak", "velira-thalorn", "senthara", "the-depletion"]
       },
       "aldric-stennvik": {
+        group: "great-houses",
         title: "Aldric Stennvik",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Lord, administrador das minas do leste |
-| House | House Stennvik (mineração) |
+| Title | Lord, administrator of the eastern mines |
+| House | House Stennvik (mining) |
 | Age | 72 anos |
-| Heirs | Nenhum (sem filhos) |
+| Heirs | None (no children) |
 
 **Position**
-Administra o que restou das minas do leste — que já foram a maior fonte de ferro do reino. As minas estão praticamente esgotadas.
+Administers what remains of the eastern mines — which were once the kingdom's largest source of iron. The mines are practically depleted.
 
 **Personality**
-- Era sábio, ou tinha sido
-- Já não se importa com o destino do império
-- "Estou velho. Sem filhos. Minha casa não tem herdeiros diretos."
-- Honra, reino, legado — "tudo besteira e vaidade"
-- Quer apenas garantir que viverá bem os anos que lhe restam
+- He was wise, or had been
+- He no longer cares about the empire's fate
+- "I'm old. No children. My house has no direct heirs."
+- Honor, kingdom, legacy — "all nonsense and vanity"
+- He just wants to ensure he'll live well for the years he has left
 
 **Philosophy**
-Um pragmatismo cínico nascido da exaustão. Viu recursos se esgotarem, viu o reino se endividar, viu reis cometerem os mesmos erros. Não tem mais energia para se importar — mas também não tem ilusões.
+A cynical pragmatism born of exhaustion. He saw resources deplete, saw the kingdom go into debt, saw kings make the same mistakes. He no longer has the energy to care — but he also has no illusions.
 
 **Defining Quote**
-"Impressionante como dependemos dessa gente." (sobre os Vethurim)
-"Impressionante como fingimos que não."`,
+"Impressive how we depend on these people." (about the Vethurim)
+"Impressive how we pretend we don't."`,
         tags: ["aldric-stennvik", "house-stennvik", "minas", "nobre", "the-depletion"]
       },
       "regulus-corvain": {
+        group: "great-houses",
         title: "Regulus Corvain",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -4300,26 +4772,27 @@ Um pragmatismo cínico nascido da exaustão. Viu recursos se esgotarem, viu o re
 | Age | ~50 anos |
 
 **Position**
-Casa Corvain controla os contratos. Toda transação comercial em Duratheon precisa do selo Corvain para ter validade legal. Heranças, disputas de terra, acordos mercantis — tudo passa por eles. Cada selo, uma taxa. Cada disputa, uma porcentagem.
+House Corvain controls the contracts. Every commercial transaction in Duratheon needs the Corvain seal to be legally valid. Inheritances, land disputes, merchant agreements — everything passes through them. Every seal, a fee. Every dispute, a percentage.
 
 **Family Wealth**
-Os Corvain são provavelmente a família mais rica do reino depois dos Vael. Séculos de acumulação silenciosa. "A família não conquistava territórios — cobrava para que outros conquistassem legalmente." Embora os tempos recentes não tenham sido tão generosos para os negócios.
+The Corvains are probably the richest family in the kingdom after the Vaels. Centuries of silent accumulation. "The family didn't conquer territories — they charged so others could conquer legally." Although recent times haven't been so generous for business.
 
 **Appearance**
-Famoso por seu pragmatismo. Não usa roupas coloridas — sempre preto, sempre a mesma roupa. Diz que pensar em vestimenta é perda de tempo que poderia ser gasto revisando contratos.
+Famous for his pragmatism. Doesn't wear colorful clothes — always black, always the same outfit. Says that thinking about clothing is wasted time that could be spent reviewing contracts.
 
 **Personality**
 - Pragmático ao extremo
-- Fala pouco, observa muito
-- Sorri sem mostrar os dentes
-- Sugere soluções práticas (e cruéis) para problemas sociais
+- Speaks little, observes much
+- Smiles without showing teeth
+- Suggests practical (and cruel) solutions for social problems
 
 **Defining Quote**
-Sobre os pobres do Vel-Zumarakh: "Eu sugeri ao rei que os convocassem para a guerra, mas seus conselheiros insistiram que cada guerreiro precisava contribuir de forma genuína para a campanha. *Soldados são caros*, diziam eles."`,
+About the poor of Vel-Zumarakh: "I suggested to the king that they be drafted for the war, but his advisors insisted that each warrior needed to genuinely contribute to the campaign. *Soldiers are expensive*, they said."`,
         tags: ["regulus-corvain", "house-corvain", "contratos", "nobre", "the-depletion"]
       },
-      "theron-agrias": {
-        title: "Theron Agrias",
+      "cassien-agrias": {
+        group: "great-houses",
+        title: "Cassien Agrias",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
@@ -4328,47 +4801,49 @@ Sobre os pobres do Vel-Zumarakh: "Eu sugeri ao rei que os convocassem para a gue
 | Age | ~40 anos |
 
 **Position**
-Casa Agrias controla os mercados de Vaelhem Thel — uma rede de dezessete praças comerciais onde novecentas mil bocas compram o que podem. Controlam as licenças (cada banca paga taxa semanal), as balanças oficiais, e o fluxo de intermediários.
+House Agrias controls the markets of Vaelhem Thel — a network of seventeen commercial squares where nine hundred thousand mouths buy what they can. They control the licenses (each stall pays a weekly fee), the official scales, and the flow of intermediaries.
 
 **Origin of Wealth**
-O monopólio foi uma concessão de Aldaran Vael ao avô de Theron, em troca de um empréstimo que nunca foi cobrado. Uma tarefa considerada menor pelas casas maiores — nobres não pisam em mercados. Mas novecentas mil pessoas comprando comida todos os dias gera uma renda considerável.
+The monopoly was a concession from Aldaran Vael to Cassien's grandfather, in exchange for a loan that was never collected. A task considered minor by the major houses — nobles don't step foot in markets. But nine hundred thousand people buying food every day generates considerable income.
 
 **Personality**
-- Boa aparência, não é má pessoa
-- Ama a esposa e os filhos
-- Sente necessidade de estar perto das casas maiores
-- Tem plena consciência de que sua fortuna vem do povo, não dos nobres
+- Good-looking, not a bad person
+- Loves his wife and children
+- Feels the need to be near the major houses
+- He is fully aware that his fortune comes from the common people, not from nobles
 
 **The Mystery**
-Alguns dizem que ele ri para ouvir. Que não fala para observar. Que não usa as roupas mais nobres para ser intencionalmente subestimado.
+Some say he smiles to listen. That he doesn't speak to observe. That he doesn't wear the noblest clothes to be intentionally underestimated.
 
-É o que dizem.
+That's what they say.
 
-Mas talvez ele seja apenas uma pessoa simples, que quer fazer parte da corte.`,
+But perhaps he's just a simple person who wants to be part of the court.`,
         tags: ["theron-agrias", "house-agrias", "mercados", "nobre", "the-depletion"]
       },
       "tariq-bashani": {
+        group: "great-houses",
         title: "Tariq Bashani",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
 | Title | Mestre Construtor Naval |
 | Origin | Vethurim |
-| Position | Construtor-chefe da frota real |
+| Position | Chief builder of the royal fleet |
 
 **Position**
-Tariq é o homem responsável por construir os navios da campanha de Tornael. Vethurim — do povo que Duratheon despreza mas do qual depende. Tolerado porque indispensável.
+Tariq is the man responsible for building the ships of Tornael's campaign. Vethurim — of the people that Duratheon despises but upon whom it depends. Tolerated because indispensable.
 
 **The Irony**
-Assim como o tapete Vethurim no Thul-Vaelhem, assim como os tecidos que os nobres compram como "curiosidades exóticas", os navios que levarão o exército foram construídos por mãos que jamais seriam bem-vindas no salão do palácio.
+Just as the Vethurim carpet in the Thul-Vaelhem, just as the fabrics that nobles buy as "exotic curiosities," the ships that will carry the army were built by hands that would never be welcome in the palace hall.
 
 **Reputation**
-Os nobres mencionam seu nome com certo desconforto:
-"O Vethurim? Impressionante como dependemos dessa gente."
-"Impressionante como fingimos que não."`,
+The nobles mention his name with certain discomfort:
+"The Vethurim? Impressive how we depend on these people."
+"Impressive how we pretend we don't."`,
         tags: ["tariq-bashani", "vethurim", "naval", "construtor", "the-depletion"]
       },
       "aelara-vael-princess": {
+        group: "royal-family",
         title: "Princess Aelara Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
@@ -4379,55 +4854,959 @@ Os nobres mencionam seu nome com certo desconforto:
 | Siblings | Krav (irmão, 15 anos) |
 
 **Appearance**
-Cabelo escuro como o da mãe, olhos escuros como o da mãe, a mesma impaciência mal disfarçada do pai. Dedos manchados de tinta — azul e ocre, sempre azul e ocre.
+Hair dark like her mother's, eyes dark like her mother's, the same poorly disguised impatience of her father. Fingers stained with ink — blue and ochre, always blue and ochre.
 
 **Personality**
-- Entediada com a corte
+- Bored with the court
 - Prefere pintar e ler a fingir interesse em tecidos e música
-- Sente falta do irmão Krav, que marcha com o pai no norte
-- Mais perceptiva do que parece
+- Misses her brother Krav, who marches with their father in the north
+- More perceptive than she appears
 
 **Defining Moment**
-No Duathel de 778 AF, sentada no trono do pai (que deveria estar vazio), riu alto ao ver as calças de Luxaren Thalorn: "Essas são as calças mais feias que já vi na vida!"
+On the Duathel of 778 AF, sitting on her father's throne (which should have been empty), she laughed aloud upon seeing Luxaren Thalorn's pants: "Those are the ugliest pants I've ever seen in my life!"
 
 **The Detail**
-Durante a conversa filosófica entre Senthara e Velira sobre o fogo que cega mas depois não cega mais, Aelara parou de cutucar as unhas. Estava ouvindo, embora fingisse não estar.`,
-        tags: ["aelara-vael", "princesa", "house-vael", "the-depletion", "maela"]
+During the philosophical conversation between Senthara and Velira about the fire that blinds but then no longer blinds, Aelara stopped picking at her nails. She was listening, even though she pretended not to.`,
+        tags: ["aelara-vael", "princess", "house-vael", "the-depletion", "senthara"]
       },
       "krav-vael": {
+        group: "royal-family",
         title: "Prince Krav Vael",
         content: `**Fundamental Data**
 | Parameter | Value |
 |-----------|-------|
-| Title | Príncipe de Duratheon, Herdeiro do Trono |
+| Title | Prince of Duratheon, Heir to the Throne |
 | Age | 15 anos (em 778 AF) |
 | Parents | Tornael e Senthara |
 | Siblings | Aelara (irmã, 12 anos) |
 
 **Position**
-Herdeiro do trono. Marcha com o pai na campanha ao norte — a primeira experiência militar de um príncipe de quinze anos.
+Heir to the throne. Marches with his father on the northern campaign — the first military experience of a fifteen-year-old prince.
 
 **As Seen by Others**
-Aelara sente sua falta: "Krav, que sempre a deixava assistir quando praticava esgrima. Krav, que contava histórias de batalhas antigas quando os tutores não estavam olhando. Krav, que provavelmente estava vivendo uma aventura de verdade naquele momento."
+Aelara misses him: "Krav, who always let her watch when he practiced fencing. Krav, who told stories of ancient battles when the tutors weren't watching. Krav, who was probably living a real adventure at that very moment."
 
-Senthara se preocupa: "Krav... se ele está comendo direito — você sabe como ele é, esquece de comer quando está animado com alguma coisa." E depois, mais baixo: "Krav... Meu menino. Já sinto falta dele."
+Senthara worries: "Krav... if he's eating properly — you know how he is, forgets to eat when he's excited about something." And then, more quietly: "Krav... My boy. I already miss him."
 
 **Fate**
-A campanha será destruída pelos Kaeldur. O destino de Krav após a batalha permanece incerto.`,
+The campaign will be destroyed by the Kaeldur. Krav's fate after the battle remains uncertain.`,
         tags: ["krav-vael", "principe", "house-vael", "campanha", "the-depletion"]
+      },
+      "legion-24": {
+        group: "the-seven",
+        title: "Legion 24 — The Seven",
+        content: `**Unit Data**
+| Field | Value |
+|-------|-------|
+| Legion | 24th (rear guard) |
+| Position in column | ~35-40 km behind vanguard |
+| Unit | *Tenthar* — 7 soldiers (see: Law of Seven) |
+| Equipment | Spear, oval shield, short sword |
+
+**They have never seen the king. The king is a rumor, an idea, a banner on the horizon.**
+
+---
+
+**The Seven — Summary**
+
+| # | Name | Age | Origin | Essence |
+|---|------|-----|--------|---------|
+| 1 | Coll Saltborn | 22 | Senvarek (coast) | Optimist, intrepid |
+| 2 | Renn Saltborn | 19 | Senvarek (coast) | Skeptic, protector |
+| 3 | Tam Smithson | 17 | Vaelhem Thel | Orphan, innocent |
+| 4 | Stenn Kolrath | 32 | Kravaal (mines) | Violent protector |
+| 5 | Garth Ironmark | 21 | Vaelhem Thel | Perfect technique |
+| 6 | Drav Thurgard | 45 | Uncertain | Polite assassin |
+| 7 | Aldwen Marsh | 27 | Vaelhem Thel | Curious nihilist |
+
+---
+
+**Informal Hierarchy**
+
+DRAV (45) — silent respect
+    ↓
+STENN (32) ←→ GARTH (21) — tension
+    ↓
+RENN (19) ←→ ALDWEN (27) — mutual recognition
+    ↓
+COLL (22) — heart of the group
+    ↓
+TAM (17) — protected by all
+
+---
+
+**Key Tensions**
+
+1. **Stenn vs. Garth** — Class collision. Stenn is everything Garth was taught to despise. Garth is everything Stenn has learned to hate.
+
+2. **Renn vs. Coll** — Love expressed through opposition. Renn protects by contradicting. Coll endures by ignoring.
+
+3. **Everyone vs. Death** — They all know this march is likely a death sentence. Each processes it differently.
+
+**The Tam Question:** Everyone protects Tam. Coll sees his younger self. Renn recognizes vulnerability. Stenn's obsession is deep and unexplained. Drav sees innocence worth preserving.
+
+---
+
+**Narrative Context**
+
+This is not heroic fantasy. This is tragedy. These men are walking to their deaths, and the best of them know it. The question is not "will they survive" — it's "how will they face the end."`,
+        tags: ["legion-24", "the-seven", "campaign", "778-af", "long-march", "the-depletion"]
+      },
+      "coll-saltborn": {
+        group: "the-seven",
+        title: "Coll Saltborn",
+        content: `*"When we return, I'll buy three boats. No, four. The old man will cry with joy."*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 22 years |
+| Origin | Senvarek (west coast) |
+| Previous profession | Fisherman |
+| Military training | 3 months |
+| Position | Line infantry, spearman |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Tall for a fisherman — 1.78m. Broad shoulders from hauling nets. Skin bronzed by the sea sun, light brown hair bleached by salt. Calloused hands, permanently dirty nails. Easy smile showing a chipped tooth (fishing hook accident at 14).
+
+**Personality**
+
+The irritating optimist of the group. Sees the march as adventure, not sacrifice. Talks too much, especially when nervous. Tells the same fishing stories repeatedly. The others roll their eyes, but secretly like his energy.
+
+Intrepid. More excited about the march than anyone else. Genuinely believes he'll return rich.
+
+**History**
+
+Eldest son of Tam Saltborn, fisherman of Senvarek.
+
+| Family | |
+|--------|--|
+| Father | Tam Saltborn (fisherman) |
+| Mother | Meg (mends nets) |
+| Siblings | Renn (19), three boys (15, 12, 9), one sister (7) |
+
+In the last three years, fishing got worse. When recruiters came offering regular pay, Coll volunteered immediately. Renn came along to "take care of his idiot brother."
+
+**Motivation**
+
+Money for the family. Already planned: new boat for father, dresses for mother and sister, stone house.
+
+**In the Group**
+
+Starts conversation when silence weighs heavy. Annoys his brother with optimism. Treats Tam like a younger brother. Secretly admires Drav.`,
+        tags: ["coll-saltborn", "the-seven", "legion-24", "senvarek", "fisherman", "the-depletion"]
+      },
+      "renn-saltborn": {
+        group: "the-seven",
+        title: "Renn Saltborn",
+        content: `*"Have you seen any soldier return rich? I've seen soldiers return. They didn't return rich."*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 19 years |
+| Origin | Senvarek (west coast) |
+| Previous profession | Fisherman |
+| Military training | 3 months |
+| Position | Line infantry, spearman |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Shorter than his brother — 1.70m. Same bronzed skin, darker hair. Eyes that always seem to be calculating something. Less muscular than Coll, but more agile. Thin scar on left forearm (fishing net).
+
+**Personality**
+
+The skeptic of the group. Doesn't talk much, but when he does, he's direct. Irritating talent for pointing out flaws in others' plans. Not cruel, just too honest.
+
+The smartest of the brothers. Learned to read on his own. Reads the signs around him — officers' expressions, tone of orders, troop morale. What he reads doesn't make him optimistic.
+
+**History**
+
+Grew up in his older brother's shadow. Coll was the charismatic one, their father's favorite. Renn was the quiet one, the one who thought too much.
+
+Came on the march to protect Coll from himself. Doesn't believe in glory or riches — believes his brother will die if someone isn't there.
+
+**Motivation**
+
+Protect his brother. Nothing more.
+
+**In the Group**
+
+The necessary counterpoint to Coll. When his brother talks about boats, Renn asks "with what money, if we die first?" Not to be cruel — to force his brother to think.`,
+        tags: ["renn-saltborn", "the-seven", "legion-24", "senvarek", "fisherman", "the-depletion"]
+      },
+      "tam-smithson": {
+        group: "the-seven",
+        title: "Tam Smithson",
+        content: `*"Is this how it has to be?"*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 17 years |
+| Origin | Vaelhem Thel (capital) |
+| Previous profession | Blacksmith's apprentice |
+| Military training | 4 months |
+| Position | Line infantry, spearman |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Hasn't finished growing yet — 1.68m, thin, arms too long. Black hair, brown eyes, pale skin from the forge. Skillful hands with burn scars.
+
+Wears the cleanest military uniform in the group. **He's never worn such fine clothes in his life.** First time wearing something made for him.
+
+**Personality**
+
+Silent, observant, easily impressed. Doesn't know what's "normal" — was raised by a man who barely spoke. Follows whoever seems to know what they're doing. Loyal to death.
+
+**History**
+
+Orphan. Left at the door of Garth Smithson's forge as a baby. Garth was hard, not cruel. Gave him roof, food, work. Never hugs, never "son." But never a raised hand either.
+
+Learned to adjust armor and refine blades. Was invisible — the boy in the corner while important men talked.
+
+**Garth died six months ago.** Domestic accident, they say — fell down stairs. Tam found the body. The forge was seized for debts.
+
+**Suspicion**
+
+Tam suspects the death wasn't an accident. There were men who visited the forge at night. But he has no proof, no power, no one to tell.
+
+**In the Group**
+
+Adopted by everyone:
+- **Coll:** treats him like younger brother
+- **Stenn:** obsessive protector
+- **Renn:** teaches him to think
+- **Drav:** protects without explaining`,
+        tags: ["tam-smithson", "the-seven", "legion-24", "orphan", "blacksmith", "the-depletion"]
+      },
+      "stenn-kolrath": {
+        group: "the-seven",
+        title: "Stenn Kolrath",
+        content: `*"Stay close to me, boy."*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 32 years |
+| Origin | Kravaal (mines) |
+| Previous profession | Miner, brawler |
+| Military training | 2 months (recruited from prison) |
+| Position | Line infantry, spearman |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Stocky — 1.72m, broad as a barrel. Miner's muscles. Marked face: nose broken twice, chin scar, deformed ear. Pale blue eyes, almost gray. Huge hands with surgical precision.
+
+Awkward in uniform. Clothes tight at shoulders, loose at waist.
+
+**Personality**
+
+Two people:
+- **Sober:** quiet, almost gentle. Protects the vulnerable.
+- **Drunk:** force of nature. Violent, unpredictable.
+
+Reputation as a brawler. Constantly jailed for tavern fights. They say he's killed men. And women. Not a good person, but gentle with Tam.
+
+**History**
+
+Born in Kravaal. Father drank. Brothers beat him. Mother — doesn't talk about it. "Had no mother."
+
+Mines from age 8 to 19. Eleven years in the dark, watching men die. When he left, couldn't stay in enclosed spaces.
+
+Following years: taverns, fights, deaths. First was self-defense. Second was rage. Third he doesn't remember. Fourth was mercy, he swears.
+
+**7 years in prisons.** When they offered freedom for service, he accepted.
+
+**Skill**
+
+Very skilled with his hands — inheritance from the mines. But knows little about handling weapons. No time to train.
+
+**With Tam**
+
+No one knows why he attached to the boy. Won't let anyone speak ill of him. Won't let anyone touch him. Violent with the world, gentle with Tam.`,
+        tags: ["stenn-kolrath", "the-seven", "legion-24", "kravaal", "miner", "prisoner", "the-depletion"]
+      },
+      "garth-ironmark": {
+        group: "the-seven",
+        title: "Garth Ironmark",
+        content: `*"Opinion doesn't win battles. Execution does."*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 21 years |
+| Origin | Vaelhem Thel (military family) |
+| Previous profession | None (trained since childhood) |
+| Military training | Since age 8 |
+| Position | Line infantry |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+What a soldier should look like. 1.80m, well-proportioned, perfect posture. Short brown hair, regular face. Green eyes that evaluate. Economical movements.
+
+Well-maintained armor. Sword (*Kravblade*) always clean.
+
+**Personality**
+
+Competent, distant, calculating. Speaks little. Here for glory, for the honor of the name.
+
+Thinks about every step. Observes everything. But doesn't understand what exists beyond what he sees or what his father told him.
+
+Not friends with anyone. Doesn't want to be. Others are tools.
+
+**History**
+
+Son of Valdis Ironmark, "hero" of pacification campaigns. Father spent his career crushing revolts, protecting tax collections.
+
+**Marcus, the older brother, died of THURNAKH two years ago.** Lung disease — cough, blood, skeleton, corpse. Six months. Garth watched every day.
+
+Marcus was the true hero. Better with sword, more charismatic, more loved. Father never recovered. Garth remained — the substitute.
+
+| Family | |
+|--------|--|
+| Father | Valdis Ironmark (veteran, depressed) |
+| Mother | Alive, sad |
+| Siblings | Two sisters |
+
+**Skill**
+
+**The most skilled of the seven with a sword** — absurd margin. Trained since childhood with paid instructors.
+
+**But has never killed anyone. Never seen real combat. Technique without experience is half a warrior.**
+
+**In the Group**
+
+Despises Stenn (primitive) and Aldwen (lazy). The only one he can't classify is Drav — something unsettles him.`,
+        tags: ["garth-ironmark", "the-seven", "legion-24", "military-family", "swordsman", "the-depletion"]
+      },
+      "drav-thurgard": {
+        group: "the-seven",
+        title: "Drav Thurgard",
+        content: `*"Everyone has their reasons. Mine are just more honest."*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 45 years |
+| Origin | Uncertain ("various places") |
+| Previous profession | Assassin |
+| Military training | None formal |
+| Position | Line infantry (from prison) |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Large. 1.88m, shoulders that barely fit through doors. Uniform doesn't sit right — tight here, loose there, as if his body rejects any prescribed form.
+
+Long face, strong chin, eyes so dark brown they look black. Gray hair cut short (prison regulation). Scars in places that suggest stories.
+
+Moves with economy that looks like laziness but is something else. Doesn't need to hurry.
+
+**Personality**
+
+Polite. That's the disturbing part. Says "please" and "thank you." Never raises his voice. Listens with attention. Is *pleasant*.
+
+And has killed at least fifteen people. Probably more.
+
+**History (Prison Records)**
+
+| Age | Event |
+|-----|-------|
+| 23 | Murder of merchant in Veluthaar. Claimed self-defense. Acquitted. |
+| 27 | Two men dead at farm (Zumarak). Convicted. Escaped after 3 years. |
+| 33 | Homicide of woman in Kravaal. Death sentence commuted (witnesses disappeared). |
+| 41 | Three men dead in capital tavern. Convicted for "excessive force." |
+
+**Pattern:** Victims were usually violent, abusers. Not always.
+
+**Methods**
+
+Knives, ropes, bare hands, once an anvil. Uses what's available.
+
+**Justification**
+
+Every death was justified in his mind. Doesn't kill for pleasure or money (not mainly). Kills because some people need to die.
+
+Not sane. But not mad the way people expect.
+
+**In the Group**
+
+Watches. Waits. Protects Tam without explaining. Respects Renn. Finds Coll amusing. Ignores Garth completely.
+
+Sometimes looks north and smiles. As if he knows something.`,
+        tags: ["drav-thurgard", "the-seven", "legion-24", "assassin", "prisoner", "the-depletion"]
+      },
+      "aldwen-marsh": {
+        group: "the-seven",
+        title: "Aldwen Marsh",
+        content: `*"Whatever."*
+*"But what's over there?"*
+
+**Data**
+| Field | Value |
+|-------|-------|
+| Age | 27 years |
+| Origin | Vaelhem Thel (capital) |
+| Profession | Soldier (family of soldiers) |
+| Military training | Since childhood (without effort) |
+| Position | Line infantry, spearman |
+| Legion | 24th (rear guard) |
+
+**Appearance**
+
+Average height — 1.75m. Trained body but no definition: has the base, not the effort. Brown hair beyond regulation. Common, forgettable face. Bored eyes.
+
+Adequate uniform, neither impeccable nor slovenly. Exactly at the limit of acceptable.
+
+**Personality**
+
+Laziness elevated to art. Smart enough to know the minimum effort — never gives a gram more. Complains quietly, without conviction.
+
+**The most skeptical of the group.** Believes in nothing. Deep nihilist. Hears Coll talk about boats and thinks *he'll die like the others*.
+
+Dry humor that surprises. Unexpected observations from someone who seems asleep.
+
+**History**
+
+Father soldier. Grandfather soldier. Great-grandfather soldier. The Marshes have served Duratheon so long no one remembers when it started.
+
+Aldwen never wanted this. Also never wanted anything else. Had no vocation, interest, ambition for anything.
+
+So he stayed. Trained because that's what was done. Never stood out, never failed, never promoted, never punished.
+
+Father, Brennan Marsh, has been sergeant for twenty years. Looks at son with disappointment. "You could be someone." Aldwen agreed. Could be. Isn't.
+
+**Skill**
+
+He's good. That's the problem. When he tries — rare — the technique is there. Everyone saw it. "If you applied yourself." Never did.
+
+**The Exception: Lands Beyond**
+
+**Can't wait to see what's there.**
+
+No one in the family has been. No one returned to tell. It's the only thing in the world he doesn't know what it's like.
+
+Maybe it's the same as everything. Probably. But *maybe not*.
+
+That "maybe not" is the first thing in 27 years that makes Aldwen feel something like interest. Maybe a reason.
+
+**In the Group**
+
+Doesn't lead, doesn't follow, doesn't fight, doesn't make friends. Responds when spoken to. Does what's ordered. Sleeps when he can.
+
+Coll finds him funny. Renn recognizes something — the same vision without illusion. Garth despises him (laziness is sin). Drav looks at him sometimes, with an expression Aldwen can't read.`,
+        tags: ["aldwen-marsh", "the-seven", "legion-24", "nihilist", "soldier-family", "the-depletion"]
+      },
+      "chapter-the-march": {
+        group: "the-seven",
+        title: "Chapter: The March (Day 16)",
+        content: `**POV:** Tam Smithson | **Day:** 16 | **Position:** Rear Guard
+
+---
+
+## THE MARCH
+
+Sixteen days and Tam still hadn't gotten used to what could be called beautiful.
+
+Thousands of standards and banners rippled above the column that stretched until it disappeared on the horizon. Most were simple—pennants of centuries and cohorts, numerals in blue on white backgrounds, already dirty with dust and smoke. But among them, from time to time, the real banners appeared.
+
+The standard of Duratheon.
+
+Tam had seen it up close only once, on the day of departure, when the column formed in the fields outside the capital. A golden sun on a field of marble white. Eight points—four larger ones pointing to the corners of the world, four smaller ones between them, and thin rays radiating from each as if the sun itself were burning through the fabric. And in the center, within the golden disc: a clenched fist. Geometric, angular, made of straight lines as if it had been carved from metal, not drawn. The fingers facing the observer. *This land is ours. We will not let go.*
+
+And beside it, always beside it, the standard of House Vael.
+
+A golden tree of infinite branches, its roots as deep as its crown was tall. And circling it, two golden dragons—serpentine bodies coiled around the roots, climbing up the sides of the trunk, their heads meeting above the crown like twin guardians. The background was deep blue, the blue of the sky before dawn. The tree and dragons gleamed as if they had light of their own.
+
+That day, on the day of departure, everything gleamed.
+
+Now, sixteen days later, Tam saw those standards only from afar—blurs of color in the haze of dust, forty thousand paces ahead, where the king marched with his guard. What he saw up close were the dirty pennants of Century 4, the numeral already smeared by the rain that had fallen three days ago.
+
+But still.
+
+Tam looked at all of it—the sea of people, the rows of men stretching forward and backward as far as the eye could see—and adjusted his uniform. Every time. It was automatic. He saw himself as part of it, of that enormous thing, and he needed to be correct.
+
+His uniform wasn't like that of the great soldiers, the ones who marched in the vanguard, the ones he couldn't even see. Those wore chainmail that clinked with every step, helms with crests, metal cuirasses with golden inlays. Tam had seen some on the day of departure—they looked like statues that had decided to walk.
+
+His uniform was different. The same as everyone else's. The same as the thousands of common soldiers who formed the body of the column.
+
+A coarse linen tunic down to mid-thigh, white when it was new, now a color somewhere between gray and yellow from all the sweat and dust. Underneath, a *gambeson*—the padded vest that protected against blows and cold, made of layers of linen stitched together, heavy enough to make your shoulders ache after a full day. Over everything, a woolen surcoat, white with a faded blue border that had once been vibrant.
+
+Thick wool trousers tucked into hard leather boots that rose to the calf—boots that hadn't been made for Tam's feet, but for someone's feet, a size distributed en masse, and that were now raising blisters in the wrong places. Leather bracers on his forearms, a wide belt with a cheap bronze buckle, and on his back the *sarcela* with everything a soldier needed to carry.
+
+But in the center of his chest, on the surcoat, there it was.
+
+Painted with yellow paint pretending to be gold—the crest of Duratheon. The eight-pointed sun. The clenched fist in the center. The paint was already starting to peel at the corners, and on some soldiers who had been marching longer, the sun looked more like a shapeless stain than a symbol. But on Tam's chest it was still intact. He took care of it. Cleaned it carefully when there was water. Avoided touching things that might scratch it.
+
+*I've never worn such fine clothes.*
+
+The thought came always. Every time he looked down, every time he adjusted his belt, every time he saw the yellow sun on his own chest. At the forge, Tam wore the same leather apron for years, the same pair of patched trousers, the same tunic that had belonged to someone else before it was his. Clothes were function. Clothes were protection against sparks and heat. Clothes weren't *fine*.
+
+But this—this was different. This was uniform. The same for everyone. With colors. With a symbol. With a purpose.
+
+Most of them probably thought the same, Tam imagined. The fishermen, the farmers, the miners, the orphans like him—people who had never worn anything that matched, anything that had been made with the intention of looking like something. Now they all looked like the same thing. Soldiers. Part of something greater.
+
+Tam adjusted his surcoat once more, aligned the sun in the center of his chest, and kept marching.
+
+---
+
+He saw Aldwen step in the shit before Aldwen noticed.
+
+It was the third time that day. Or fourth. Tam had stopped counting after he realized that counting didn't change anything—the road was more shit than dirt, and feet went where feet could go.
+
+"Fucking hell."
+
+Aldwen raised his boot. The brownish-green crust covered it up to the ankle. The smell rose.
+
+Tam watched as Aldwen scraped the boot on a rock. The movements were slow, almost lazy, as if even cleaning his own boot didn't deserve real effort. The sun of Duratheon on Aldwen's chest was almost unrecognizable—half the paint had peeled off, and he clearly didn't care. Tam didn't understand this. The blacksmith always said: *stay clean so you don't get sick*. It was one of the rules. Aldwen seemed to have no rules.
+
+"Stepped in another pile of shit," Aldwen said to no one in particular. "This isn't what I enlisted for."
+
+"What did you think?" Renn didn't even look back. He was adjusting the straps of his *sarcela*, the leather pack everyone carried. "That you'd march alongside the king?"
+
+"No, but at least his carriage maybe, anyway..." Aldwen shrugged. "Ah, fuck it."
+
+*Ah, fuck it.* Tam stored the phrase. Aldwen said that a lot. It was as if it were his answer to everything—to the shit on his boot, to the march, to life. Tam had learned to work to eat and eat to work. Aldwen seemed to have learned not to care about either.
+
+The math didn't add up.
+
+Tam looked ahead, at the mass of backs and packs and white surcoats with yellow suns that stretched until it disappeared in a haze of dust. The king was somewhere out there. Forty *vaelthar*, Renn had said once. Forty thousand paces. Tam tried to imagine, but couldn't. The blacksmith's forge was two hundred paces from the fountain where he fetched water. Forty thousand paces was... was a number that meant nothing.
+
+*The king is just a word*, Tam thought. Like "father" or "mother." Words that other people used and that he pretended to understand.
+
+---
+
+They marched in Legion 24, Cohort VII, Century 4, Tenthar 6.
+
+Tam had memorized this on the first day. It was easy—numbers were easy, the blacksmith had taught him. *Seven nails per horseshoe, four horseshoes per horse, twelve horses per order.* Numbers made sense. People were harder.
+
+Behind them came the camp followers—the women the army called "washerwomen" (Tam didn't know why the others laughed when they said it), the merchants who sold *zurra* for triple the price, the traveling blacksmiths who did poor work for quick money. Tam had seen their work. The blacksmith would have spat.
+
+Today the road was mud, piss, and excrement.
+
+And the air was worse.
+
+Tam breathed through his nose as little as possible, but it didn't help. The smell was in everything—the sour sweat of two hundred and eighty-five thousand men who hadn't bathed in days, the dung of the cows and oxen pulling the carts, the horse piss that left yellow puddles on the road, the human shit from those who couldn't hold it and shat while marching (Tam had seen, had swerved), the vomit of the sick who didn't stop walking, the rancid grease of poorly cooked food, the wet leather of *sarcelas* that never dried properly, the sweat of armpits, feet, groins, the rotting flesh of animals that died and were left behind.
+
+And there were still... the bodies.
+
+Tam didn't like to think about the bodies. But it was impossible not to think.
+
+At least once a day, sometimes more, the news arrived—someone had died. The news always arrived before the body. *One died from Third Corps. One died from Seventh Cohort. One died whose name no one knows.* Those who were lucky died in camp at night and were buried in the morning, before the march began. Those unfortunate by Sethendur were left behind while the column continued. They shat and vomited until they couldn't walk anymore. Then they sat. Then they lay down. Then they stopped moving.
+
+The worst were the mosquitoes.
+
+Tam had noticed this—near the bodies, the mosquitoes focused on the rotting. It was almost a relief. Away from the bodies, the mosquitoes came for the living.
+
+In the capital, Tam had seen corpses. In alleys, in gutters, sometimes at the forge door when morning came. The blacksmith always said the same thing: *they didn't stay clean*. And Tam believed. Believed that death was a consequence of not following the rules—not working, not eating, not staying clean.
+
+But in the army... in the army they followed the rules. Marched when ordered to march. Ate when given food. Tried to stay clean when there was water.
+
+And still they died.
+
+Tam didn't understand. The blacksmith's rules didn't work here. Or maybe the rules had never worked, and he just hadn't noticed before.
+
+Tam kept his eyes on the ground, choosing where to step.
+
+---
+
+"Shut up, both of you."
+
+Drav. The low, hoarse voice, full of phlegm. The *thornleaf* hanging from the corner of his mouth, smoke rising in gray wisps.
+
+Tam liked to watch Drav. Not "like" the way he liked Coll—Coll was easy to like, with the smile and the fishing stories and the certainty that everything would be fine. Drav was different. Drav was... interesting.
+
+"I can't stand the fucking sound of your voices anymore," Drav continued, the smoke still in his mouth, the smoke coming out between the words. "You sound like two faggots screaming. Go fuck yourselves. Go back there with the whores to get fucked in the ass later at camp and leave me alone."
+
+He didn't even look at them while he spoke. The eyes—one dark, the other lighter, a strange color Tam had never seen in another person—fixed on the road ahead. As if Aldwen and Renn didn't deserve even the effort of a glance.
+
+Drav's surcoat no longer had the sun of Duratheon. He'd scraped off the paint on the first day, Tam remembered. No one had complained. No one complained about anything Drav did.
+
+"Isn't it enough with this..."
+
+Drav made a gesture that encompassed everything: the lowing of the oxen, the creaking of the wheels, the clinking of weapons, the thud of thousands of boots in the mud, the shouts of the sergeants, the coughs of the sick, the neighing, the braying, the conversations, the crying, and beneath it all, constant, the sound of an army breathing together.
+
+"...noise."
+
+Garth snorted.
+
+Tam looked at him immediately. He always looked at Garth. It was automatic, like looking at the blacksmith when a blade came out of the fire—you looked to learn.
+
+Garth was impeccable. Sixteen days of marching and his uniform still looked new. The *gambeson* without stains, the surcoat a white that was still white, the blue border still vibrant. The sun of Duratheon on his chest wasn't yellow paint—it was embroidered in gold thread. Artisan work, not military factory. The uniform was the same as everyone's—tunic, *gambeson*, surcoat, trousers, boots—but on Garth everything fit differently. Everything was tailored. Everything was inherited or bought, not distributed.
+
+And the sword. The *Kravblade* at Garth's waist wasn't the standard sword the army distributed—it was a family sword, with a hilt worked in bronze and leather, the scabbard of black leather with gold details. Real gold.
+
+Tam didn't know how much a sword like that cost. Probably more than everything the blacksmith had earned in years.
+
+"Well," Garth said, his voice controlled, cold, "I just hope you don't kill each other before Kravethorn. Maintain some composure and everything will be fine."
+
+*Composure.*
+
+Tam laughed.
+
+It came out before he could stop it—a strange sound, half-choked, that made Renn look at him with a raised eyebrow. But the word "composure" after everything Drav had said... *faggots*, *fucked in the ass*, *whores*... and now *composure*...
+
+"Composure," Tam repeated, quietly, still laughing. The word was ridiculous. Everything was ridiculous.
+
+Drav grumbled something and raised his hand without looking at anyone. The gesture said *fuck it* better than any words. He put the *thornleaf* back in the corner of his mouth and kept marching.
+
+---
+
+Tam liked to watch how Drav walked.
+
+It wasn't like Garth—Garth walked as if he were being evaluated all the time, each step measured, each movement efficient. Drav walked as if he were waiting for something to jump out of the shadows. Relaxed, but never distracted. His eyes always moving.
+
+And the weapons.
+
+On the first day, when they distributed the equipment, Tam had seen Drav refuse almost everything. The *Kravspear*—the long spear that every infantry soldier carried—he'd pushed back. The *Vethblade*—the standard longsword—too. The shield, the halberd, the war axe. All back.
+
+The sergeant had shouted. Drav had looked at him with those eyes of different colors and waited. Just waited. The sergeant had stopped shouting.
+
+Drav marched with a short sword at his waist and two knives—one on his back, one in his boot. Nothing more.
+
+Once, Tam had offered to help sharpen the blades. It was what he knew how to do. It was what the blacksmith had taught.
+
+Drav had accepted. While Tam worked, he had spoken—more words than Tam had ever heard from him at once:
+
+*"Fights are ugly. Forget those acrobatic drills those soldiers do. People always end up rolling in the mud, poking eyes, biting balls. Have a short weapon, light and easy to reach. Aim for the guts. Rip and pull the fucker's insides out."*
+
+Tam had stored every word. He didn't know if he agreed—he didn't know anything about fights—but Drav had a smell. Not the smell of the *thornleaf*, which was always present. Another smell, underneath. Something that Tam recognized from the forge, from when he cleaned blades that came back from... places.
+
+Blood.
+
+Drav smelled of old blood. Blood that had dried long ago but never really came out.
+
+The blacksmith had never smelled like that. The blacksmith made weapons. Drav was something else.
+
+---
+
+Renn was talking. Tam realized he'd missed part of the conversation.
+
+"...nice tenthar we got here," Renn was murmuring. "Two weeks together and we've already got one asking us to get fucked in the ass and another asking for composure. Great team spirit."
+
+Coll sighed.
+
+"Renn."
+
+"Just saying."
+
+Tam watched the interaction. He always watched. Renn was younger than Coll—nineteen versus twenty-two—but spoke to his brother as if it were the opposite. Reprimanded, corrected, pointed out mistakes. And Coll let him. Coll, who was the decanus, who was the leader, who was the oldest, let his younger brother talk to him like that.
+
+It didn't make sense.
+
+But Tam liked it. Liked seeing the two together, the way they moved in sync without realizing, how one finished the other's sentence, how they fought without really fighting. It was something he had no name to describe. Something that other people called "family," maybe.
+
+The uniforms of the two brothers were identical to Tam's—distributed en masse, already dirty, the yellow paint suns starting to peel. But the brothers had something the others didn't: blond hair cut with precision, identical on both, clearly done by each other. At the forge, Tam cut his own hair with a knife when it got too long. The brothers took care of each other.
+
+The blacksmith had never been like that. The blacksmith spoke ten words a day, sometimes fewer. *Light the fire. Hold here. Harder. Like that. Eat. Sleep.* They weren't conversations. They were instructions.
+
+Tam didn't complain. Instructions were clear. Instructions made sense.
+
+But sometimes, watching Coll and Renn, he wondered what it would be like to have someone who talked to you about things that weren't instructions.
+
+---
+
+Renn gave a dry laugh.
+
+"Either way, won't matter. This infernal dust will kill us first."
+
+He pointed ahead, at the gray haze covering the column. It wasn't really haze—it was dust. Road dust, ash from fires, dirt churned up by millions of steps.
+
+Tam felt the dust in his throat. Felt it in his eyes. Felt it on his skin, a thin layer that wouldn't come off even when he tried to clean himself with the rationed water.
+
+"And if it's not the dust," Renn continued, "it'll be the water that smells like shit that we drink every day. Three hundred thousand men shitting in the river before we get there. And then we drink. And then we shit. And the next one drinks."
+
+"Renn." Coll, finally. "Enough."
+
+"What? It's true. Did you see Third Corps yesterday? Half of them couldn't walk from all the diarrhea. They're going to die before they see an enemy."
+
+"That's not our problem."
+
+"It will be when we drink the same water as them."
+
+Coll didn't respond.
+
+Tam didn't have an answer either. Renn was right—he understood that. But Renn was like that, always right and always saying things no one wanted to hear. Tam had reservations about Renn. Found him a bit stuck-up, maybe. An age thing—they were almost contemporaries, only two years apart.
+
+But in the morning, when the brothers did their exercises to keep their bodies ready for the march, Tam joined them. It was the moment of greatest interaction. Renn wasn't stuck-up when he was stretching alongside Tam. He was just another body trying not to break.
+
+---
+
+Tam's foot found a hole.
+
+It wasn't a fall—it was more of a long stumble, the body going forward while the legs tried to catch up. The *sarcela* weighed on his back, pulling, shifting his center of gravity. He managed not to fall, but just barely. Very barely.
+
+Drav and Stenn stopped.
+
+The two were a few steps ahead. They turned together, as if they'd arranged it. They hadn't.
+
+"Get up and watch where the fuck you're going," Drav said, the *thornleaf* bouncing in the corner of his mouth. The voice wasn't gentle. It wasn't cruel either. It was just... direct. "Look at the ground and stop listening to these shitheads."
+
+Tam straightened up, his face hot with embarrassment.
+
+"A cut on your foot here," Drav continued, pointing at the ground, "and you die before you get to camp today. Understand?"
+
+Tam nodded. He had understood.
+
+Stenn approached. The light blue eyes, almost gray, that didn't match the brutally marked face. His uniform was like Tam's—distributed, worn, the yellow paint sun half-smeared. But on Stenn the uniform seemed tight in the wrong places, as if his body didn't fit in the clothes they'd given him. It probably didn't.
+
+He extended his hand.
+
+"Come on."
+
+Tam took the hand. Stenn pulled, firm, and for a moment Tam felt safe. It was strange—safety in the middle of a march that was killing people every day—but that's what he felt.
+
+He liked walking between Stenn and Drav. The two never arranged this—never said "Tam, stay here" or "Tam, stay there"—but somehow it always ended up that way, one on each side, a wall of flesh and scars.
+
+The two didn't talk much to each other. Tam had noticed this. They weren't friends the way Coll and Renn were brothers. But there was something—a respect that passed through glances, a recognition of something Tam couldn't name.
+
+Maybe it was the smell. Stenn also had a smell, underneath the sweat and dirt. Not the same as Drav's, but similar. Something old. Something that didn't come out.
+
+The two reminded him of the blacksmith, in a way. The same economy of words. The same solid presence. The same feeling that they knew things they didn't say.
+
+But without the mysterious part of Drav. Stenn was brutal, but it was a simple brutality. You looked at him and saw exactly what he was: a man who had suffered, who had made others suffer, who was now here for reasons maybe even he didn't understand.
+
+Drav was different. Drav had layers.
+
+And blood. Drav had blood.
+
+---
+
+The column continued.
+
+Tam looked at Garth, as he always looked. The impeccable uniform. The perfect posture. The *Kravblade* at his waist, always clean. The measured step.
+
+At the camp in the capital, before the march began, Garth had almost never spoken to him. It was weeks sharing the same tent, and Tam could count the words Garth had directed specifically at him.
+
+But one day—Tam remembered exactly—Garth had thrown an apple at him.
+
+No explanation. No context. Tam was sitting outside the tent, trying to clean a stain from his uniform (trying to make it look like Garth's), and the apple had come flying. He almost didn't catch it. When he looked up, Garth was already walking somewhere else, not looking back.
+
+Tam had eaten the apple.
+
+He never asked why. Never thanked him—he didn't know if he should, didn't know if Garth wanted to be thanked. But he'd kept that. Kept it like he kept Drav's advice, Stenn's silent protections, the brothers' laughter.
+
+Small things. Things that other people might not even notice.
+
+But Tam noticed everything. It was what he knew how to do. Observe, learn, copy. It was what the blacksmith had taught—*watch how I do it, now do the same*.
+
+Tam kept his uniform and equipment identical to Garth's. Or tried to. It never looked the same, but he tried.
+
+---
+
+And the march continued until the sun set.
+
+Being in the rear guard had its disadvantages. When the bugles sounded announcing the camp, the vanguard had already been pitching tents for two hours. The King's Corps had already eaten. The best positions had already been taken—near the clean rivers, on dry ground, protected from the wind.
+
+The rear guard arrived later. Always later. They ate what was left—the tougher meat, the older bread, the *zurra* that was already turning to vinegar. They pitched tents where no one else wanted—near the latrines, in mud puddles, where the wind cut through.
+
+But Tenthar 6 preferred to cook their own food. Preferred to choose their own spot.
+
+That night they found a good corner—not the best, but not bad. Under an old tree with twisted branches, near a stretch of river that hadn't yet been completely polluted by the column. Far from the latrines. Far from the main noise of the camp.
+
+And far, very far, from the king and everyone.
+
+Tam helped pitch the tent. It was simple work—drive stakes, stretch ropes, raise the fabric. The "tent" was nothing more than a coarse cloth held up by thin wooden stakes, barely high enough for a man to sit without hitting his head, barely wide enough for seven men to lie side by side if no one breathed deeply. It had no floor—you slept on whatever was underneath, mud or rock or root. It didn't protect against the cold—only against the wind, and not always.
+
+But it was better than nothing. Tam had slept in worse places.
+
+They lit a fire. Cooked what they had—grains, a piece of salted meat, some roots that Renn had found on the way. They ate in silence first, the silence of people too tired to talk.
+
+Then the food settled. The fire warmed. And the voices began.
+
+It wasn't exactly conversation—it was more something that happened. Coll told a story about a fish his father had caught. Renn corrected three details. Aldwen commented that fish was disgusting. Drav said nothing, just cut an apple with his knife, slowly, slice by slice. Garth stared at the fire. Stenn scratched a scar on his arm.
+
+Tam watched. He always watched.
+
+Then Stenn stood up.
+
+He brushed the dust off his clothes with his hands—a gesture that made no difference, the dust was too ingrained—cracked his neck, and announced:
+
+"Yeah, tonight I'm gonna fuck till morning."
+
+He made an awkward bow, almost comical, in Garth's direction.
+
+"With your lordship's permission."
+
+Tam laughed. He couldn't help it. "Your lordship"—Stenn didn't even know how to speak properly, had gotten the form of address wrong, and the clumsy movement didn't match the words at all. It was mockery, but not mockery from someone who wanted to offend. It was mockery from someone who simply didn't know how to do it differently.
+
+Garth didn't react. Garth never reacted.
+
+Aldwen, however, raised a finger.
+
+"Careful not to lose your dick. Those whores are more rotten than the corpses we saw on the road."
+
+Stenn shrugged.
+
+"I'd rather die fucking than die sleeping."
+
+"Pig," said Renn, but there was a half-smile on his face.
+
+Stenn waved to the group and left, disappearing into the darkness beyond the fire, in the direction where the "washerwomen" set up their own camps.
+
+Drav hadn't said anything. He kept cutting the apple. Slice. Slice. Slice. His eyes on the fire.
+
+Tam wondered if Drav also went to the whores. He'd never seen him. He'd never asked. There were things you didn't ask Drav.
+
+---
+
+After Stenn left, silence returned for a moment.
+
+They were sitting on the ground, leaning against their *sarcelas*, near the tents that were nothing more than rags held up by fragile sticks. The stars appeared in the sky, one by one, as if someone were lighting candles very far away.
+
+Coll broke the silence.
+
+"What do you all know about Kravethorn?"
+
+No one answered immediately. Coll looked at Garth.
+
+"Have you been there?"
+
+Garth shook his head. Then said:
+
+"They say it's the new Vaelhem Thel."
+
+Aldwen made a sound—something between a laugh and a snort.
+
+"Ha! Then it's fantastic. Full of drunks, whores, and beggars falling over everywhere. Can't wait."
+
+"You're so annoying," said Coll.
+
+"I'm not joking." Aldwen shifted, and for a moment he seemed almost interested. Almost. "I'm really curious to see this new... experiment. I heard Aldaran, Tornael's father, was responsible for the project. Dedicated a good part of the kingdom's funds for his son to finish the work."
+
+*Aldaran.* Tam stored the name. The king's father. The king before the king. Another word that other people used and that he pretended to understand.
+
+"I just hope the houses are warmer," Tam said.
+
+Everyone laughed.
+
+Tam looked up, surprised. He hadn't been trying to make a joke. It was just... a comment from someone who had slept through many winters in the cold houses of the capital, where the wind came through the cracks and ice formed on the inside of the windows. If Kravethorn was the "new Vaelhem Thel," then the houses were probably the same. Cold.
+
+But they were laughing, so Tam didn't correct them. He let them think it was a joke.
+
+It was easier that way.
+
+---
+
+Silence returned for a moment. Somewhere in the camp, someone was playing a flute—badly, but playing.
+
+"Well," said Garth, breaking the silence, "for those of you who aren't going to fuck all night like our kind friend made a point of announcing, I recommend you find a way to sleep. The vanguard and the king will leave soon."
+
+"That doesn't seem very fair," Renn replied, frowning. "We always arrive last and always leave first."
+
+"Oh, shut up, kid," Aldwen said, without looking up from the fire. "Go fish. I already explained to you how things work when you thought the king was riding a horse."
+
+Tam looked up.
+
+That information had been shocking to him too, when he heard it the first time. The king didn't ride a horse. The king traveled in a carriage—a huge carriage, they said, pulled by sixteen horses, with glass windows and velvet curtains and a throne inside. Tam had imagined kings like the ones in the stories he sometimes heard at the forge—men on white horses, sword in hand, leading armies. Not men in carriages, hidden behind curtains.
+
+"Kings on horseback," Aldwen snorted, almost to himself. "Pfff."
+
+Renn lowered his head. Coll looked at his brother and put his hand on his shoulder.
+
+"It's okay."
+
+Renn didn't respond. But he didn't remove the hand either.
+
+"Well," Drav said, getting up with a grunt. He put away the knife, threw what was left of the apple into the fire. "I'm going to shit and sleep."
+
+And he went. No ceremony. No goodbye. Disappeared into the darkness beyond the fire, in the opposite direction from where Stenn had gone.
+
+Tam thought it might be a good idea. Shit and sleep. Simple. Practical. But he preferred to leave it for the morning—at night it was harder to see where you stepped.
+
+One by one, the others settled in. Coll and Renn entered the tent first, taking their usual places. Aldwen went next, grumbling something about rocks in his back. Garth went last—he checked the perimeter first, because that's what Garth did, always checking, always alert, always correct.
+
+Tam didn't go in yet.
+
+He lay on his *sarcela*, closer to the fire than the others. The warmth was good. The ground was hard, but he was used to hard ground. At the forge, he slept in a corner near the furnace, where the heat still remained from the day's embers.
+
+He looked up at the sky.
+
+The stars were there. Thousands of them. The same stars that shone over the forge, over the capital, over the sea of Senvarek where the brothers had fished, over the mines of Kravaal where Stenn had worked, over all the places all of them had come from.
+
+Tam wondered what the blacksmith would think of him now.
+
+If he was doing everything right. Eating to work. Working to eat. Staying clean so he wouldn't get sick. The rules were simple. The rules had always been simple.
+
+But the march...
+
+The march wasn't what he had imagined. It wasn't what the generals had said it would be, the day they came to recruit in the capital. They had talked about glory. About conquest. About new lands and riches for those who served. They had talked about food every day, regular pay, honor for those who survived.
+
+No one had talked about shit on the road. About corpses left behind. About water that tasted like piss. About always arriving last and always leaving first. About kings in carriages behind curtains.
+
+*Maybe for the generals it's different*, Tam thought. *Maybe they're used to the hardship of military life. Maybe the glory comes later. Maybe.*
+
+He turned on his side.
+
+The fire was slowly dying. The crickets sang. Somewhere, someone was coughing—the dry cough that didn't stop, that meant another one would be left behind soon.
+
+Tam closed his eyes and tried to sleep.
+
+Fifty-one days to Kravethorn.
+
+---
+
+**— End of Chapter —**
+
+---
+
+**Chapter Notes**
+
+| Element | Description |
+|---------|-------------|
+| **POV** | Tam Smithson (17, orphan blacksmith) |
+| **Day** | 16 of 67 |
+| **Position** | Rear guard, ~40 vaelthar behind king |
+| **Characters** | All Seven appear |
+| **Word count** | ~5,200 |
+
+**Key Themes:**
+- Tam's worldview filtered through "the blacksmith's rules"
+- The gap between promised glory and brutal reality
+- Class differences visible through uniforms
+- Family vs. isolation (brothers vs. Tam's solitude)
+- Death as constant background presence
+
+**Heraldry introduced:**
+- **Duratheon:** Golden eight-pointed sun with clenched fist
+- **House Vael:** Golden tree with two dragons
+
+**Terms:**
+- *sarcela* — military backpack
+- *gambeson* — padded vest
+- *vaelthar* — distance unit (~1km)
+- *zurra* — cheap fermented drink
+- *thornleaf* — smoking leaf`,
+        tags: ["chapter", "the-seven", "tam-smithson", "legion-24", "long-march", "778-af", "day-16", "the-depletion", "manuscript"]
       }
     }
   },
   linguagem: {
     title: "Languages",
     icon: "MessageSquare",
+    landing: {
+      subtitle: "The Voice of Civilizations",
+      description: "Language in Sethael is archaeology made audible. From the bilabial-less purity of ancestral TAELUN to the philosophical precision of HIGH ZANUAX and the guttural force of KAELDREK, each tongue carries the memory of its people.",
+      stats: [
+        { value: "5", label: "Language Families" },
+        { value: "0", label: "Bilabial Sounds" },
+        { value: "57,000", label: "Years of Evolution" }
+      ]
+    },
     groups: [
       { key: "taelun", title: "ARCHAIC TAELUN" },
       { key: "late-taelun", title: "LATE TAELUN" },
       { key: "zanuax", title: "ZANUAX" },
       { key: "alto-zanuax", title: "HIGH ZANUAX" },
       { key: "kaeldrek", title: "KAELDREK" },
-      { key: "outras", title: "OTHER LANGUAGES" }
+      { key: "other", title: "OTHER LANGUAGES" }
     ],
     entries: {
       "taelun-visao": {
@@ -4471,16 +5850,16 @@ Late TAELUN (also called Proto-ZANUAX) is not a single language, but a continuum
 | Bilabiais | Ausentes (P, B, M proibidos) | Emergindo em loans, nomes | Totalmente integrados |
 | Vocalic system | 5 vowels, semantic weight | 6 vowels, weakening weight | 7 vowels, grammaticalized diphthongs |
 | Suffixes | Minimum (-DAR, -TEK, -AR) | Proliferating (-ETH, -EN, -AVEN) | Complex system |
-| Vocabulary emocional | Ausente as categoria | Emergindo via circumlocution | Classe lexical plena |
-| Marcaction temporal | Apenas aspectual | Aspecto + particles de tempo | Conjugaction temporal plena |
+| Emotional vocabulary | Absent as category | Emerging via circumlocution | Full lexical class |
+| Temporal marking | Aspectual only | Aspect + time particles | Full temporal conjugation |
 | Nomes | Monosyllabic (Torn, Jak, Krav) | Disyllabic + sufixos (Tharel) | Compostos elaborados (Duratheon) |
 
 **Por Que a Change?**
 1. Generational distance from the Silence — each generation knew less about why TAELUN was structured this way
-2. Contato com outros povos — trade trouxe sons e conceitos estrangeiros
+2. Contact with other peoples — trade brought foreign sounds and concepts
 3. Complexidade social — hierarquia feudal exigia new vocabulary
-4. Fim da Grande Division — estabilidade geologic permitiu florescimento cultural
-5. Padronizaction da escrita — os Sentek began a codificar a language`,
+4. End of the Great Division — geological stability allowed cultural flourishing
+5. Standardization of writing — the Sentek began to codify the language`,
         tags: ["late taelun", "proto-zanuax", "transition", "history"]
       },
       "late-taelun-phonology": {
@@ -4488,13 +5867,13 @@ Late TAELUN (also called Proto-ZANUAX) is not a single language, but a continuum
         title: "Late TAELUN — Phonology",
         content: `**Consonantal System**
 
-O TAELUN Tardio preserva a maioria das consonants arcaicas, mas begins a admitir bilabials em contextos specific.
+Late TAELUN preserves most archaic consonants, but begins to admit bilabials in specific contexts.
 
 | Modo | Labial | Coronal | Dorsal | Notes |
 |------|--------|---------|--------|-------|
 | Oclusiva surda | (p) | t | k | /p/ emergindo em nomes, loans |
 | Oclusiva sonora | (b) | d | g | /b/ raro, estrangeiro |
-| Fricativa surda | f | s, sh /ʃ/ | kh /x/ | /f/ do arcaico, /sh/ emergindo |
+| Voiceless fricative | f | s, sh /ʃ/ | kh /x/ | /f/ from archaic, /sh/ emerging |
 | Fricativa sonora | v | z | — | /v/ frequency aumentando |
 | Nasal | (m) | n | — | /m/ emergindo, still marcado |
 | Liquid | — | l, r | — | inalterado |
@@ -4505,27 +5884,27 @@ O TAELUN Tardio preserva a maioria das consonants arcaicas, mas begins a admitir
 In Archaic TAELUN, bilabials (P, B, M) were constitutionally absent — the language literally could not form sounds associated with intimacy, nursing, maternal comfort. The cognitive structure of post-Seeder consciousness excluded these categories.
 
 No TAELUN Tardio, bilabials begin a aparecer em:
-• **Nomes estrangeiros:** Emprestados de comerciantes orientais, povos do sul
-• **Onomatopeias:** Sons naturais que resistem à prohibition linguistic
+• **Foreign names:** Borrowed from eastern merchants, southern peoples
+• **Onomatopoeia:** Natural sounds that resist linguistic prohibition
 • **Fala infantil:** Children began a produzir /m/ naturalmente; pais pararam de corrigir
-• **Registros íntimos:** Sussurrados between amantes, mothers para filhos
+• **Intimate registers:** Whispered between lovers, mothers to children
 
 | TAELUN Arcaico | TAELUN Tardio | Meaning |
 |----------------|---------------|-------------|
 | NETH-AR | METHAR | One who is next (beloved) |
 | NEK-IS | MEKIS | Estado de connection (intimidade) |
-| — | MAMA | Mother (fala infantil, espalhando-se) |
+| — | MAMA | Mother (infant speech, spreading) |
 
 **Vocalic System**
 
-O TAELUN Tardio expande de 5 para 6 vowels, com o schwa /ə/ emergindo em syllables átonas.
+Late TAELUN expands from 5 to 6 vowels, with the schwa /ə/ emerging in unstressed syllables.
 
 | Vowel | IPA | Function Arcaica | Function no Tardio |
 |-------|-----|----------------|------------------|
-| A | /a/ | Presence material | Inalterada, mas menos peso |
-| E | /e/ | Tension relacional | Suavizando para connection geral |
+| A | /a/ | Material presence | Unchanged, but less weight |
+| E | /e/ | Relational tension | Softening to general connection |
 | I | /i/ | Interioridade, agency | Inalterada |
-| O | /o/ | Abertura, vazio (arcaico) | Revivendo para novos cunhagens |
+| O | /o/ | Opening, void (archaic) | Reviving for new coinages |
 | U | /u/ | Containment | Inalterada |
 | Ə | /ə/ | — (ausente) | Syllables átonas, sufixos |
 
@@ -4547,7 +5926,7 @@ O TAELUN Tardio expande de 5 para 6 vowels, com o schwa /ə/ emergindo em syllab
 Archaic TAELUN had minimum derivational morphology. Late TAELUN develops a rich system of suffixes.
 
 **Suffixes Agentivos**
-| Suffix | Origin | Meaning | Exemplos |
+| Suffix | Origin | Meaning | Examples |
 |--------|--------|-------------|----------|
 | -AR | Arcaico -AR | Agente simples | SETHAR (criador), NEKAR (ligador) |
 | -DAR | Arcaico -DAR | Agente without volition | Preservado em formal/ritual |
@@ -4556,7 +5935,7 @@ Archaic TAELUN had minimum derivational morphology. Late TAELUN develops a rich 
 | -THOR | THUR (poder) + OR | Agente poderoso | JAKATHOR |
 
 **Suffixes de Estado/Qualidade**
-| Suffix | Origin | Meaning | Exemplos |
+| Suffix | Origin | Meaning | Examples |
 |--------|--------|-------------|----------|
 | -IS | Arcaico -IS | Estado/condition | SKELTHIS (paralisia), GRETHAKIS (desespero) |
 | -AKH/-AK | Arcaico -AK | Resultado/completude | THURNAKH, KRUVELAK |
@@ -4564,9 +5943,9 @@ Archaic TAELUN had minimum derivational morphology. Late TAELUN develops a rich 
 | -EL | Arcaico (diminutivo) | Pequeno/menor | THAREL, DURAVEL |
 
 **Suffixes Compostos**
-O TAELUN Tardio begins a combinar sufixos, prenunciando a complexidade do ZANUAX:
+Late TAELUN begins to combine suffixes, foreshadowing the complexity of ZANUAX:
 
-| Composto | Componentes | Meaning | Exemplos |
+| Compound | Components | Meaning | Examples |
 |----------|-------------|-------------|----------|
 | -AVEL | -A + VEL | Qualidade duradoura | THURNAVEL |
 | -ARAK | -AR + AK | Agente de resultado | SENVARAK |
@@ -4578,24 +5957,24 @@ O TAELUN Tardio begins a combinar sufixos, prenunciando a complexidade do ZANUAX
 
 The most visible change in Late TAELUN is the elaboration of names:
 
-| Era | Pattern | Exemplos | Estrutura |
+| Era | Pattern | Examples | Structure |
 |-----|--------|----------|-----------|
 | Archaic | ROOT | Torn, Jak, Krav, Seth | Pure semantic root |
-| Tardio Inicial | RAIZ + -EL/-AR | Tharel, Sethar | Raiz + sufixo simples |
-| Tardio Medium | RAIZ + -ETH/-EN | Kraveth, Garethen | Raiz + sufixo new |
+| Early Late | ROOT + -EL/-AR | Tharel, Sethar | Root + simple suffix |
+| Medium Late | ROOT + -ETH/-EN | Kraveth, Garethen | Root + new suffix |
 | Tardio Final | RAIZ + RAIZ | Setharek, Jakoren | Roots compostas |
 | Proto-ZANUAX | RAIZ + -AVEN/-AETH | Tornaven, Tornaeth | Compostos complexos |
 | ZANUAX Inicial | Compostos elaborados | Duratheon, Vaelaneth | Elaboraction plena |
 
-**Semantic dos Nomes**
-| Name | Significado Literal | Significado Aspiracional | Era |
+**Semantics of Names**
+| Name | Literal Meaning | Aspirational Meaning | Era |
 |------|---------------------|--------------------------|-----|
 | TORN | Virar/observar | — | Arcaico |
-| THAREL | Pequena resistance | "Que ele resista (gentilmente)" | Tardio Inicial |
-| SETHAREK | Creation + ? | "Que ele crie grandemente" | Tardio Medium |
+| THAREL | Small resistance | "May he resist (gently)" | Early Late |
+| SETHAREK | Creation + ? | "May he create greatly" | Medium Late |
 | GARETHEN | Harvest + received | "One who receives what is harvested" | Late Medium |
-| TORNAETH | Virar + mundo-elevado | "Que ele vire o mundo" | Tardio Final |
-| DURATHEON | Resistir + grande-mundo | "Aquele que resiste no great mundo" | Proto-ZANUAX |`,
+| TORNAETH | Turn + elevated-world | "May he turn the world" | Final Late |
+| DURATHEON | Resist + great-world | "One who resists in the great world" | Proto-ZANUAX |`,
         tags: ["late taelun", "morfologia", "sufixos", "nomes"]
       },
       "late-taelun-verbal": {
@@ -4603,29 +5982,29 @@ The most visible change in Late TAELUN is the elaboration of names:
         title: "Late TAELUN — Verbal System",
         content: `**Marcadores de Tempo Emergentes**
 
-O TAELUN Arcaico not tinha tempo gramatical — only aspecto. O TAELUN Tardio desenvolve particles de tempo:
+Archaic TAELUN had no grammatical tense — only aspect. Late TAELUN develops time particles:
 
 | Particle | Origin | Function | Example |
 |-----------|--------|--------|---------|
-| ETH | "tempo elevado" | Passado (completo) | SETH ETH (criou [no passado]) |
-| VAR | "movimento para" | Futuro (pretendido) | SETH VAR (criará) |
-| NUR | "presence-agora" | Presente (em curso) | SETH NUR (está criando) |
+| ETH | "elevated time" | Past (complete) | SETH ETH (created [in the past]) |
+| VAR | "movement toward" | Future (intended) | SETH VAR (will create) |
+| NUR | "presence-now" | Present (ongoing) | SETH NUR (is creating) |
 
-Estas particles are opcionais no TAELUN Tardio — falantes as usam para clareza, mas o aspecto permanece primary. No ZANUAX pleno, tornam-se sufixos mandatory.
+These particles are optional in Late TAELUN — speakers use them for clarity, but aspect remains primary. In full ZANUAX, they become mandatory suffixes.
 
 **Preservaction Aspectual**
 The archaic aspectual system persists but begins to grammaticalize:
 
 | Aspect | Forma Arcaica | Forma no Tardio | Example |
 |---------|---------------|-----------------|---------|
-| Perfectivo | Raiz nua | Raiz + -AK | SETH → SETHAK |
-| Imperfectivo | Reduplicaction | Raiz + -UL | SETH-SETH → SETHUL |
-| Resultativo | Raiz + -AK | Raiz + -ER | SETHAK → SETHER |
+| Perfective | Bare root | Root + -AK | SETH → SETHAK |
+| Imperfective | Reduplication | Root + -UL | SETH-SETH → SETHUL |
+| Resultative | Root + -AK | Root + -ER | SETHAK → SETHER |
 
 **Changes Semantics**
 Muitas roots arcaicas mudam de significado no TAELUN Tardio:
 
-| Root | Significado Arcaico | Significado Tardio | Causa da Change |
+| Root | Archaic Meaning | Late Meaning | Cause of Change |
 |------|---------------------|-------------------|------------------|
 | NA- | Esgotamento ontological | Simples negaction | Perda de consciousness cosmic |
 | FORA- | O Outside/Beyond | Meramente "longe" | Cosmologia esquecida |
@@ -4642,15 +6021,15 @@ Trade and war brought foreign words. These typically retain foreign phonology (i
 | BAREK | Meridional | Tipo de navio | Introduz /b/ no maritime |
 | PARAK | Setentrional | Passagem de montanha | Introduz /p/ na geografia |
 | WAEL | Desconhecida | Riqueza (cognato de VAEL?) | Introduz /w/ |`,
-        tags: ["late taelun", "verbos", "tempo", "aspecto", "loans"]
+        tags: ["late taelun", "verbs", "tense", "aspect", "loans"]
       },
       "late-taelun-lexico": {
         group: "late-taelun",
         title: "Late TAELUN — Lexicon",
         content: `**Vocabulary Emocional**
 
-O TAELUN Arcaico not tinha categoria lexical para emotions. O TAELUN Tardio as desenvolve through de:
-1. Circumlocution tornando-se lexicalizada
+Archaic TAELUN had no lexical category for emotions. Late TAELUN develops them through:
+1. Circumlocution becoming lexicalized
 2. Metaphors de estado corporal
 3. Cunhagens novas
 
@@ -4661,12 +6040,12 @@ O TAELUN Arcaico not tinha categoria lexical para emotions. O TAELUN Tardio as d
 | Amor | "ligaction forte" | NEKETH → MEKETH | NEK (ligar) + ETH (elevado) |
 | Medo | "presence-de-sombra" | THURNIS | THURN (sombra) + IS (estado) |
 | Raiva | "estado-de-fogo" | KRUELIS | KRUEL (fogo) + IS (estado) |
-| Hope | "ver-adiante" | TAUVAR | TAU (observar) + VAR (para) |
+| Hope | "see-ahead" | TAUVAR | TAU (observe) + VAR (toward) |
 
 **Vocabulary de Diseases**
 Late TAELUN systematizes the nomenclature of diseases. The pattern is ROOT + suffix of state/result:
 
-| Disease | Componentes | Significado Literal |
+| Disease | Components | Literal Meaning |
 |--------|-------------|---------------------|
 | NAKHVEL | NAKH (esgotar) + VEL (estado) | "estado de esgotamento" |
 | THURNAKH | THURN (sombra) + AKH (resultado) | "resultado-sombra" (consumption) |
@@ -4676,7 +6055,7 @@ Late TAELUN systematizes the nomenclature of diseases. The pattern is ROOT + suf
 | FELKRUEL | FEL (cair) + KRUEL (fogo) | "fogo caindo" (convulsions) |
 | GRETHAKIS | GRETHAK (preso) + IS (estado) | "estado-preso" (desespero) |
 | VETHRUIN | VETH (vento) + RUIN (mau) | "vento mau" (disease pulmonar) |
-| THRAKELUN | THRAKEL (instante) + UN (um) | "um instante" (morte sudden) |
+| THRAKELUN | THRAKEL (instant) + UN (one) | "one instant" (sudden death) |
 | ZERESKEL | ZER (intox.) + SKEL (fechar) | "êxtase fechante" (veneno) |
 | DURENAKH | DUR (resistir) + NAKH (esgotar) | "resistance esgotada" (velhice) |
 
@@ -4685,8 +6064,8 @@ A sociedade feudal exigiu novos termos:
 
 | Termo | Componentes | Meaning | Function Social |
 |-------|-------------|-------------|---------------|
-| VAELOR | VAEL + OR | Grande Vael | Honorific da casa real |
-| THEGNAR | THEGN (servir) + AR | Aquele que serve | Vassalo/retentor |
+| VAELOR | VAEL + OR | Great Vael | Royal house honorific |
+| THEGNAR | THEGN (serve) + AR | One who serves | Vassal/retainer |
 | KRAVLORD | KRAV + LORD (loan?) | Senhor-conquista | Nobre militar |
 | SENTHEK | SEN (preservar) + THEK | Coletivo de preservaction | Classe escribal |
 | KUMARAK | KUM (ganhar) + ARAK | Agente-de-ganho | Classe mercantil |`,
@@ -4695,10 +6074,10 @@ A sociedade feudal exigiu novos termos:
       "late-taelun-sintaxe": {
         group: "late-taelun",
         title: "TAELUN Tardio — Sintaxe",
-        content: `**Ordem das Palavras**
+        content: `**Word Order**
 
 TAELUN Arcaico: Rigid Impulso → Action → Estado → Consequence
-TAELUN Tardio: SVO flexible com topicalizaction
+Late TAELUN: Flexible SVO with topicalization
 
 | Arcaico | TAELUN Tardio | Translation |
 |---------|---------------|----------|
@@ -4706,46 +6085,46 @@ TAELUN Tardio: SVO flexible com topicalizaction
 | — | AEL-AK, KRANAR TAUL | "O mundo, o guardian observa" (topicalizado) |
 
 **Artigos Emergentes**
-O TAELUN Arcaico not tinha artigos. O TAELUN Tardio desenvolve demonstrativos em proto-artigos:
+Archaic TAELUN had no articles. Late TAELUN develops demonstratives into proto-articles:
 
 | Form | Origin | Function | Example |
 |-------|--------|--------|---------|
-| SA | Demonstrativo proximal | Definido emergente | SA KRANAR (o/este guardian) |
-| TA | Demonstrativo distal | Definido distal emergente | TA AEL (aquele mundo) |
-| UN | "totalidade" | Indefinido emergente | UN KRANAR (um guardian) |
+| SA | Proximal demonstrative | Emerging definite | SA KRANAR (the/this guardian) |
+| TA | Distal demonstrative | Emerging distal definite | TA AEL (that world) |
+| UN | "totality" | Emerging indefinite | UN KRANAR (a guardian) |
 
 **Sentences Complexas**
 O TAELUN Tardio desenvolve subordinaction through de particles:
 
 | Particle | Function | Example |
 |-----------|--------|---------|
-| TRUM | Relativa ("que/quem") | KRANAR TRUM TAUL (guardian que observa) |
-| ZIK | Condicional ("se") | ZIK SETH, THEN AEL (se criar, then mundo) |
-| THUN | Causal ("porque") | THUN NAKH, FEL (porque esgota, cai) |
+| TRUM | Relative ("that/who") | KRANAR TRUM TAUL (guardian who observes) |
+| ZIK | Conditional ("if") | ZIK SETH, THEN AEL (if create, then world) |
+| THUN | Causal ("because") | THUN NAKH, FEL (because it depletes, falls) |
 
 **Variaction Dialetal (~80 BF)**
 
-| Dialeto | Region | Characteristics | Falantes |
+| Dialect | Region | Characteristics | Speakers |
 |---------|--------|-----------------|----------|
 | Norte (Kravaal) | Fronteira | Preservou duration vocalic, clusters ásperos, vocabulary conservador | Nobreza militar, colonos border |
 | Sul (Costeiro) | Ilhas | Duraction vocalic colapsou, more bilabials, innovations maritimes | Mercadores, marinheiros |
 | Central (Vaelhem) | Capital | Dialeto de prestige, characteristics intermediate, more innovations sufixais | Corte real, escribas Sentek |
-| Leste (Fronteira) | Marcas | Forte influence de contato, more bilabials, grammar simplificada | Comerciantes border |
+| East (Frontier) | Marches | Strong contact influence, more bilabials, simplified grammar | Border traders |
 
-O dialeto Central tornou-se o ZANUAX pattern.`,
+The Central dialect became the ZANUAX standard.`,
         tags: ["late taelun", "sintaxe", "ordem", "artigos", "dialetos"]
       },
       "late-taelun-textos": {
         group: "late-taelun",
         title: "Late TAELUN — Sample Texts",
         content: `**TAELUN Tardio Inicial (~200 BF)**
-Proclamaction de um senhor:
+Proclamation of a lord:
 
 *JAK VAEL, KRAV-AR TI KUMTEK, THEGN-EX ZANAR:*
 *"TAU-ETH TORN VAEL. TAU-ETH JAK VAEL. NUR ZA TAU. VAR ZEL-AR TAU."*
 
 **Translation:**
-Jak Vael, Conquistador dos Kumtek, convoca seus servos:
+Jak Vael, Conqueror of the Kumtek, summons his servants:
 "Nossos pais observaram. Nossos grandparents observaram. Agora eu observo. Meus filhos will observe."
 
 *Note: Still largely archaic, but ETH (past particle) and VAR (future particle) emerge. ZEL-AR (children, "agents-of-change") is new coinage.*
@@ -4753,7 +6132,7 @@ Jak Vael, Conquistador dos Kumtek, convoca seus servos:
 ---
 
 **TAELUN Tardio Medium (~100 BF)**
-De uma chronicle:
+From a chronicle:
 
 *THAREL VAEL, TRUM NAKHETH TI GRETHAKIS, SKEL-UL IN THURN-AK.*
 *SETH-ETH THEGN-EX TEMPLAR-AK ZEN.*
@@ -4762,32 +6141,32 @@ De uma chronicle:
 **Translation:**
 Tharel Vael, who was depleted by despair, shut himself in darkness. He had built seven temples for the servants. Said Tharel at the end: "Sthendur observes. I no longer observe."
 
-*Nota: Nomes sufixados (Tharel), termo emocional abstrato (GRETHAKIS), vocabulary de templo (TEMPLAR), artigos emergentes (TA, UN).*
+*Note: Suffixed names (Tharel), abstract emotional term (GRETHAKIS), temple vocabulary (TEMPLAR), emerging articles (TA, UN).*
 
 ---
 
 **TAELUN Tardio Final / Proto-ZANUAX (~50 BF)**
-De um tratado:
+From a treaty:
 
 *SA VAELOR SETHAREK, KRAV-ETHAR TI SA KRAVETHAR UT SA VAEL, ZANAR THEGN-EX-EL:*
 *"MEKETH-IS NEKUL SA DWÉ VAELOR-AK. UN KRUVEL, UN AEL. ZIK FATHAK, THUN KRAV-VAR."*
 
 **Translation:**
-O Senhor Setharek, do sangue tanto do Kravethar quanto do Vael, convoca os servos de ambos:
-"Amor liga as duas senhorias. Um sangue, um mundo. Se quebrado, then guerra."
+Lord Setharek, of blood both Kravethar and Vael, summons the servants of both:
+"Love binds the two lordships. One blood, one world. If broken, then war."
 
 *Nota: Vocabulary emocional (MEKETH-IS), numbers (DWÉ = dois), condicional (ZIK...THUN), termos sociais complexos (VAELOR-AK = "senhoria").*
 
 ---
 
 **ZANUAX Inicial (Ano 1 AF)**
-A nomeaction do reino:
+The naming of the kingdom:
 
 *DURATHEON VAEL, SA TRUM DUR-ÔM, ZANAR-ETH:*
 *"SA AEL-AK TREUL ZA-EL. NUR ZA ZUNAR: DURATHEON. TREUL SA AEL, TREUL ZA ZUN. DUR-ÔM."*
 
 **Translation:**
-Duratheon Vael, aquele que resiste eternamente, proclamou:
+Duratheon Vael, he who resists eternally, proclaimed:
 "This world is mine. Now I name it: Duratheon. The world is, my name is. Eternal."
 
 *Note: Full ZANUAX emerging — TREUL (conjugated "to be"), ZUN (name as noun), -ÔM (eternal aspect). The archaic weight of DUR- is being reclaimed for political purposes.*`,
@@ -4798,27 +6177,27 @@ Duratheon Vael, aquele que resiste eternamente, proclamou:
         title: "Late TAELUN — The Complete Transition",
         content: `**O Que Foi Perdido**
 
-Na época da foundation do Reino, falantes do Proto-ZANUAX not conseguiam more entender textos em TAELUN Arcaico without treinamento. Perdeu-se:
+At the time of the Kingdom's foundation, Proto-ZANUAX speakers could no longer understand texts in Archaic TAELUN without training. What was lost:
 
-• **Vocabulary ontological:** NA- (esgotamento), FORA- (Outside), IUL- (sustentar) — tornaram-se arcaicos ou mudaram de significado
+• **Ontological vocabulary:** NA- (depletion), FORA- (Outside), IUL- (sustain) — became archaic or changed meaning
 • **Consciousness cosmic:** A language not more codificava urgency existencial
 • **Phonological prohibitions:** Bilabials now normal; the trauma that forbade them, forgotten
-• **Primazia aspectual:** Tempo estava se tornando mandatory
+• **Aspectual primacy:** Tense was becoming mandatory
 
 **O Que Foi Ganho**
 
-• **Expression emocional:** Um vocabulary completo para a vida interior
-• **Complexidade social:** Termos para hierarquia, relacionamento, obrigaction
+• **Emotional expression:** A complete vocabulary for inner life
+• **Social complexity:** Terms for hierarchy, relationship, obligation
 • **Elaboraction aesthetic:** Nomes e titles podiam carregar significado e beleza
-• **Flexibilidade:** Ordem das palavras, subordinaction, topicalizaction
+• **Flexibility:** Word order, subordination, topicalization
 
 **O Que Permaneceu**
 
 • **Roots nucleares:** SETH-, DUR-, TAU-, KRAV-, SEN-, VEL- — still recognizable
-• **Estrutura basic:** Tendency SVO, sufixaction aglutinante
-• **O Axioma:** "Telenōm trē frükhǖ tï baërël" — preservado em ritual, although poucos o entendessem
+• **Basic structure:** SVO tendency, agglutinative suffixation
+• **The Axiom:** "Telenōm trē frükhǖ tï baërël" — preserved in ritual, although few understood it
 
-**Linha do Tempo das Changes**
+**Timeline of Changes**
 | Data Aproximada | Change | Evidence |
 |-----------------|---------|-----------|
 | ~700 BF | Primeiros bilabials em nomes | Nobres de origem estrangeira |
@@ -4828,12 +6207,12 @@ Na época da foundation do Reino, falantes do Proto-ZANUAX not conseguiam more e
 | ~300 BF | Duraction vocalic enfraquecendo | Variaction regional |
 | ~200 BF | Division dialetal clara | Diferentes chronicles |
 | ~100 BF | Artigos emergindo | Textos legais |
-| ~1 AF | Proto-ZANUAX completo | Proclamations do Reino |
+| ~1 AF | Proto-ZANUAX complete | Kingdom Proclamations |
 
 **Componentes de Nomes — Roots**
 | Root | Meaning | Uso em Nomes |
 |------|-------------|--------------|
-| TORN | Virar, observar | Tradicional (nome do fundador) |
+| TORN | Turn, observe | Traditional (founder's name) |
 | JAK | Sustentar (< IUL-AK) | Tradicional |
 | KRAV | Conquistar | Tradicional / Aspiracional |
 | SETH | Criar | Tradicional / Aspiracional |
@@ -4846,7 +6225,7 @@ Na época da foundation do Reino, falantes do Proto-ZANUAX not conseguiam more e
 | SEN | Preservar | Casa Senvarak |
 
 **Componentes de Nomes — Suffixes**
-| Suffix | Meaning | Era | Exemplos |
+| Suffix | Meaning | Era | Examples |
 |--------|-------------|-----|----------|
 | -EL | Diminutivo | Inicial | Tharel, Durel |
 | -AR | Agente | Todas | Sethar, Nekar |
@@ -4861,20 +6240,20 @@ Na época da foundation do Reino, falantes do Proto-ZANUAX not conseguiam more e
         tags: ["late taelun", "transition", "perdas", "ganhos", "timeline", "nomes"]
       },
       "durathek": {
-        group: "outras",
+        group: "other",
         title: "Durathek",
         content: `**Language de Duratheon**
 
 | Parameter | Value |
 |-----------|-------|
 | Origin | TAELUN |
-| Falantes | ~10 millions |
+| Speakers | ~10 millions |
 | Escrita | Alfabeto own |
 
 **Characteristics**
-- Derivado do TAELUN ocidental
-- Influences do trade maritime
-- Mais "suave" que o Kaeldrek
+- Derived from western TAELUN
+- Influences of maritime trade
+- "Softer" than Kaeldrek
 
 **Common Vocabulary**
 | Durathek | Meaning |
@@ -4900,13 +6279,13 @@ Na época da foundation do Reino, falantes do Proto-ZANUAX not conseguiam more e
 
 | Parameter | Value |
 |-----------|-------|
-| Origin | TAELUN do Norte |
-| Falantes | ~45.000 |
+| Origin | Northern TAELUN |
+| Speakers | ~45,000 |
 | Escrita | Runic (pedra, metal) |
 | Registro | Oral primary |
 
 **Characteristics**
-Onde ZANUAX evoluiu para ornamentaction e precision bureaucratic, Kaeldrek permaneceu next de suas roots: áspero, direto, practical.
+Where ZANUAX evolved toward ornamentation and bureaucratic precision, Kaeldrek remained close to its roots: rough, direct, practical.
 
 - Sons guturais preservados
 - Vocabulary centrado em survival
@@ -4920,7 +6299,7 @@ Onde ZANUAX evoluiu para ornamentaction e precision bureaucratic, Kaeldrek perma
       ┌──────────────┴──────────────┐
       │                             │
  TAELUN TARDIO              TAELUN DO NORTE
-(Povos ocidentais)          (Povos do norte)
+(Western peoples)          (Northern peoples)
       │                             │
  PROTO-ZANUAX               PROTO-KAELDREK
       │                             │
@@ -4976,13 +6355,13 @@ Onde ZANUAX evoluiu para ornamentaction e precision bureaucratic, Kaeldrek perma
 
 | Suffix | Meaning | Example | Translation |
 |--------|-------------|---------|----------|
-| **-ur** | Povo, coletivo | Kaeld-ur | Povo-do-fogo |
+| **-ur** | People, collective | Kaeld-ur | Fire-people |
 | **-ek** | One who does | Threkn-ek | One who forges |
 | **-nar** | Master de | Threk-nar | Master-forjador |
-| **-vrek** | Caminhante, viajante | Kael-vrek | Caminhante-do-fogo |
+| **-vrek** | Walker, traveler | Kael-vrek | Fire-walker |
 | **-khen** | Com, junto | Kael-khen | Com fogo |
 | **-skar** | Sem, faltando | Khen-skar | Sem comunidade |
-| **-threk** | Lugar de fogo/forja | Kael-threk | Lugar-do-fogo |
+| **-threk** | Place of fire/forge | Kael-threk | Fire-place |
 
 ---
 
@@ -4992,16 +6371,16 @@ Kaeldrek is agglutinative — words are built by addition:
 
 | Componentes | Result | Meaning |
 |-------------|-----------|-------------|
-| Kael + dur | Kaeldur | Povo-do-fogo |
-| Threk + nar | Threknar | Master-da-forja |
+| Kael + dur | Kaeldur | Fire-people |
+| Threk + nar | Threknar | Forge-master |
 | Khen + skar | Khenskar | Sem-comunidade (insulto grave) |
-| Vreth + kael + dur | Vrethkaeldur | Terra-da-strength-do-fogo |
+| Vreth + kael + dur | Vrethkaeldur | Land-of-fire-strength |
 
 ---
 
 **NEGATION**
 
-O prefixo **na-** ou sufixo **-skar** indica absence:
+The prefix **na-** or suffix **-skar** indicates absence:
 
 | Positivo | Negativo | Meaning |
 |----------|----------|-------------|
@@ -5029,8 +6408,8 @@ O prefixo **na-** ou sufixo **-skar** indica absence:
 | Kaeldrek | Meaning |
 |----------|-------------|
 | **Vreth-dur.** | Despedida pattern |
-| **Na-skar.** | Mantenha-se quente |
-| **Kael-ul.** | O fogo estará aqui (quando voltar) |
+| **Na-skar.** | Stay warm |
+| **Kael-ul.** | The fire will be here (when I return) |
 
 ---
 
@@ -5038,7 +6417,7 @@ O prefixo **na-** ou sufixo **-skar** indica absence:
 
 | Kaeldrek | Meaning |
 |----------|-------------|
-| **Ek-kael, thu-kael.** | Meu fogo, seu fogo. (Eu te amo) |
+| **Ek-kael, thu-kael.** | My fire, your fire. (I love you) |
 | **Ekkhen-ir kael, thu-ir kael.** | Our fire is your fire |
 
 ---
@@ -5048,8 +6427,8 @@ O prefixo **na-** ou sufixo **-skar** indica absence:
 | Conceito | ZANUAX | KAELDREK |
 |----------|--------|----------|
 | "Eu te amo" | *Ek sentharel thu.* | *Ek-kael, thu-kael.* |
-| | "Eu preservo-aprecio você" | "Meu fogo, seu fogo" |
-| "Adeus" | *Sthendur tauvar.* | *Vreth-dur.* |
+| | "I preserve-appreciate you" | "My fire, your fire" |
+| "Farewell" | *Sthendur tauvar.* | *Vreth-dur.* |
 | | "Sthendur observa" | "Strength resiste" |
 
 The difference is philosophical: ZANUAX speaks of preservation and divine observation. Kaeldrek speaks of shared warmth and resistance.`,
@@ -5085,7 +6464,7 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 | Kaeldrek | Meaning |
 |----------|-------------|
 | **Durtek kael-skar, vel-skar.** | Duratheon without fogo, without vida. | Eles esqueceram o essencial |
-| **Kravorn kael-threk, nakh-threk.** | Kravorn fez forja, fez esgotamento. | Ele forjou sua own destruction |
+| **Kravorn kael-threk, nakh-threk.** | Kravorn made forge, made depletion. | He forged his own destruction |
 | **Thu-vrakh na-vrakh.** | Your oath is no oath. | Duratheon does not honor promises |`,
         tags: ["kaeldrek", "proverbs", "sabedoria"]
       },
@@ -5097,9 +6476,9 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 | Name | Meaning | Notes |
 |------|-------------|-------|
 | **Vrethek** | Forte | Comum |
-| **Kaelnar** | Master-do-fogo | Prestigioso |
+| **Kaelnar** | Fire-master | Prestigious |
 | **Threkur** | Da forja | Family de ferreiros |
-| **Durvreth** | Strength-da-pedra | Mineiros |
+| **Durvreth** | Stone-strength | Miners |
 | **Tornvrek** | Observador-caminhante | Exploradores |
 | **Thaelkhen** | Compartilhar-juntos | Generoso |
 
@@ -5109,10 +6488,10 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 
 | Name | Meaning | Notes |
 |------|-------------|-------|
-| **Kaelveth** | Sopro-do-fogo | Comum |
-| **Vrethael** | Strength-do-ar | Prestigioso |
+| **Kaelveth** | Fire-breath | Common |
+| **Vrethael** | Air-strength | Prestigious |
 | **Thaelkhen** | Compartilhar-juntos | Unissex |
-| **Laerkael** | Descanso-do-fogo | Pacific |
+| **Laerkael** | Fire-rest | Peaceful |
 | **Maela** | Derivado de TAELUN | Antigo |
 
 ---
@@ -5123,7 +6502,7 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 |--------|-------------|-----|
 | **Kaelnar** | King (eleito) | Leader supremo |
 | **Threknar** | Master-forjador | Artisan respeitado |
-| **Kaelvrek** | Caminhante-do-fogo | Explorador, mensageiro |
+| **Kaelvrek** | Fire-walker | Explorer, messenger |
 | **Vrethek** | O forte | Guerreiro veterano |
 
 ---
@@ -5134,32 +6513,32 @@ The difference is philosophical: ZANUAX speaks of preservation and divine observ
 |------|-------------|------|
 | **Thaelkhen** | Compartilhar-juntos | Kaelnar atual |
 | **Vreth** | Strength/Montanha | Elder no Hall of Fire |
-| **Maela** | (TAELUN antigo) | Mulher que acolhe Krav |`,
+| **Maela** | (ancient TAELUN) | Woman who welcomes Krav |`,
         tags: ["kaeldrek", "nomes", "onomastic"]
       },
       "nomenclatura-sistema": {
         group: "zanuax",
         title: "NOMENCLATURA — Sistema Completo",
         content: `**SISTEMA DE NOMENCLATURA DE SETHAEL**
-*Um guia para criação de nomes consistentes*
+*A guide for creating consistent names*
 
 ---
 
 ## PRINCÍPIOS FUNDAMENTAIS
 
-Os nomes em Sethael seguem padrões linguísticos que refletem:
-1. **Estrato temporal** — de qual era vem o nome
+Names in Sethael follow linguistic patterns that reflect:
+1. **Temporal stratum** — from which era the name comes
 2. **Classe social** — plebeu, mercador, nobre, real
-3. **Região** — dialetos e influências locais
-4. **Gênero** — padrões masculinos, femininos, neutros
-5. **Função** — nome próprio, patronímico, epíteto, título
+3. **Region** — dialects and local influences
+4. **Gender** — masculine, feminine, neutral patterns
+5. **Function** — proper name, patronymic, epithet, title
 
 ---
 
 ## I. RAÍZES PRIMÁRIAS (SEMANTIC CORES)
 
 ### Raízes de Poder e Autoridade
-| Raiz | Significado | Conotação | Exemplos |
+| Root | Meaning | Connotation | Examples |
 |------|-------------|-----------|----------|
 | **VAEL-** | Acumular, possuir | Real, imperial | Vaelan, Vaelorn, Vaethor |
 | **KRAV-** | Conquistar, dominar | Militar, épico | Kravorn, Kraveth, Kravethar |
@@ -5168,7 +6547,7 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 | **REG-** | Governar, reger | Administrativo | Regnar, Regeth |
 
 ### Raízes de Qualidade e Virtude
-| Raiz | Significado | Conotação | Exemplos |
+| Root | Meaning | Connotation | Examples |
 |------|-------------|-----------|----------|
 | **THAEL-** | Elevado, sagrado | Espiritual | Thaelor, Thaelara, Thaelkhen |
 | **SEN-** | Preservar, guardar | Sábio, ancião | Senara, Senvarak, Senthur |
@@ -5177,25 +6556,25 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 | **SAP-** | Sábio, conhecedor | Erudito | Saphenar, Saphira |
 
 ### Raízes de Elementos e Natureza
-| Raiz | Significado | Conotação | Exemplos |
+| Root | Meaning | Connotation | Examples |
 |------|-------------|-----------|----------|
 | **DUR-** | Pedra, resistir | Forte, permanente | Duratheon, Durenkar, Dureth |
 | **KAEL-** | Fogo (Kaeldrek) | Paixão, força | Kaelnar, Kaelveth |
-| **AQU-** | Água | Fluido, adaptável | Aquaren, Aquila |
+| **AQU-** | Water | Fluid, adaptable | Aquaren, Aquila |
 | **SYLV-** | Floresta | Natural, selvagem | Sylvara, Sylveth |
 | **FERR-** | Ferro, metal | Duro, trabalhador | Ferreth, Ferrand |
 
 ### Raízes de Origem e Lugar
-| Raiz | Significado | Conotação | Exemplos |
+| Root | Meaning | Connotation | Examples |
 |------|-------------|-----------|----------|
 | **SETH-** | Mundo, cosmos | Universal | Sethael, Setharen, Sethira |
-| **VELUTH-** | Das terras do sul | Regional | Veluthar, Veluthara |
+| **VELUTH-** | From southern lands | Regional | Veluthar, Veluthara |
 | **ZUM-** | Do povo Vethurim | Imigrante | Zumax, Zumara, Zumeth |
 | **KETH-** | Das montanhas | Serrano | Kethar, Kethara |
 | **THUL-** | Sagrado, antigo | Arcaico | Thulvar, Thulena |
 
-### Raízes Teofóricas (relacionadas a deuses)
-| Raiz | Significado | Conotação | Exemplos |
+### Theophoric Roots (related to gods)
+| Root | Meaning | Connotation | Examples |
 |------|-------------|-----------|----------|
 | **STHEN-** | De Sthendur | Piedoso, devoto | Sthendara, Sthenvar |
 | **IUL-** | Dos IULDAR | Mítico, antigo | Iulara, Iuleth |
@@ -5205,8 +6584,8 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 
 ## II. SUFIXOS POR GÊNERO
 
-### Sufixos Masculinos
-| Sufixo | Classe | Período | Exemplos |
+### Male Suffixes
+| Suffix | Class | Period | Examples |
 |--------|--------|---------|----------|
 | **-orn** | Nobre/Real | TAELUN Tardio | Kravorn, Vaelorn, Durorn |
 | **-ael** | Real/Sagrado | Proto-ZANUAX | Tornael, Sethael, Thaelael |
@@ -5219,11 +6598,11 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 | **-ius** | Sentek/Erudito | Formal | Valerius, Setharius |
 | **-an** | Comum | ZANUAX | Vaelan, Doran, Kravlan |
 
-### Sufixos Femininos
-| Sufixo | Classe | Período | Exemplos |
+### Female Suffixes
+| Suffix | Class | Period | Examples |
 |--------|--------|---------|----------|
 | **-ara** | Nobre/Real | ZANUAX | Senara, Aelara, Lumara |
-| **-ela** | Comum/Antigo | TAELUN | Maela, Vaela, Sethela |
+| **-ela** | Common/Ancient | TAELUN | Maela, Vaela, Sethela |
 | **-ira** | Nobre | High ZANUAX | Saphira, Velira, Thaelira |
 | **-eth** | Comum (unissex) | ZANUAX | Kaelveth, Torneth |
 | **-ina** | Diminutivo/Jovem | ZANUAX | Vaelina, Thornina |
@@ -5231,8 +6610,8 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 | **-wen** | Vethurim | Regional | Zumawen, Velwen |
 | **-is** | Sentek/Erudita | Formal | Velaris, Setharis |
 
-### Sufixos Neutros/Unissex
-| Sufixo | Classe | Período | Exemplos |
+### Neutral/Unisex Suffixes
+| Suffix | Class | Period | Examples |
 |--------|--------|---------|----------|
 | **-khen** | Kaeldur | Regional | Thaelkhen, Vaelkhen |
 | **-veth** | Comum | ZANUAX | Kaelveth, Durveth |
@@ -5243,38 +6622,38 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 ## III. ESTRUTURA DOS NOMES POR CLASSE SOCIAL
 
 ### Realeza (Casa Vael)
-**Estrutura:** RAIZ-PODER + -ael/-orn + Vael
+**Structure:** POWER-ROOT + -ael/-orn + Vael
 - Tornael Vael (Torn + ael + Vael)
 - Kravorn Vael (Krav + orn + Vael)
 - Vaelan Vael (Vael + an + Vael)
 
 ### Alta Nobreza (Casas Maiores)
-**Estrutura:** RAIZ-VIRTUDE + -ar/-or + NOME-DA-CASA
+**Structure:** VIRTUE-ROOT + -ar/-or + HOUSE-NAME
 - Vaethor Zumax (Vae + thor + Zumax)
 - Setharen Kravos (Seth + aren + Kravos)
 - Senara Senvarak (Sen + ara + Senvarak)
 
 ### Baixa Nobreza (Casas Menores)
-**Estrutura:** RAIZ + -eth/-en + NOME-DA-CASA
+**Structure:** ROOT + -eth/-en + HOUSE-NAME
 - Kraveth Vaelmar (Krav + eth + Vaelmar)
-- Dureth Thornavel (Dur + eth + Thornavel)
-- Velaren Sethak (Vel + aren + Sethak)
+- Dureth Lady Corvain (Dur + eth + Lady Corvain)
+- Velaren Tessalon (Vel + aren + Tessalon)
 
 ### Plebeus Urbanos
-**Estrutura:** RAIZ-SIMPLES + -an/-en (sem sobrenome ou patronímico)
+**Structure:** SIMPLE-ROOT + -an/-en (no surname or patronymic)
 - Thaelor (Thael + or) — maestro
 - Vaelan (Vael + an)
 - Durren (Dur + en)
 - Maela (Mael + a) — forma arcaica
 
 ### Plebeus Rurais
-**Estrutura:** RAIZ-NATUREZA + -eth/-en + [ofício ou vila]
-- Ferreth da Forja (Ferr + eth)
-- Sylven do Bosque (Sylv + en)
-- Aqueth do Rio (Aqu + eth)
+**Structure:** NATURE-ROOT + -eth/-en + [trade or village]
+- Ferreth of the Forge (Ferr + eth)
+- Sylven of the Grove (Sylv + en)
+- Aqueth of the River (Aqu + eth)
 
-### Imigrantes Vethurim
-**Estrutura:** RAIZ-VETHURIM + -ax/-wen + [vila de origem]
+### Vethurim Immigrants
+**Structure:** VETHURIM-ROOT + -ax/-wen + [village of origin]
 - Zumax de Zumarack
 - Thurnax de Vethurack
 - Velwen de Zumarack
@@ -5284,25 +6663,25 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 ## IV. NOMES DE CASAS NOBRES
 
 ### Casas Reais
-| Casa | Significado | Origem |
+| House | Meaning | Origin |
 |------|-------------|--------|
-| **Vael** | Os Acumuladores | Fundadora do Reino |
-| **Senvarak** | Os Preservadores da Força | Golpe de 137 AF |
-| **Thurnavel** | Os do Caminho Sagrado | Pós-Senara |
+| **Vael** | The Accumulators | Kingdom Founder |
+| **Senvarak** | The Preservers of Strength | Coup of 137 AF |
+| **Thurnavel** | Those of the Sacred Path | Post-Senara |
 
 ### Casas Maiores
-| Casa | Significado | Especialidade |
+| House | Meaning | Specialty |
 |------|-------------|---------------|
-| **Kravethar** | Herdeiros da Conquista | Militar |
-| **Vaelmar** | Mar dos Acumuladores | Naval |
-| **Sethak** | Filhos do Mundo | Comercial |
-| **Thornavel** | Caminho da Observação | Diplomática |
+| **Kravethar** | Heirs of Conquest | Military |
+| **Vaelmar** | Sea of the Accumulators | Naval |
+| **Tessalon** | Children of the World | Commercial |
+| **Lady Corvain** | Path of Observation | Diplomatic |
 | **Kravos** | Conquistadores | Militar |
-| **Senthek** | Preservadores do Conhecimento | Escribas |
-| **Duravel** | Caminho da Resistência | Construção |
+| **Senthek** | Preservers of Knowledge | Scribes |
+| **Duravel** | Path of Resistance | Construction |
 
 ### Casas Menores
-| Casa | Significado | Região |
+| House | Meaning | Region |
 |------|-------------|--------|
 | **Veluthar** | Do Sul | Veluthaar |
 | **Zumarak** | Do Povo Vethurim | Costa Sul |
@@ -5314,110 +6693,110 @@ Os nomes em Sethael seguem padrões linguísticos que refletem:
 ## V. EPÍTETOS E COGNOMES
 
 ### Epítetos Positivos (dados em vida)
-| Epíteto | HIGH ZANUAX | Significado |
+| Epithet | HIGH ZANUAX | Meaning |
 |---------|-------------|-------------|
 | o Grande | Mägnël | Por conquistas |
 | o Sábio | Säpïëntël | Por conhecimento |
 | o Justo | Jüstël | Por governo |
 | o Iluminado/a | Lümïnätël | Por reformas |
 | o Forte | Fōrtël | Por batalhas |
-| o Piedoso | Pïël | Por devoção |
+| the Pious | Pïël | For devotion |
 
 ### Epítetos Negativos (dados postumamente)
-| Epíteto | HIGH ZANUAX | Significado |
+| Epithet | HIGH ZANUAX | Meaning |
 |---------|-------------|-------------|
 | o Subjugador | Sübjügätōr | Conquistador cruel |
 | o Usurpador | Üsürpätōr | Tomou o trono |
-| o Louco | Dëmëntël | Governou mal |
-| o Fraco | Dëbïlël | Perdeu território |
-| o Sangrento | Krüëntël | Muitas execuções |
+| the Mad | Dëmëntël | Ruled poorly |
+| the Weak | Dëbïlël | Lost territory |
+| the Bloody | Krüëntël | Many executions |
 
 ### Epítetos Regionais (Kaeldrek)
-| Epíteto | Kaeldrek | Significado |
+| Epithet | Kaeldrek | Meaning |
 |---------|----------|-------------|
 | Vreth | — | O Forte (título) |
-| Kaelnar | — | Mestre do Fogo (rei) |
-| Threknar | — | Mestre da Forja |
-| Durvrek | — | Caminhante da Pedra |
+| Kaelnar | — | Fire-Master (king) |
+| Threknar | — | Forge-Master |
+| Durvrek | — | Stone-Walker |
 
 ---
 
 ## VI. PADRÕES FONOLÓGICOS POR PERÍODO
 
 ### TAELUN Arcaico (Eras I-III)
-- Consoantes duras: K, TH, KR, VR
+- Hard consonants: K, TH, KR, VR
 - Vogais fechadas: U, E
-- Estrutura: CVC-CVC
-- **Exemplos:** Kraeth, Thulvar, Durek
+- Structure: CVC-CVC
+- **Examples:** Kraeth, Thulvar, Durek
 
 ### TAELUN Tardio / Proto-ZANUAX (~700-1 BF)
-- Suavização inicial: TH → T, KR → KR/CR
-- Sufixos emergentes: -ael, -orn, -eth
-- **Exemplos:** Tornael, Kravorn, Sethael
+- Initial softening: TH → T, KR → KR/CR
+- Emerging suffixes: -ael, -orn, -eth
+- **Examples:** Tornael, Kravorn, Sethael
 
 ### ZANUAX Clássico (1-400 AF)
 - Vogais abertas: A, O
-- Sufixos elaborados: -ara, -aven, -ethar
-- **Exemplos:** Senara, Tornaven, Verathar
+- Elaborate suffixes: -ara, -aven, -ethar
+- **Examples:** Senara, Tornaven, Verathar
 
 ### High ZANUAX (400+ AF)
-- Ornamentação: diacríticos, vogais longas
-- Latinização: -ius, -is, -or
-- **Exemplos:** Valerius, Thaelor, Setharis
+- Ornamentation: diacritics, long vowels
+- Latinization: -ius, -is, -or
+- **Examples:** Valerius, Thaelor, Setharis
 
 ---
 
 ## VII. GERADOR DE NOMES — MÉTODO PRÁTICO
 
-### Passo 1: Escolha a Raiz (baseado no significado desejado)
-### Passo 2: Escolha o Sufixo (baseado em gênero e classe)
-### Passo 3: Adicione Sobrenome (se nobre) ou Origem (se plebeu)
+### Step 1: Choose the Root (based on desired meaning)
+### Step 2: Choose the Suffix (based on gender and class)
+### Step 3: Add Surname (if noble) or Origin (if commoner)
 ### Passo 4: Considere Epíteto (se personagem importante)
 
 ### EXEMPLOS GERADOS:
 
 **Nobre masculino militar:**
-- Raiz: KRAV- (conquistar)
-- Sufixo: -eth (militar)
+- Root: KRAV- (conquer)
+- Suffix: -eth (military)
 - Casa: Vaelmar (naval)
 - **Resultado: Kraveth Vaelmar** ✓
 
 **Nobre feminina sábia:**
-- Raiz: SEN- (preservar)
-- Sufixo: -ara (nobre feminino)
+- Root: SEN- (preserve)
+- Suffix: -ara (noble feminine)
 - Casa: Senvarak
 - Epíteto: a Iluminada
 - **Resultado: Senara Senvarak, a Iluminada** ✓
 
 **Plebeu erudito:**
-- Raiz: THAEL- (elevado)
-- Sufixo: -or (formal)
+- Root: THAEL- (elevated)
+- Suffix: -or (formal)
 - Profissão: maestro
-- **Resultado: Thaelor, maestro da corte** ✓
+- **Result: Thaelor, court maestro** ✓
 
 **Imigrante Vethurim:**
-- Raiz: ZUM- (Vethurim)
-- Sufixo: -ax (Vethurim masculino)
+- Root: ZUM- (Vethurim)
+- Suffix: -ax (Vethurim masculine)
 - Vila: Zumarack
 - **Resultado: Zumax de Zumarack** ✓
 
 **Princesa real:**
-- Raiz: AEL- (do ar, etéreo)
-- Sufixo: -ara (nobre feminino)
+- Root: AEL- (of air, ethereal)
+- Suffix: -ara (noble feminine)
 - Casa: Vael
 - **Resultado: Aelara Vael** ✓
 
 **Guerreiro Kaeldur:**
-- Raiz: VRETH- (força)
-- Sufixo: (nenhum — estilo Kaeldrek)
+- Root: VRETH- (strength)
+- Suffix: (none — Kaeldrek style)
 - Título: Kaeldur III
 - **Resultado: Vreth Kaeldur III** ✓
 
 ---
 
-## VIII. NOMES A EVITAR (muito similares)
+## VIII. NAMES TO AVOID (too similar)
 
-Para manter diversidade, evite criar nomes muito próximos a existentes:
+To maintain diversity, avoid creating names too close to existing ones:
 
 | Existente | Evitar | Use em vez |
 |-----------|--------|------------|
@@ -5431,8 +6810,8 @@ Para manter diversidade, evite criar nomes muito próximos a existentes:
 
 ## IX. TABELA DE REFERÊNCIA RÁPIDA
 
-### Masculinos por Classe
-| Classe | Sufixos Preferidos | Exemplo |
+### Males by Class
+| Class | Preferred Suffixes | Example |
 |--------|-------------------|---------|
 | Real | -ael, -orn | Tornael, Kravorn |
 | Alta Nobreza | -or, -ar | Thaelor, Verathar |
@@ -5440,15 +6819,15 @@ Para manter diversidade, evite criar nomes muito próximos a existentes:
 | Plebeu Urbano | -an, -en | Vaelan, Durren |
 | Plebeu Rural | -eth, -en | Ferreth, Sylven |
 | Vethurim | -ax | Zumax, Thurnax |
-| Kaeldur | (sem sufixo) | Vreth, Kael |
+| Kaeldur | (no suffix) | Vreth, Kael |
 
-### Femininos por Classe
-| Classe | Sufixos Preferidos | Exemplo |
+### Females by Class
+| Class | Preferred Suffixes | Example |
 |--------|-------------------|---------|
-| Real | -ara, -ela | Aelara, Vaela |
+| Royal | -ara, -ela | Aelara, Vaela |
 | Alta Nobreza | -ara, -ira | Senara, Saphira |
 | Baixa Nobreza | -eth, -itha | Veleth, Senitha |
-| Plebeia Urbana | -ela, -ina | Maela, Vaelina |
+| Urban Commoner | -ela, -ina | Maela, Vaelina |
 | Plebeia Rural | -eth, -en | Sylveth, Aquen |
 | Vethurim | -wen | Zumawen, Velwen |
 | Kaeldur | -veth, -khen | Kaelveth, Vraela |`,
@@ -5457,12 +6836,12 @@ Para manter diversidade, evite criar nomes muito próximos a existentes:
       "zanuax-visao": {
         group: "zanuax",
         title: "ZANUAX — Overview",
-        content: `**The Language das Civilizations Sucessoras**
+        content: `**The Language of Successor Civilizations**
 
 ZANUAX is not a language of foundation — it is a language of heritage. It emerges approximately 14,000 years after the end of the Great Silence, in the era chroniclers call the Successor Civilizations.
 
 **O Paradoxo Semantic**
-ZANUAX possui palavras para conceitos que o TAELUN not podia nomear — KANAY (alegria), TUAS (divino), TEMUA (encantamento) — mas perdeu palavras que o TAELUN desesperadamente precisava: NA-UN (totalidade perdida) tornou-se um archaism incomprehensible.
+ZANUAX has words for concepts that TAELUN could not name — KANAY (joy), TUAS (divine), TEMUA (enchantment) — but lost words that TAELUN desperately needed: NA-UN (lost totality) became an incomprehensible archaism.
 
 This is the mark of ZANUAX: a language that can express more feelings than its ancestor, but understands less about the nature of the cosmos.
 
@@ -5476,12 +6855,12 @@ This is the mark of ZANUAX: a language that can express more feelings than its a
 | Era V (beginning) | ZANUAX Inicial | Primeiros centuries AF |
 | Era V (tardio) | ZANUAX Classic | Centuries after Duratheon |
 
-**The Language do Esquecimento**
+**The Language of Forgetting**
 ZANUAX is the language of peoples who:
 • Nunca conheceram o Outside diretamente
-• Consideram os IULDAR mitos ou metaphors
+• Consider the IULDAR myths or metaphors
 • Do not know that the Children existed — or that they were hunted
-• Herdaram os frutos da Primeira Hunt without conhecer seu price`,
+• Inherited the fruits of the First Hunt without knowing its price`,
         tags: ["zanuax", "language", "overview", "history"]
       },
       "zanuax-phonology": {
@@ -5489,7 +6868,7 @@ ZANUAX is the language of peoples who:
         title: "ZANUAX — Phonology",
         content: `**Consonantal System**
 
-ZANUAX expande o inventory TAELUN de 14 para 24 consonants. A reintroduction de sons bilabials (P, B, M) marca a greater revolution.
+ZANUAX expands the TAELUN inventory from 14 to 24 consonants. The reintroduction of bilabial sounds (P, B, M) marks the greatest revolution.
 
 | Modo | Labial | Coronal | Dorsal | Carga Semantic |
 |------|--------|---------|--------|-----------------|
@@ -5512,7 +6891,7 @@ The phoneme /m/ is particularly significant. In TAELUN, connections were marked 
 | — | — | tuame | comigo (comitativo) |
 
 **Vocalic System**
-ZANUAX desenvolve um sistema de sete vowels com quantidade distintiva:
+ZANUAX develops a system of seven vowels with distinctive quantity:
 
 | Vowel | IPA | Longa | TAELUN Heritage | New Value |
 |-------|-----|-------|----------------|------------|
@@ -5525,12 +6904,12 @@ ZANUAX desenvolve um sistema de sete vowels com quantidade distintiva:
 | Y | /y/ | YY /yː/ | — | Estranheza, archaism |
 
 **Ditongos Gramaticalizados**
-| Ditongo | Function | Origin | Exemplos |
+| Diphthong | Function | Origin | Examples |
 |---------|--------|--------|----------|
 | -AY | Estado emocional | < TAELUN -AEL (mundo) | Kanay, Nanay |
 | -AU/-AUX | Production, emanaction | < TAELUN -AK (resultado) | Duaux (song) |
 | -EX/-REX | Action verbal | < TAELUN -AR (agente) | Suarex (inspirar) |
-| -UA | Action about outro | Innovation | Temua, Kanua |
+| -UA | Action about another | Innovation | Temua, Kanua |
 | -UE | Qualidade inerente | Innovation | Suel (doce) |`,
         tags: ["zanuax", "phonology", "consonants", "vowels", "bilabials"]
       },
@@ -5541,23 +6920,23 @@ ZANUAX desenvolve um sistema de sete vowels com quantidade distintiva:
 
 ZANUAX classifica substantivos em three genres baseados not no sexo biological, mas no modo de existence:
 
-| Gender | Marcador | Domain | Exemplos |
+| Gender | Marker | Domain | Examples |
 |--------|----------|---------|----------|
-| Animado | -um/-am | Seres com agency, consciousness | exum (filha), schama (dama) |
+| Animate | -um/-am | Beings with agency, consciousness | exum (daughter), schama (lady) |
 | Abstrato | -ay/-ey | Estados, emotions, forces | kanay (alegria), nanay (felicidade) |
 | Concreto | -o/-a/-e | Objetos, lugares, phenomena | teo (mundo), jere (poesia) |
 
 **Sistema de Casos**
-ZANUAX desenvolve oito casos por sufixaction:
+ZANUAX develops eight cases through suffixation:
 
 | Caso | Suffix | Function | Example |
 |------|--------|--------|---------|
 | Nominative | ∅ | Subject | Kanay tre tuas (Joy is divine) |
 | Acusativo | -ax | Objeto direto | Kuam zeres tua Jerax |
 | Genitivo | -el | Posse, origem | zumax-el (de um amigo) |
-| Dativo | -as/-os | Recipiente | telenu-as (cria para we) |
+| Dative | -as/-os | Recipient | telenu-as (creates for us) |
 | Locativo | -yk | Lugar, contexto | Ungaar yk (no mundo) |
-| Instrumental | -ox | Meio, instrumento | Duaux-ox (por song) |
+| Instrumental | -ox | Means, instrument | Duaux-ox (through song) |
 | Comitativo | -ame/-ome | Companhia | tuame (comigo) |
 | Vocativo | ∅ + pausa | Chamado | Kanay, (Ó Alegria,) |
 
@@ -5565,7 +6944,7 @@ ZANUAX desenvolve oito casos por sufixaction:
 | Number | Marcador | Notes |
 |--------|----------|-------|
 | Singular | ∅ | Um referente |
-| Dual | -et | Exatamente dois; para pares naturais (olhos, hands, amantes) |
+| Dual | -et | Exactly two; for natural pairs (eyes, hands, lovers) |
 | Plural | -ex/-ix | Three ou more |
 
 **Sistema Verbal — Conjugaction Pessoal**
@@ -5604,7 +6983,7 @@ ZANUAX desenvolve oito casos por sufixaction:
       "zanuax-sintaxe": {
         group: "zanuax",
         title: "ZANUAX — Sintaxe",
-        content: `**Ordem dos Constituintes**
+        content: `**Constituent Order**
 
 ZANUAX is predominantly SVO (Subject-Verb-Object), but allows topicalization for poetic emphasis.
 
@@ -5622,21 +7001,21 @@ Ordem interna: (Art) + (Quant) + N + (Adj) + (Gen)
 
 *ky tuas exum ti "Elysium"*
 DEF divina filha GEN Elysium
-"a divina filha do Elysium"
+"the divine daughter of Elysium"
 
 **Particles e Conectivos**
 | Form | Function | Example |
 |-------|--------|---------|
-| ti | Genitivo | exum ti "Elysium" (filha do Elysium) |
+| ti | Genitive | exum ti "Elysium" (daughter of Elysium) |
 | yk | Locativo | Ungaar yk (no mundo) |
 | zu | Disjunction | kanua zu talex (costume ou tradition) |
-| ot | Adversativo | ot zix semeter (mas se falhar) |
-| zix | Condicional | zix yo Kanay (se aquela Alegria) |
+| ot | Adversative | ot zix semeter (but if fail) |
+| zix | Conditional | zix yo Kanay (if that Joy) |
 | d' | Gen. contracted | d'sau zumax-el (de um amigo) |
 | numa | Negaction | numa kanua (nem costume) |
 
 **Orations Relativas**
-Introduzidas por *trum* (invariable):
+Introduced by *trum* (invariable):
 
 *Nanay ti trum kanex trubaer zumax-el d'sau zumax-el*
 Feliz GEN REL reached tornar-se amigo-GEN de-INDEF amigo-GEN
@@ -5644,8 +7023,8 @@ Feliz GEN REL reached tornar-se amigo-GEN de-INDEF amigo-GEN
 
 **Condicionais**
 *ot zix yo Kanay semeter, quai ux teremerx*
-mas COND DIST Alegria falhar.RES, fica.IMP sozinho morrendo
-"mas se naquela Alegria someone falhou, fique sozinho morrendo"`,
+but COND DIST Joy fail.RES, stay.IMP alone dying
+"but if in that Joy someone failed, stay alone dying"`,
         tags: ["zanuax", "sintaxe", "ordem", "particles", "orations"]
       },
       "zanuax-lexico": {
@@ -5653,17 +7032,17 @@ mas COND DIST Alegria falhar.RES, fica.IMP sozinho morrendo
         title: "ZANUAX — Systematic Lexicon",
         content: `**Roots Emocionais — A Grande Innovation**
 
-O TAELUN not possessed categoria gramatical para emotions. O ZANUAX as eleva a forces cosmics:
+TAELUN possessed no grammatical category for emotions. ZANUAX elevates them to cosmic forces:
 
 | Root | Meaning | Heritage | Derivations |
 |------|-------------|---------|------------|
-| KAN- | alegria, jubilation | < ? (sem cognato) | kanay, kanua, kanex |
-| NAN- | felicidade | < ? (sem cognato) | nanay, nanayne (alegra-te!) |
+| KAN- | joy, jubilation | < ? (no cognate) | kanay, kanua, kanex |
+| NAN- | happiness | < ? (no cognate) | nanay, nanayne (rejoice!) |
 | SUEL- | sweetness | Innovation | suel (doce) |
 | TEMU- | encantamento | Innovation | temua (encantamento) |
 | ZER- | êxtase | Innovation | zeres (ecstatic de alegria) |
 | TER- | morte, fim | < TAELUN THA- | teremerx (morrendo) |
-| GRETHAK- | desespero | < TAELUN Tardio | grethakis (disease do desespero) |
+| GRETHAK- | despair | < Late TAELUN | grethakis (disease of despair) |
 | THURNIS- | medo | < THURN (sombra) | thurnis (estado de medo) |
 | KRUELIS- | raiva | < KRUEL (fogo) | kruelis (estado de fogo) |
 
@@ -5680,7 +7059,7 @@ O TAELUN not possessed categoria gramatical para emotions. O ZANUAX as eleva a f
 **Roots de Action**
 | Root | Meaning | Classe | Derivations |
 |------|-------------|--------|------------|
-| TRE- | ser, existir | Estativa | tre, treas, truas |
+| TRE- | to be, exist | Stative | tre, treas, truas |
 | KUAM- | fazer, causar | Causativa | kuam, kuamas |
 | TELEN- | criar | Fativa | telenu, telenu-as |
 | SUM- | diminuir | Incoativa | suma, sumak |
@@ -5690,13 +7069,13 @@ O TAELUN not possessed categoria gramatical para emotions. O ZANUAX as eleva a f
 | SUAR- | inspirar | Causativa | suarex, suarak |
 | SEMET- | falhar | Negativa | semeter, semeterak |
 | QUAI- | permanecer | Estativa | quai, quaiak |
-| ZUNARE- | ser nomeado | Passiva | zunare |
+| ZUNARE- | to be named | Passive | zunare |
 
 **Vocabulary de Diseases**
 | Disease | Componentes | Meaning | Description |
 |--------|-------------|-------------|-----------|
 | NAKHVEL | NAKH (esgotar) + VEL (estado) | O Esgotamento | Disease venereal, apodrecimento lento, dementia |
-| THURNAKH | THURN (sombra) + AKH (resultado) | A Sombra | Febre consumptiva, tosse com sangue |
+| THURNAKH | THURN (shadow) + AKH (result) | The Shadow | Consumptive fever, coughing blood |
 | KRUVELAK | KRUVEL (sangue) + AK (resultado) | O Sangue-Parado | Ataque cardiac |
 | SKELTHIS | SKELT (congelar) + IS (estado) | O Congelamento | Paralisia progressiva |
 | RUSAKH | RUS (erodir) + AKH (resultado) | A Erosion | Pele apodrece em vida |
@@ -5704,7 +7083,7 @@ O TAELUN not possessed categoria gramatical para emotions. O ZANUAX as eleva a f
 | GRETHAKIS | GRETHAK (desespero) + IS (estado) | O Desespero | Melancolia fatal |
 | VETHRUIN | VETH (vento) + RUIN (mau) | O Mau Vento | Disease pulmonar |
 | THRAKELUN | THRAKEL (instante) + UN (um) | O Instante | Morte sudden |
-| ZERESKEL | ZER (intox.) + SKEL (fechar) | O Êxtase Fechado | Veneno que imita morte natural |
+| ZERESKEL | ZER (intox.) + SKEL (close) | The Closed Ecstasy | Poison that mimics natural death |
 | DURENAKH | DUR (resistir) + NAKH (esgotar) | O Longo Fim | Velhice |`,
         tags: ["zanuax", "lexicon", "vocabulary", "emotions", "diseases"]
       },
@@ -5713,20 +7092,20 @@ O TAELUN not possessed categoria gramatical para emotions. O ZANUAX as eleva a f
         title: "ZANUAX — Hierarchy Vocabulary",
         content: `**Terminologia Social**
 
-Herdada da terminologia feudal do TAELUN Tardio:
+Inherited from the feudal terminology of Late TAELUN:
 
 | Termo | Componentes | Meaning | Function Social |
 |-------|-------------|-------------|---------------|
-| VAELOR | VAEL + OR | Grande Vael | Honorific da casa real |
-| THEGNAR | THEGN (servir) + AR | Aquele que serve | Vassalo/retentor |
-| KRAVLORD | KRAV + LORD | Senhor da conquista | Nobre militar |
+| VAELOR | VAEL + OR | Great Vael | Royal house honorific |
+| THEGNAR | THEGN (serve) + AR | One who serves | Vassal/retainer |
+| KRAVLORD | KRAV + LORD | Lord of conquest | Military noble |
 | SENTHEK | SEN (preservar) + THEK | Coletivo de preservaction | Classe escribal |
 | KUMARAK | KUM (ganhar) + ARAK | Agente de ganho | Classe mercantil |
 
 **Roots Cosmologics — Heritage e Perda**
 | Root | Meaning | TAELUN Heritage | Status no ZANUAX |
 |------|-------------|----------------|------------------|
-| UNGAAR | mundo, terra | < UNGAVEL (corruption) | Nome own para o mundo conhecido |
+| UNGAAR | world, earth | < UNGAVEL (corruption) | Own name for the known world |
 | TEO- | mundo (generic) | Innovation | teo (comum) |
 | JER- | poesia, arte | Innovation | jere |
 | DUA- | song, music | Innovation | duaux |
@@ -5737,11 +7116,11 @@ Herdada da terminologia feudal do TAELUN Tardio:
 
 **O Que ZANUAX Revela**
 
-1. **A recuperaction da intimidade:** O retorno dos bilabials (M, P, B) demonstra que a consciousness sapiente superou o trauma post-Semeador.
+1. **The recovery of intimacy:** The return of bilabials (M, P, B) demonstrates that sapient consciousness overcame the post-Seeder trauma.
 
 2. **The emergence of affect:** The creation of an entire class of emotional roots (KAN-, NAN-, ZER-) without cognates in TAELUN suggests these categories were invented, not inherited.
 
-3. **A perda da consciousness cosmic:** Roots TAELUN as NA- (esgotamento ontological), FORA- (o beyond), IUL- (sustentar) tornaram-se archaisms ou desapareceram.
+3. **The loss of cosmic consciousness:** TAELUN roots like NA- (ontological depletion), FORA- (the beyond), IUL- (sustain) became archaisms or disappeared.
 
 4. **Forgetting as condition:** ZANUAX can celebrate joy because it forgot that cosmic joy (of the Glorious Births) cost the Children's consciousness.`,
         tags: ["zanuax", "hierarquia", "sociedade", "cosmology", "perda"]
@@ -5751,19 +7130,19 @@ Herdada da terminologia feudal do TAELUN Tardio:
         title: "ZANUAX — Ode to Joy (Annotated Text)",
         content: `**Texto Exemplar Completo**
 
-Este texto demonstra o ZANUAX em seu registro more elevado — poesia lyrical celebratory.
+This text demonstrates ZANUAX in its most elevated register — celebratory lyrical poetry.
 
 **ESTROFE I — Invocaction**
 
 *Kanay, Tre Tuas Exum ti "Elysium"*
 Kanay-∅ Tre-2SG.F Tuas-ADJ Exum-N.anim ti-PREP.gen "Elysium"-N.prop
-"Alegria, (tu) és Divina filha do Elysium"
+"Joy, (you) are Divine daughter of Elysium"
 
 *Kuam Zeres tua Jere Suarex "Dionysus"*
 Kuam-V.2SG Zeres-ADJ tua-ART.DEF Jere-N Suarex-V.2SG "Dionysus"-N.prop
 "(Tu) fazes a Poesia ecstatic, (tu) inspiras Dionysus"
 
-**ESTROFE II — Poder da Alegria**
+**STANZA II — Power of Joy**
 
 *Numa kanua zu talex truas suma ky temua*
 Numa-NEG kanua-N zu-CONJ talex-N truas-PRON.2F.DAT suma-V.3PL ky-ART temua-N.ACC
@@ -5771,9 +7150,9 @@ Numa-NEG kanua-N zu-CONJ talex-N truas-PRON.2F.DAT suma-V.3PL ky-ART temua-N.ACC
 
 *telenu-as sau teo zuex Ssuaa zonox Duaux*
 telenu-V.2SG-as-1PL.DAT sau-ART.INDEF teo-N zuex-ADJ Ssuaa-V.2SG zonox-PRON.POSS.1PL Duaux-N
-"(Tu) crias para we um mundo fraterno, (tu) insuflas nossa Song"
+"(You) create for us a fraternal world, (you) breathe into our Song"
 
-**ESTROFE III — Blessing do Bond**
+**STANZA III — Blessing of the Bond**
 
 *Nanay ti trum kanex trubaer zumax-el d'sau zumax-el*
 Nanay-ADJ ti-PREP trum-REL kanex-V.PST trubaer-V.REFL zumax-el-N.GEN d'-PREP.contr sau-INDEF zumax-el-N.GEN
@@ -5781,21 +7160,21 @@ Nanay-ADJ ti-PREP trum-REL kanex-V.PST trubaer-V.REFL zumax-el-N.GEN d'-PREP.con
 
 *Tuau suel schama kuma Nanayne tuame*
 Tuau-PRON.2F suel-ADJ schama-N.ACC kuma-V.PST Nanayne-V.IMP tuame-PRON.1SG.COM
-"(Tu) que uma doce dama conquistaste, alegra-te comigo"
+"(You) who conquered a sweet lady, rejoice with me"
 
 **ESTROFE IV — Warning**
 
 *Tuau sau u tele krav kuma zunare yk Ungaar*
 Tuau-PRON.2F sau-INDEF u-ADJ tele-N krav-V.PST kuma-V.PST zunare-V.PASS.SUBJ yk-PREP.LOC Ungaar-N.prop
-"(Tu) que um único ser conquistaste, seja nomeado no mundo"
+"(You) who conquered a single being, be named in the world"
 
 *ot zix yo Kanay semeter quai ux teremerx!*
 ot-CONJ.ADV zix-COND yo-DEM.DIST Kanay-N semeter-V.RES quai-V.IMP ux-ADJ teremerx-ADJ
-"mas se naquela Alegria someone falhou, fique sozinho morrendo!"
+"but if in that Joy someone failed, stay alone dying!"
 
 **Significance**
 
-Quando um falante de ZANUAX canta "Kanay, Tre Tuas Exum ti Elysium" — invoca algo que seria impossible no TAELUN: uma emotion personificada, divinizada, celebrada as strength criativa.
+When a ZANUAX speaker sings "Kanay, Tre Tuas Exum ti Elysium" — they invoke something that would be impossible in TAELUN: a personified, divinized emotion, celebrated as creative strength.
 
 But an IULDAR, if it could still hear, would recognize in that celebration the distorted echo of something that was once literal truth: the cosmic joy that accompanied each birth of the Children, the joy that the First Hunt transformed into silence.`,
         tags: ["zanuax", "ode", "poesia", "analysis", "texto"]
@@ -5803,13 +7182,13 @@ But an IULDAR, if it could still hear, would recognize in that celebration the d
       "zanuax-dialetos": {
         group: "zanuax",
         title: "ZANUAX — Dialects and Variation",
-        content: `**Dialetos do Oeste**
+        content: `**Western Dialects**
 
-Nos centuries tardios do period Duratheon, o ZANUAX Classic desenvolveu variantes regionais:
+In the late centuries of the Duratheon period, Classic ZANUAX developed regional variants:
 
-| Dialeto | Region | Characteristics | Falantes |
+| Dialect | Region | Characteristics | Speakers |
 |---------|--------|-----------------|----------|
-| Capital (Vaelhem) | Duratheon Central | Dialeto de prestige, esta grammar | Corte, Sentek, educados |
+| Capital (Vaelhem) | Central Duratheon | Prestige dialect, this grammar | Court, Sentek, educated |
 | Norte (Kravaal) | Provinces border | Conservador, clusters ásperos | Nobreza militar |
 | Sul (Costeiro) | Territorys insulares | Mais vowels, loans maritimes | Mercadores, marinheiros |
 | East (March) | Desert borders | Contact influence, simplified | Border merchants |
@@ -5818,7 +7197,7 @@ Nos centuries tardios do period Duratheon, o ZANUAX Classic desenvolveu variante
 
 ZANUAX is the language of the West (Duratheon). Other regions speak TAELUN-descendant languages that diverged during the Silence:
 
-| Region | Language(s) | Relaction com ZANUAX |
+| Region | Language(s) | Relation with ZANUAX |
 |--------|-----------|-------------------|
 | Norte | No documentada | Primo distante |
 | Nordeste | No documentada | Primo distante |
@@ -5828,15 +7207,15 @@ ZANUAX is the language of the West (Duratheon). Other regions speak TAELUN-desce
 
 These languages share common ancestry in Late TAELUN / Proto-ZANUAX but diverged for 14,000+ years. Mutual intelligibility is minimal to none.
 
-**Nota about os "Doze IULDAR"**
+**Note on the "Twelve IULDAR"**
 
 The ZANUAX liturgical tradition speaks of "Twelve IULDAR" as the base of the duodecimal system. This conflicts with canonical knowledge of the Five Orders of IULDAR. Several explanations exist:
 
-1. **Teoria dos Doze Kraeth:** Dez Kraeth + Grande Kraeth + um perdido/oculto = 12 entidades countable
+1. **Twelve Kraeth Theory:** Ten Kraeth + Great Kraeth + one lost/hidden = 12 countable entities
 
-2. **Corruption syncretic:** Cinco Ordens confladas com outro number sagrado ao longo de um million de anos de tradition oral
+2. **Syncretic corruption:** Five Orders conflated with another sacred number over a million years of oral tradition
 
-3. **Teoria dos Seres Countable:** 10 Kraeth + 2 Abyrn (consciousness única em dois corpos) = 12 IULDAR "individuais" que pessoas comuns podiam conceptualizar, excluindo entidades difusas (Veluth, Serenynth) e o singular Grande Kraeth
+3. **Countable Beings Theory:** 10 Kraeth + 2 Abyrn (single consciousness in two bodies) = 12 "individual" IULDAR that common people could conceptualize, excluding diffuse entities (Veluth, Serenynth) and the singular Great Kraeth
 
 Modern scholars in Duratheon do not know which is correct. The Twelve persist as mathematical foundation independent of theological precision.`,
         tags: ["zanuax", "dialetos", "variaction", "doze", "iuldar"]
@@ -5844,17 +7223,17 @@ Modern scholars in Duratheon do not know which is correct. The Twelve persist as
       "zanuax-timeline": {
         group: "zanuax",
         title: "ZANUAX — Linguistic Timeline",
-        content: `**Evolution do TAELUN ao ZANUAX**
+        content: `**Evolution from TAELUN to ZANUAX**
 
 | Period | Event | Impacto Linguistic |
 |---------|--------|---------------------|
 | Era IV (fim) | Queda dos IULDAR | TAELUN Classic no auge |
 | O Silence | ~1 million de anos | TAELUN fragmenta-se em proto-languages |
-| Fim do Silence | Era V begins | Proto-languages estabilizam |
+| End of Silence | Era V begins | Proto-languages stabilize |
 | ~700-100 BF | TAELUN Tardio completo | Bilabiais, sufixos, particles de tempo |
 | ~100 BF - 100 AF | ZANUAX Inicial | Gramaticalizaction begins |
 | 1 AF | Duratheon Vael I | Reino fundado, language padroniza |
-| 1-800 AF | Period Duratheon | ZANUAX desenvolve variantes regionais |
+| 1-800 AF | Duratheon Period | ZANUAX develops regional variants |
 | Centuries after | ZANUAX Classic | Codificaction Sentek completa |
 
 **Vocabulary Comparativo**
@@ -5904,14 +7283,14 @@ HIGH ZANUAX preserves vestiges of cosmic consciousness that even common ZANUAX l
 | Philosophy (Thēlün) | Ontology, metaphysical | Precise terminology |
 | Liturgia (Thēläx) | Rituals, invocations | Formas arcaicas, macron |
 | Science (Thēlëx) | Observaction, experimentaction | Evidencialidade mandatory |
-| Direito (Thēlùr) | Leis, tratados, juramentos | Acento grave para precedente |
+| Law (Thēlùr) | Laws, treaties, oaths | Grave accent for precedent |
 
 **Vestiges de Consciousness Cosmic**
 | Element | In Common ZANUAX | In HIGH ZANUAX | Original Meaning |
 |----------|-----------------|----------------|----------------------|
 | NA- | Perdido/arcaico | NAKH- (em compostos) | Esgotamento ontological |
 | FORA- | Apenas liturgical | FORĀŌM (outside eterno) | O Outside/Beyond |
-| -ŌM | No usado | Aspecto eterno | Fora-do-tempo (literal) |
+| -ŌM | Not used | Eternal aspect | Outside-of-time (literal) |
 | IUL- | Perdido | IÜLDÄR (nome own) | Sustentar cosmicamente |
 
 When a HIGH ZANUAX speaker uses *trēōm* (eternal being), they invoke timelessness without knowing that such timelessness was once the literal condition of existence before the Inside was created.`,
@@ -5935,11 +7314,11 @@ Marca vowels longas, especialmente em contextos formais e eternos:
 |-------|---------|-------------|
 | Ā ā | Ungāar | mundo (formal) |
 | Ē ē | Thēl | elevado, supremo |
-| Ī ī | Īuldär | os IULDAR |
-| Ō ō | trēōm | ser eternamente |
+| Ī ī | Īuldär | the IULDAR |
+| Ō ō | trēōm | to be eternally |
 | Ū ū | Ūngavel | o continente primordial |
 
-O macron em *-ōm* (eternal aspect) indica duration que transcende o tempo — um eco do Outside.
+The macron in *-ōm* (eternal aspect) indicates duration that transcends time — an echo of the Outside.
 
 ---
 
@@ -5960,20 +7339,20 @@ Marks open tonic vowel in irregular position (rare in modern HIGH ZANUAX):
 
 | Tipo | Example | Regra |
 |------|---------|-------|
-| Oxytones | fräk, kümär | Tonic final (agora com trema) |
-| Proparoxytones | baërël, telenül | Tonic antepenultimate (agora com trema) |
-| Monosyllables abertos | trē, kä | Vogal aberta (agora com macron/trema) |
+| Oxytones | fräk, kümär | Final tonic (now with umlaut) |
+| Proparoxytones | baërël, telenül | Antepenultimate tonic (now with umlaut) |
+| Open monosyllables | trē, kä | Open vowel (now with macron/umlaut) |
 
 ---
 
 **ACENTO CIRCUNFLEXO (^) — Tonicidade Irregular Fechada**
-Uso reduzido no HIGH ZANUAX moderno, replaced principalmente por macron:
+Reduced usage in modern HIGH ZANUAX, replaced mainly by macron:
 
 | Forma Antiga | Forma Moderna | Meaning |
 |--------------|---------------|-------------|
 | telenôm | Telenōm | creation eterna |
 | thôz | thōz | doze |
-| têl | tēl | ser, entidade |
+| têl | tēl | being, entity |
 
 ---
 
@@ -5985,7 +7364,7 @@ Marca nasalizaction vocalic:
 | nũ | not (negaction) | Negaction emphatic |
 | kũar | quantificar | Mathematical |
 | trẽ | can be | Epistemic possibility |
-| wãn | possibilidade | Nome do own til |
+| wãn | possibility | Name of own tilde |
 
 ---
 
@@ -5994,14 +7373,14 @@ Marca contrations ou formas ancestrais:
 
 | Usage | Example | Origin |
 |-----|---------|--------|
-| Contraction | tèl | ti + el (do/da) |
+| Contraction | tèl | ti + el (of the) |
 | Archaism | Ungaàr | pronunciation antiga |
 | Precedente legal | lèx | citaction de lei antiga |
 
 ---
 
 **HÁČEK (ˇ) — Palatalizaction**
-Marca consonants palatalizadas (inovaction do HIGH ZANUAX):
+Marks palatalized consonants (HIGH ZANUAX innovation):
 
 | Consonant | Sound | Example |
 |-----------|-----|---------|
@@ -6029,9 +7408,9 @@ Marca sibilizaction em contextos specific:
 HIGH ZANUAX uses a duodecimal system, not decimal. This choice reflects cosmic structure preserved in tradition:
 
 • 12 is divisible by 2, 3, 4 and 6 — more useful for fractions than 10
-• 12 ciclos lunares aproximados por ano solar
+• 12 approximate lunar cycles per solar year
 • 12 IULDAR "countable" second a tradition preservada
-• 12 aspectos verbais no sistema do HIGH ZANUAX
+• 12 verbal aspects in the HIGH ZANUAX system
 
 ---
 
@@ -6039,10 +7418,10 @@ HIGH ZANUAX uses a duodecimal system, not decimal. This choice reflects cosmic s
 
 | Value | Name | Glifo | Etimologia | Cosmic Meaning |
 |-------|------|-------|------------|---------------------|
-| 0 | vōth | ◌ | < Outside | "é-e-not-é" — O vazio que contains |
+| 0 | vōth | ◌ | < Outside | "is-and-is-not" — The void that contains |
 | 1 | ün | ǀ | < ZANUAX u (único) | Unidade, o Semeador |
 | 2 | dwē | ǁ | < dual -et | Dualidade, par |
-| 3 | trä | ⫶ | < tre (ser) | Manifestaction |
+| 3 | trä | ⫶ | < tre (to be) | Manifestation |
 | 4 | kwär | ⁞ | < krav (conquistar) | Estabilidade, foundation |
 | 5 | pēn | ⁞ǀ | Innovation | Vida, hand |
 | 6 | sëkh | ⁞ǁ | < sekrul (sequence) | Perfection smaller |
@@ -6055,17 +7434,17 @@ HIGH ZANUAX uses a duodecimal system, not decimal. This choice reflects cosmic s
 
 ---
 
-**Nota about os "Doze IULDAR"**
+**Note on the "Twelve IULDAR"**
 
 HIGH ZANUAX tradition speaks of twelve IULDAR as numerical foundation. The Five canonical Orders are:
 
 1. **Kraeth** (10 + Grande Kraeth = 11 individuals)
-2. **Thul'Kar** (muitos, difusos)
+2. **Thul'Kar** (many, diffuse)
 3. **Veluth** (1, atmospheric, difuso)
 4. **Abyrn** (2 corpos, 1 consciousness)
 5. **Serenynth** (1, liminal, difuso)
 
-Os "Doze" provavelmente derivam de: 10 Kraeth + 2 corpos Abyrn = 12 manifestations individuais countable, excluindo entidades difusas que a consciousness comum not podia enumerar.
+The "Twelve" probably derive from: 10 Kraeth + 2 Abyrn bodies = 12 countable individual manifestations, excluding diffuse entities that common consciousness could not enumerate.
 
 ---
 
@@ -6087,11 +7466,11 @@ The system is positional — the value of a digit depends on its position. Each 
 The concept of *vōth* (zero) is HIGH ZANUAX's most profound contribution to mathematics. Its etymology reveals its philosophical nature:
 
 *"Vōth trē ün forathēl — kÿ vōth trē ün ot trē nä-ün"*
-"Zero é um com o beyond-elevado — zero é um e not-um"
+"Zero is one with the beyond-elevated — zero is one and not-one"
 
-Esta formula ecoa a natureza do Outside: "é e not é simultaneamente." Zero not é mera absence — é presence de absence, o symbol que permite ao sistema numerical representar o vazio as valor posicional.
+This formula echoes the nature of the Outside: "is and is not simultaneously." Zero is not mere absence — it is presence of absence, the symbol that allows the numerical system to represent the void as positional value.
 
-Os Sentek que formalizaram este conceito not sabiam que estavam codificando uma description da realidade pré-creation. Simplesmente precisavam de um marcador de position. Ao nomeá-lo *vōth* — "aquilo que é-e-not-é" — acidentalmente preservaram verdade cosmic.`,
+The Sentek who formalized this concept didn't know they were encoding a description of pre-creation reality. They simply needed a position marker. By naming it *vōth* — "that which is-and-is-not" — they accidentally preserved cosmic truth.`,
         tags: ["high zanuax", "numbers", "duodecimal", "mathematics", "zero"]
       },
       "high-zanuax-operacoes": {
@@ -6099,14 +7478,14 @@ Os Sentek que formalizaram este conceito not sabiam que estavam codificando uma 
         title: "High ZANUAX — Math Operations",
         content: `**Verbos Mathematicals**
 
-O HIGH ZANUAX usa verbos specific para operations, not symbols arbitrary. Cada operaction tem um verbo com conjugaction completa.
+HIGH ZANUAX uses specific verbs for operations, not arbitrary symbols. Each operation has a verb with complete conjugation.
 
 | Operaction | Verbo | Participle | Example | Leitura |
 |----------|-------|------------|---------|---------|
 | Addition | thün | thünäk | trä thün kwär | "three more quatro" |
 | Subtraction | näkh | näkhäk | sëkh näkh dwē | "seis menos dois" |
 | Multiplicaction | zōr | zōräk | trä zōr kwär | "three vezes quatro" |
-| Division | fräk | fräkäk | thōz fräk trä | "doze dividido por three" |
+| Division | fräk | fräkäk | thōz fräk trä | "twelve divided by three" |
 | Potenciaction | thür | thüräk | dwē thür kwär | "dois elevado a quatro" |
 | Radiciaction | rëkh | rëkhäk | rëkh-dwē thōz-thōz | "raiz quadrada de 144" |
 | Igualdade | trē | — | trä thün trä trē sëkh | "three more three é seis" |
@@ -6115,17 +7494,17 @@ O HIGH ZANUAX usa verbos specific para operations, not symbols arbitrary. Cada o
 
 **Fractions**
 
-Fractions usam o sufixo *-üm* (parte) e a preposition *tï* (de):
+Fractions use the suffix *-üm* (part) and the preposition *tï* (of):
 
 | Fraction | HIGH ZANUAX | Leitura | Decimal |
 |--------|-------------|---------|---------|
-| 1/2 | ün-üm tï dwē | uma parte de dois | 0,5 |
-| 1/3 | ün-üm tï trä | uma parte de three | 0,333... |
-| 1/4 | ün-üm tï kwär | uma parte de quatro | 0,25 |
-| 1/6 | ün-üm tï sëkh | uma parte de seis | 0,166... |
-| 1/12 | ün-üm tï thōz | uma parte de doze | 0,0833... |
-| 2/3 | dwē-üm tï trä | duas partes de three | 0,666... |
-| 5/12 | pēn-üm tï thōz | cinco partes de doze | 0,4166... |
+| 1/2 | ün-üm tï dwē | one part of two | 0.5 |
+| 1/3 | ün-üm tï trä | one part of three | 0.333... |
+| 1/4 | ün-üm tï kwär | one part of four | 0.25 |
+| 1/6 | ün-üm tï sëkh | one part of six | 0.166... |
+| 1/12 | ün-üm tï thōz | one part of twelve | 0.0833... |
+| 2/3 | dwē-üm tï trä | two parts of three | 0.666... |
+| 5/12 | pēn-üm tï thōz | five parts of twelve | 0.4166... |
 
 ---
 
@@ -6143,17 +7522,17 @@ Fractions usam o sufixo *-üm* (parte) e a preposition *tï* (de):
 | raiz | rëkhün | < rëkh (extrair) | Radical |
 | infinito | nä-vōth | < neg. + zero | Sem fim ("not-zero") |
 | proportion | fräk-dwër | < div. + reciprocal | Reason |
-| equaction | trē-thēl | < ser + elevado | Igualdade formal |
+| equation | trē-thēl | < to be + elevated | Formal equality |
 | variable | wänün | < possibilidade | Valor desconhecido |
 | constant | durün | < resistir | Valor fixo |
 
 ---
 
-**Formula de Exemplo: Soma de Progression Arithmetic**
+**Example Formula: Sum of Arithmetic Progression**
 
 *Ün thün dwē thün trä thün... thün n trē n zōr (n thün ün) fräk dwē*
 
-"Um more dois more three mais... more n é igual a n vezes (n more um) dividido por dois"
+"One plus two plus three plus... plus n equals n times (n plus one) divided by two"
 
 ---
 
@@ -6164,7 +7543,7 @@ Em textos mathematicals, o HIGH ZANUAX usa conventions specific:
 | Convention | Usage | Example |
 |-----------|-----|---------|
 | Italic | Variables | *n*, *x*, *y* |
-| Romano | Constantes conhecidas | thōz, grōs |
+| Roman | Known constants | thōz, grōs |
 | Sobrescrito | Powers | dwē² = kwär |
 | Subscrito | Índices | x₁, x₂ |
 | Parentheses | Agrupamento | (n thün ün) |
@@ -6176,46 +7555,46 @@ Em textos mathematicals, o HIGH ZANUAX usa conventions specific:
         title: "High ZANUAX — Verbal System",
         content: `**Os Doze Aspectos**
 
-O HIGH ZANUAX expande os 4 aspectos do ZANUAX comum para 12 aspectos, ecoando a base numerical e permitindo precision philosophical e scientific:
+HIGH ZANUAX expands the 4 aspects of common ZANUAX to 12 aspects, echoing the numerical base and allowing philosophical and scientific precision:
 
-| # | Aspect | Suffix | Function | Exemplo (trē- 'ser') |
+| # | Aspect | Suffix | Function | Example (trē- 'be') |
 |---|---------|--------|--------|----------------------|
-| 1 | Perfectivo | -äk | Action completa | trēäk (foi, completamente) |
-| 2 | Imperfectivo | -ül | Action em curso | trēül (estava sendo) |
-| 3 | Resultativo | -ër | Estado resultante | trēër (está em estado de ser) |
-| 4 | Incoativo | -ëy | Beginning de action | trēëy (began a ser) |
-| 5 | Cessativo | -ōkh | Fim de action | trēōkh (cessou de ser) |
+| 1 | Perfective | -äk | Complete action | trēäk (was, completely) |
+| 2 | Imperfective | -ül | Ongoing action | trēül (was being) |
+| 3 | Resultative | -ër | Resulting state | trēër (is in a state of being) |
+| 4 | Inchoative | -ëy | Beginning of action | trēëy (began to be) |
+| 5 | Cessative | -ōkh | End of action | trēōkh (ceased to be) |
 | 6 | Iterativo | -ëk | Action repetida | trēëk (é repetidamente) |
-| 7 | Habitual | -äm | Action costumeira | trēäm (costuma ser) |
-| 8 | Prospectivo | -är | Prestes a ocorrer | trēär (está prestes a ser) |
-| 9 | Retrospectivo | -ün | Recently-ocorrido | trēün (acabou de ser) |
-| 10 | Durativo | -ōl | Longa duration | trēōl (tem sido por muito) |
-| 11 | Pontual | -ït | Momento exato | trēït (foi naquele instante) |
-| 12 | Eternal | -ōm | Fora do tempo | trēōm (é eternamente) |
+| 7 | Habitual | -äm | Customary action | trēäm (usually is) |
+| 8 | Prospective | -är | About to occur | trēär (is about to be) |
+| 9 | Retrospective | -ün | Recently occurred | trēün (just was) |
+| 10 | Durative | -ōl | Long duration | trēōl (has been for long) |
+| 11 | Punctual | -ït | Exact moment | trēït (was at that instant) |
+| 12 | Eternal | -ōm | Outside of time | trēōm (is eternally) |
 
-**Nota about o Aspecto 12:** O eternal aspect *-ōm* preserva algo que os falantes not more entendem: descreve estados que existem fora do fluxo temporal, as as coisas existiam before de o Inside ser criado.
+**Note on Aspect 12:** The eternal aspect *-ōm* preserves something speakers no longer understand: it describes states that exist outside temporal flow, as things existed before the Inside was created.
 
 ---
 
 **Evidencialidade Mandatory**
 
-No HIGH ZANUAX, all verbo no modo indicativo deve marcar a fonte do conhecimento. Este sistema tem 8 marcadores:
+In HIGH ZANUAX, every verb in the indicative mood must mark the source of knowledge. This system has 8 markers:
 
 | Evidencial | Marcador | Meaning | Example |
 |------------|----------|-------------|---------|
-| Visual | -vē | Vi com meus olhos | trēäk-vē (foi — eu vi) |
-| Auditivo | -sō | Ouvi | trēäk-sō (foi — eu ouvi) |
-| Inferencial | -lō | Deduzi de evidence | trēäk-lō (foi — eu deduzi) |
-| Reportado | -nä | Someone me disse | trēäk-nä (foi — me disseram) |
-| Tradicional | -thēl | A tradition ancestral ensina | trēäk-thēl (foi — per tradition) |
-| Revelado | -vïs | Recebido em vision/sonho | trēäk-vïs (foi — revelado) |
-| Presumido | -mẽ | Presumo as probable | trēäk-mẽ (foi — presumo) |
-| Experiencial | -thär | Experience pessoal direta | trēäk-thär (foi — experimentei) |
+| Visual | -vē | Saw with my own eyes | trēäk-vē (was — I saw) |
+| Auditory | -sō | I heard | trēäk-sō (was — I heard) |
+| Inferential | -lō | Deduced from evidence | trēäk-lō (was — I deduced) |
+| Reported | -nä | Someone told me | trēäk-nä (was — I was told) |
+| Traditional | -thēl | Ancestral tradition teaches | trēäk-thēl (was — per tradition) |
+| Revealed | -vïs | Received in vision/dream | trēäk-vïs (was — revealed) |
+| Presumed | -mẽ | I presume as probable | trēäk-mẽ (was — I presume) |
+| Experiential | -thär | Direct personal experience | trēäk-thär (was — I experienced) |
 
 **Combinando Evidenciais:**
 
 *Kÿ Çēdär trēäk-vïs-thēl trē ün forathēl*
-"O Semeador foi [revelation confirmada por tradition] um com o beyond-elevado"
+"The Seeder was [revelation confirmed by tradition] one with the beyond-elevated"
 
 ---
 
@@ -6225,8 +7604,8 @@ No HIGH ZANUAX, all verbo no modo indicativo deve marcar a fonte do conhecimento
 |------|----------|---------|
 | Certeza absoluta | trē (forma nua) | Kanay trē tüäs (Alegria É divina) |
 | Alta probabilidade | trēül (imperfectivo) | Kanay trēül tüäs (Alegria é [provavelmente] divina) |
-| Possibilidade | trẽ (nasalizado) | Kanay trẽ tüäs (Alegria pode ser divina) |
-| Incerteza | trẽül | Kanay trẽül tüäs (Alegria poderia ser divina) |
+| Possibility | trẽ (nasalized) | Kanay trẽ tüäs (Joy can be divine) |
+| Uncertainty | trẽül | Kanay trẽül tüäs (Joy could be divine) |
 | Especulaction | trēär-mẽ | Kanay trēär-mẽ tüäs (Alegria pareceria divina) |`,
         tags: ["high zanuax", "verbos", "aspectos", "evidencialidade", "epistemic"]
       },
@@ -6235,9 +7614,9 @@ No HIGH ZANUAX, all verbo no modo indicativo deve marcar a fonte do conhecimento
         title: "HIGH ZANUAX — Morfologia / Morphology",
         content: `**Classes Nominais Expandidas**
 
-O HIGH ZANUAX expande os 3 genres do ZANUAX comum para 6 classes nominais:
+HIGH ZANUAX expands the 3 genders of common ZANUAX to 6 nominal classes:
 
-| Classe | Marcador | Domain | Exemplos |
+| Class | Marker | Domain | Examples |
 |--------|----------|---------|----------|
 | I. Animado | -üm/-äm | Seres conscientes | exüm, šämä, çēdär |
 | II. Abstrato | -äy/-ëy | Estados, emotions | kanäy, nanäy |
@@ -6262,9 +7641,9 @@ O HIGH ZANUAX tem 12 casos (ecoando a base numerical):
 | Instrumental | -ōx | Meio | Düäux-ōx |
 | Comitativo | -ämë | Companhia | tüämë |
 | Vocativo | ∅ + pausa | Chamado | Kanäy, |
-| **Causativo** | -thür | Causa, reason | kanäy-thür (por causa de alegria) |
-| **Benefactivo** | -vën | Para benefit de | tēō-vën (para o mundo) |
-| **Essivo** | -trē | Na qualidade de | çēdär-trē (como Semeador) |
+| **Causative** | -thür | Cause, reason | kanäy-thür (because of joy) |
+| **Benefactive** | -vën | For the benefit of | tēō-vën (for the world) |
+| **Essive** | -trē | In the quality of | çēdär-trē (as Seeder) |
 | **Translativo** | -zël | Transformaction em | Iüldär-zël (tornando-se IULDAR) |
 
 ---
@@ -6278,10 +7657,10 @@ O HIGH ZANUAX distingue 7 vozes:
 | Ativa | ∅ | Sujeito age | Zä küäm (eu fsteel) |
 | Passiva | -ärë | Sujeito sofre action | Zünärë (é nomeado) |
 | Reflexiva | -baër | Sujeito age about si | Trübaër (torna-se) |
-| Causativa | -thün | Causa outro a agir | Küäm-thün (faz fazer) |
-| Aplicativa | -vën | Adiciona beneficiary | Küäm-vën (faz para someone) |
-| Reciprocal | -dwër | Action mutual | Küäm-dwër (fazem um ao outro) |
-| Antipassiva | -näkh | Remove objeto direto | Küäm-näkh (faz [intr.]) |
+| Causative | -thün | Causes another to act | Küäm-thün (makes do) |
+| Applicative | -vën | Adds beneficiary | Küäm-vën (does for someone) |
+| Reciprocal | -dwër | Mutual action | Küäm-dwër (do to each other) |
+| Antipassive | -näkh | Removes direct object | Küäm-näkh (does [intr.]) |
 
 ---
 
@@ -6291,8 +7670,8 @@ O HIGH ZANUAX distingue 7 vozes:
 |------|--------|---------|-------------|
 | Determinativo | N + N | thürn-kanäy | alegria-sombria (melancolia) |
 | Possessivo | N-ël + N | çēdär-ël-thēl | palavra-do-Semeador |
-| Instrumental | N-ōx + V | düäux-ōx-küäm | fazer-por-song |
-| Locativo | N-ÿk + V | Ungāar-ÿk-trē | ser-no-mundo |`,
+| Instrumental | N-ōx + V | düäux-ōx-küäm | do-by-song |
+| Locative | N-ÿk + V | Ungāar-ÿk-trē | to-be-in-world |`,
         tags: ["high zanuax", "morfologia", "casos", "classes", "vozes"]
       },
       "high-zanuax-lexico": {
@@ -6302,16 +7681,16 @@ O HIGH ZANUAX distingue 7 vozes:
 
 | Conceito | HIGH ZANUAX | Etimologia | Definition |
 |----------|-------------|------------|-----------|
-| ser (abstrato) | trēël | < tre + abstrato | Existence as conceito |
-| not-ser | nä-trēël | < neg. + ser | No-existence |
+| being (abstract) | trēël | < tre + abstract | Existence as concept |
+| non-being | nä-trēël | < neg. + being | Non-existence |
 | devir | zëlär | < transformation | Processo de tornar-se |
-| essence | trē-thär | < ser + experiencial | Natureza fundamental |
-| acidente | trē-mẽ | < ser + presumido | Propriedade contingente |
+| essence | trē-thär | < being + experiential | Fundamental nature |
+| accident | trē-mẽ | < being + presumed | Contingent property |
 | causa | thürün | < causativo | Origem de efeito |
 | efeito | thüräk | < caus. + resultado | Consequence |
-| power | trẽël | < ser + possibilidade | Capacidade not-realizada |
-| ato | trēël | < ser + certeza | Realizaction efetiva |
-| totality | ünōm | < um + eterno | O Outside (sem saber) |
+| power | trẽël | < being + possibility | Unrealized capacity |
+| act | trēël | < being + certainty | Effective realization |
+| totality | ünōm | < one + eternal | The Outside (unknowing) |
 
 ---
 
@@ -6333,15 +7712,15 @@ O HIGH ZANUAX distingue 7 vozes:
 
 **Vocabulary Doctor em HIGH ZANUAX**
 
-Terminologia formal para diseases:
+Formal terminology for diseases:
 
 | Disease | Forma HIGH ZANUAX | Definition Medical |
 |--------|-------------------|------------------|
 | NAKHVEL | Nakhvël-thrükïs | Syndrome de esgotamento progressivo, transmission venereal |
-| THURNAKH | Thürnäkh-thrükïs | Consumption pulmonar com hemoptise |
+| THURNAKH | Thürnäkh-thrükïs | Pulmonary consumption with hemoptysis |
 | KRUVELAK | Krüvëläk-thräkëlün | Cessaction cardiac sudden |
 | SKELTHIS | Skëlthïs-dürōl | Paralisia motora progressiva |
-| GRETHAKIS | Grëthäkïs-näkhël | Anedonia fatal com recusa nutricional |
+| GRETHAKIS | Grëthäkïs-näkhël | Fatal anhedonia with nutritional refusal |
 | FELKRUEL | Fëlkrüël-ïtërëk | Disturbance convulsivo recorrente |
 
 **Suffixes Doctors:**
@@ -6362,7 +7741,7 @@ Terminologia formal para diseases:
 | Classe escribal | Sënthēk | Guardians do conhecimento |
 | Classe mercantil | Kümäräk | Agentes de trade |
 | Vassalo | Thëgnär | Servidor juramentado |
-| Sacerdote | Forä-thēl | Intermedaily com o divino |`,
+| Priest | Forä-thēl | Intermediary with the divine |`,
         tags: ["high zanuax", "lexicon", "philosophy", "liturgy", "medicine"]
       },
       "high-zanuax-textos": {
@@ -6372,13 +7751,13 @@ Terminologia formal para diseases:
 
 *Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër.*
 
-criar.ETER ser fruto GEN REFL.GEN, REL romper.REFL GEN REFL.GEN e criar.IMPERF até esgotar.REFL
+create.ETER be fruit GEN REFL.GEN, REL break.REFL GEN REFL.GEN and create.IMPERF until deplete.REFL
 
 "Every creation is fruit of itself, which breaks from itself and creates until it depletes itself."
 
 **Analysis Morfologic:**
 • *Telenōm:* telen- (criar) + -ōm (eternal aspect). Macron indica eternal aspect.
-• *trē:* ser, 3SG present. Monosyllable com vogal longa.
+• *trē:* to be, 3SG present. Monosyllable with long vowel.
 • *frükhǖ:* fruto. Trema indica frontalizaction arcaica.
 • *baërël:* baër (si mesmo) + -ël (genitivo). Trema separa ditongo.
 • *fräkbaër:* fräk- (romper) + -baër (reflexivo). Trema em composto.
@@ -6393,7 +7772,7 @@ Sobre a natureza do Outside:
 
 *Forāōm trēōm-thēl-vïs trē ün ot trē nä-ün*
 
-Outside.ETER ser.ETER-TRAD-REVEL ser um mas ser not-um
+Outside.ETER be.ETER-TRAD-REVEL be one but be not-one
 
 "O Outside é eternamente [tradition+revelation] um e not-um simultaneamente"
 
@@ -6402,13 +7781,13 @@ Outside.ETER ser.ETER-TRAD-REVEL ser um mas ser not-um
 **Invocaction Liturgical**
 
 *Çēdär, Tüäu trēōm-thär Tëlüm-ëx-vën*
-"Ó Semeador, Tu és eternamente [por experience] para o benefit dos Children"
+"O Seeder, Thou art eternally [by experience] for the benefit of the Children"
 
 *Iüldär-ëx, Tünōx trēōm-thär Ungāar-vën*
-"Ó IULDAR, Ye sois eternamente [por experience] para o benefit de Ungaar"
+"O IULDAR, Ye are eternally [by experience] for the benefit of Ungaar"
 
 *Forä-sō, trẽōm-vïs zōnōx-ÿk*
-"Eco do Outside, tu podes ser eternamente [revelado] dentro de we"
+"Echo of the Outside, you can be eternally [revealed] within us"
 
 ---
 
@@ -6429,7 +7808,7 @@ Outside.ETER ser.ETER-TRAD-REVEL ser um mas ser not-um
 
 *Forāōm trēōm. Çēdär trēäk. Iüldär-ëx trẽül. Zōnōx trēär.*
 
-"O Outside é eternamente. O Semeador foi. Os IULDAR podem still ser. We estamos prestes a ser."
+"The Outside is eternally. The Seeder was. The IULDAR may still be. We are about to be."
 
 ---
 
@@ -6437,7 +7816,7 @@ Outside.ETER ser.ETER-TRAD-REVEL ser um mas ser not-um
 
 HIGH ZANUAX carries knowledge that its speakers do not fully comprehend. When a mathematician writes *vōth* (zero), they use a term meaning "that which is-and-is-not" — a definition of the Outside. When a philosopher uses *trēōm* (eternal being), they invoke timelessness without knowing that such timelessness was once the literal condition of existence before the Inside.
 
-Esta é a natureza do legado: transmitir more do que se compreende. Civilizations futuras will inherit ferramentas cujo propostito original esqueceram, palavras cujo significado profundo perderam, estruturas cuja origem cosmic not conhecem.`,
+This is the nature of legacy: to transmit more than one comprehends. Future civilizations will inherit tools whose original purpose they forgot, words whose deep meaning they lost, structures whose cosmic origin they don't know.`,
         tags: ["high zanuax", "textos", "axioma", "liturgy", "ode"]
       },
       "high-zanuax-vocab-basico": {
@@ -6450,10 +7829,10 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | 1SG (eu/I) | zä | zäx | zël | zäs | zämë |
 | 2SG inf. (tu/you) | tü | tüx | tüël | tüäs | tüämë |
 | 2SG form. (ye/you-formal) | tüäu | tüäux | tüäuël | tüäus | tüäumë |
-| 3SG (ele,ela/he,she) | kä | käx | kël | käs | kämë |
+| 3SG (he,she) | kä | käx | kël | käs | kämë |
 | 1PL (we/we) | zōnōx | zōnäx | zōnël | zōnäs | zōnämë |
 | 2PL (ye/you-pl) | tünōx | tünäx | tünël | tünäs | tünämë |
-| 3PL (eles/they) | kän | känäx | känël | känäs | känämë |
+| 3PL (they) | kän | känäx | känël | känäs | känämë |
 
 **Pronomes Reflexivos / Reflexive Pronouns**
 | Form | PT | EN | Example |
@@ -6467,11 +7846,11 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Tipo / Type | Form | PT | EN | Example |
 |-------------|-------|----|----|---------|
-| Definido / Definite | kÿ / tüä | o, a | the | kÿ temüä (o encantamento / the enchantment) |
-| Indefinido / Indefinite | säu | um, uma | a, an | säu tēō (um mundo / a world) |
-| Proximal | sä | este, esta | this | sä tëlë (este ser / this being) |
+| Definite | kÿ / tüä | the | the | kÿ temüä (the enchantment) |
+| Indefinite | säu | a, one | a, an | säu tēō (a world) |
+| Proximal | sä | this | this | sä tëlë (this being) |
 | Medial | tä | esse, essa | that (near) | tä kanäy (essa alegria / that joy) |
-| Distal | yō | aquele, aquela | that (far) | yō Kanäy (aquela Alegria / that Joy) |
+| Distal | yō | that | that (far) | yō Kanäy (that Joy) |
 
 ---
 
@@ -6479,9 +7858,9 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Distance / Distance | Singular | Plural | PT | EN |
 |----------------------|----------|--------|----|----|
-| Proximal | sä | sä-ëx | este(s) | this/these |
+| Proximal | sä | sä-ëx | this/these | this/these |
 | Medial | tä | tä-ëx | esse(s) | that/those (near) |
-| Distal | yō | yō-ëx | aquele(s) | that/those (far) |
+| Distal | yō | yō-ëx | that/those | that/those (far) |
 | Anaphoric / Anaphoric | trüm | trüm-ëx | o qual | which/that |
 
 ---
@@ -6490,12 +7869,12 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Palavra | PT | EN | Example |
 |---------|----|----|---------|
-| kwē | quem? | who? | Kwē trēäk? (Quem foi? / Who was?) |
+| kwē | who? | who? | Kwē trēäk? (Who was?) |
 | kwäl | qual? | which? | Kwäl tēō? (Qual mundo? / Which world?) |
-| kwōm | como? | how? | Kwōm trēül? (Como está sendo? / How is it being?) |
-| kwän | quando? | when? | Kwän trēär? (Quando será? / When will it be?) |
-| kwÿk | onde? | where? | Kwÿk trēōm? (Onde é eternamente? / Where is it eternally?) |
-| kwür | por quê? | why? | Kwür nakhbaër? (Por que se esgota? / Why does it deplete?) |
+| kwōm | how? | how? | Kwōm trēül? (How is it being?) |
+| kwän | when? | when? | Kwän trēär? (When will it be?) |
+| kwÿk | where? | where? | Kwÿk trēōm? (Where is it eternally?) |
+| kwür | why? | why? | Kwür nakhbaër? (Why does it deplete?) |
 | kwōt | quanto? | how much? | Kwōt thēlün? (Quanto number? / How many?) |
 
 ---
@@ -6504,12 +7883,12 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Conjunction | PT | EN | Example |
 |-----------|----|----|---------|
-| ot | e, mas | and, but | trē ün ot trē nä-ün (é um e not é um / is one and is not one) |
+| ot | and, but | and, but | trē ün ot trē nä-ün (is one and is not one) |
 | zü | ou | or | kanüä zü talëx (costume ou tradition / custom or tradition) |
-| zïkh | até que | until | telenül zïkh nakhbaër (cria até esgotar / creates until depletes) |
-| thün | because | because | thün nakh, fël (porque esgota, cai / because depletes, falls) |
+| zïkh | until | until | telenül zïkh nakhbaër (creates until depletes) |
+| thün | because | because | thün nakh, fël (because depletes, falls) |
 | zïk | se | if | zïk fäthäk, thün kräv (se quebrar, then guerra / if broken, then war) |
-| ōt | however | however | trēül, ōt nä-trēōm (está sendo, however not eternamente / is being, but not eternally) |
+| ōt | however | however | trēül, ōt nä-trēōm (is being, but not eternally) |
 | dōnk | portanto | therefore | nakhbaër, dōnk fëlōm (esgota-se, portanto cai / depletes, therefore falls) |
 
 ---
@@ -6520,14 +7899,14 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 |------------|------|----|----|---------|
 | tï | Genitivo | de | of | frükhǖ tï baërël (fruto de si / fruit of itself) |
 | ÿk | Locativo | em, dentro | in, within | Ungāar-ÿk (em Ungaar / in Ungaar) |
-| vën | Benefactivo | para | for | tēō-vën (para o mundo / for the world) |
-| thür | Causativo | por causa de | because of | kanäy-thür (por alegria / because of joy) |
+| vën | Benefactive | for | for | tēō-vën (for the world) |
+| thür | Causative | because of | because of | kanäy-thür (because of joy) |
 | forä | — | beyond de | beyond | forä tēō (beyond do mundo / beyond the world) |
 | sübä | — | sob | under | sübä thürn (sob a sombra / under the shadow) |
-| süprä | — | about | above | süprä Ungāar (sobre Ungaar / above Ungaar) |
-| äntë | — | before de | before | äntë Çëdär (antes do Semeador / before the Seeder) |
+| süprä | — | about | above | süprä Ungāar (above Ungaar) |
+| äntë | — | before | before | äntë Çëdär (before the Seeder) |
 | pōst | — | after de | after | pōst Nakhōm (apost o Esgotamento / after the Depletion) |
-| ïntër | — | between | between | ïntër Iüldär-ëx (entre os IULDAR / among the IULDAR) |`,
+| ïntër | — | between | between | ïntër Iüldär-ëx (among the IULDAR) |`,
         tags: ["high zanuax", "vocabulary", "pronomes", "artigos", "conjunctions", "vocabulary", "pronouns", "articles"]
       },
       "high-zanuax-vocab-natureza": {
@@ -6551,8 +7930,8 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | PT | EN | HIGH ZANUAX | Literal |
 |----|----|-------------|---------|
-| sol | sun | sōlär | "o que arde eternamente / that which burns eternally" |
-| lua | moon | lünär | "a que reflete / that which reflects" |
+| sun | sun | sōlär | "that which burns eternally" |
+| moon | moon | lünär | "that which reflects" |
 | estrela | star | stëlär | "luz distante / distant light" |
 | sky | sky | çëlüm | "vault elevada / elevated dome" |
 | cosmos | cosmos | Forāthēl | "beyond-elevado / beyond-elevated" |
@@ -6846,7 +8225,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Infinitivo | PT | EN | Perfectivo | Imperfectivo | Eternal |
 |------------|----|----|------------|--------------|--------|
-| trē | ser, estar | to be | trēäk | trēül | trēōm |
+| trē | to be | to be | trēäk | trēül | trēōm |
 | trübaër | tornar-se | to become | trübäëräk | trübäërül | trübäërōm |
 | dürär | durar, resistir | to endure | düräräk | dürärül | dürärōm |
 | stär | permanecer | to remain | stäräk | stärül | stärōm |
@@ -6921,7 +8300,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | Infinitivo | PT | EN | Perfectivo |
 |------------|----|----|------------|
 | dïkär | dizer | to say | dïkäräk |
-| fälär | falar | to speak | fäläräk |
+| fälär | to speak | to speak | fäläräk |
 | zünär | nomear | to name | zünäräk |
 | prōklämär | proclamar | to proclaim | prōklämäräk |
 | prōmëtär | prometer | to promise | prōmëtäräk |
@@ -6984,14 +8363,14 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | Portuguese | HIGH ZANUAX | Etimologia |
 |-----------|-------------|------------|
 | branco | älbël | < "luz pura" |
-| preto | nïgrël | < "sem luz" |
+| black | nïgrël | < "without light" |
 | vermelho | rübrël | < "cor do sangue" |
 | azul | çëlëstël | < "cor do sky" |
 | verde | vïrïdël | < "cor da vida" |
 | amarelo | flävël | < "cor do sol" |
 | dourado | äurël | < "cor do ouro" |
 | prateado | ärgëntël | < "cor da prata" |
-| cinza | grïsël | < "entre claro e escuro" |
+| gray | grïsël | < "between light and dark" |
 | purple | pürpürël | < "cor real" |
 | marrom | füskël | < "cor da terra" |
 
@@ -7002,13 +8381,13 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | Portuguese | HIGH ZANUAX | Usage |
 |-----------|-------------|-----|
 | very | mültël | Quantidade great |
-| pouco | päukël | Quantidade pequena |
+| little | päukël | Small quantity |
 | all | tōtël / ünōm | Universal |
 | nenhum | nülël | Absence |
 | algum | älïkwël | Indefinido |
 | each | kwïskwël | Distributivo |
 | ambos | ämbël | Dual |
-| outro | ältërël | Alternativo |
+| other | ältërël | Alternative |
 | same | ïpsël | Identidade |
 | tal | tälël | Demonstrativo |
 | tanto | täntël | Comparativo quantidade |
@@ -7023,11 +8402,11 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | eterno | ētërnël / -ōm | < fora do tempo |
 | antigo | äntïkwël | < before |
 | moderno | mōdërnël | < now |
-| present | prëzëntël | < estar aqui |
-| passado | prëtërïtël | < ter ido |
-| futuro | fütürël | < estar para vir |
-| fast | rëpïdël | < que corre |
-| lento | lëntël | < que demora |
+| present | prëzëntël | < to be here |
+| past | prëtërïtël | < to have gone |
+| future | fütürël | < to be coming |
+| fast | rëpïdël | < that which runs |
+| slow | lëntël | < that which delays |
 | sudden | sübïtël | < without aviso |
 | constant | kōnstäntël | < que permanece |
 | breve | brëvël | < curto tempo |
@@ -7117,7 +8496,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | logo | soon | mōx |
 | cedo | early | mätürë |
 | tarde | late | sërō |
-| outrora | once/formerly | ōlïm |
+| once | once/formerly | ōlïm |
 | doravante | henceforth | dëhïnk |
 | eternamente | eternally | ētërnōm |
 
@@ -7156,7 +8535,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | fora | outside | ëxträ |
 | perto | near | prōpë |
 | longe | far | prōkül |
-| aqui | here | hïk |
+| here | here | hïk |
 | aí | there (near you) | ïstïk |
 | lá | there (far) | ïlïk |
 | beyond | beyond | ülträ |
@@ -7167,7 +8546,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | PT | EN | HIGH ZANUAX |
 |----|----|-------------|
-| aqui | here | hïk |
+| here | here | hïk |
 | aí | there (near) | ïstïk |
 | ali | there | ïlïk |
 | lá | over there | ïbï |
@@ -7181,7 +8560,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | abehind | behind | pōst |
 | ao lado | beside | jüxtä |
 | ao redor | around | çïrkäm |
-| por all parte | everywhere | übïkwë |
+| everywhere | everywhere | übïkwë |
 | em nenhum lugar | nowhere | nüskwäm |`,
         tags: ["high zanuax", "vocabulary", "tempo", "space", "adverbs", "vocabulary", "time", "space", "adverbs"]
       },
@@ -7198,10 +8577,10 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | tudo | tōtëlël | Conceitual | Totalidade |
 | algo | älïkwïdël | Conceitual | Existence indefinida |
 | essence | ëssëntïäy | Abstrato | Natureza fundamental |
-| existence | ëxïstëntïäy | Abstrato | Estado de ser |
-| realidade | rëälïtäy | Abstrato | O que é |
-| appearance | äppärëntïäy | Abstrato | O que parece |
-| verdade | vërïtäy | Abstrato | Conformidade com o real |
+| existence | ëxïstëntïäy | Abstract | State of being |
+| reality | rëälïtäy | Abstract | What is |
+| appearance | äppärëntïäy | Abstract | What seems |
+| truth | vërïtäy | Abstract | Conformity with the real |
 | illusion | ïllüsïōnël | Conceitual | Falsa appearance |
 
 ---
@@ -7220,8 +8599,8 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | eternity | ētërnïtōm | < fora do tempo | Atemporalidade |
 | origem | ōrïgōël | < where begins | Fonte first |
 | fim | fïnïsël | < where termina | End último |
-| ciclo | çÿklël | < que retorna | Repetition |
-| destino | fätël | < o que foi dito | O que será |
+| cycle | çÿklël | < that which returns | Repetition |
+| destiny | fätël | < what was said | What will be |
 
 ---
 
@@ -7229,19 +8608,19 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Portuguese | HIGH ZANUAX | Function |
 |-----------|-------------|--------|
-| causa | käusël | O que produz |
-| efeito | ëffëktël | O que é produzido |
+| cause | käusël | That which produces |
+| effect | ëffëktël | That which is produced |
 | reason | rätïōnël | Explicaction logic |
-| motivo | mōtïvël | Impulso para action |
+| motive | mōtïvël | Impulse for action |
 | propostito | prōpōsïtël | Intention final |
 | meio | mëdïël | Instrumento |
 | fim | fïnïsël | Objetivo |
 | condition | kōndïçïōnël | Requisito |
 | consequence | kōnsëkwëntïël | Result |
 | acaso | käsël | Sem causa conhecida |
-| necessidade | nëçëssïtäy | O que deve ser |
-| possibilidade | pōssïbïlïtäy | O que pode ser |
-| impossibilidade | ïmpōssïbïlïtäy | O que not pode ser |
+| necessity | nëçëssïtäy | That which must be |
+| possibility | pōssïbïlïtäy | That which can be |
+| impossibility | ïmpōssïbïlïtäy | That which cannot be |
 
 ---
 
@@ -7249,7 +8628,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Portuguese | HIGH ZANUAX | Antonym |
 |-----------|-------------|----------|
-| bem | bōnël | mal: mälël |
+| good | bōnël | bad: mälël |
 | virtude | vïrtüsël | vice: vïçïël |
 | justice | jüstïçïäy | injustice: ïnjüstïçïäy |
 | dever | dëbïtël | — |
@@ -7275,11 +8654,11 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | opinion | ōpïnïōnël | < "parecer" |
 | certeza | çërtïtüdël | < "firme" |
 | doubt | dübïtäçïōnël | < "hesitar" |
-| evidence | ëvïdëntïäy | < "que se vê" |
-| prova | prōbäçïōnël | < "que testa" |
+| evidence | ëvïdëntïäy | < "that which is seen" |
+| proof | prōbäçïōnël | < "that which tests" |
 | hypothesis | hÿpōthësël | < "posto sob" |
 | teoria | thëōrïäy | < "contemplaction" |
-| verdade | vërïtäy | < "o que é" |
+| truth | vërïtäy | < "that which is" |
 | erro | ërrōrël | < "desvio" |
 | mentira | mëndäçïël | < "engano intencional" |
 
@@ -7289,15 +8668,15 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Portuguese | HIGH ZANUAX | Etimologia |
 |-----------|-------------|------------|
-| poder | pōtëstäy | < "ser capaz" |
-| autoridade | äuktōrïtäy | < "que aumenta" |
+| power | pōtëstäy | < "to be capable" |
+| authority | äuktōrïtäy | < "that which increases" |
 | domain | dōmïnïël | < "senhor" |
-| soberania | sōvërānïtäy | < "acima de todos" |
-| lei | lëxël | < "o que liga" |
+| sovereignty | sōvërānïtäy | < "above all" |
+| law | lëxël | < "that which binds" |
 | ordem | ōrdïnël | < "arranjo" |
 | caos | khäōsël | < "vazio primordial" |
 | hierarquia | hïërärkhïäy | < "ordem sagrada" |
-| liberdade | lïbërtäy | < "ser livre" |
+| freedom | lïbërtäy | < "to be free" |
 | slavery | sërvïtüdël | < "servir strengthdo" |
 | obedience | ōbëdïëntïäy | < "ouvir e seguir" |
 | rebellion | rëbëllïōnël | < "guerra de novo" |`,
@@ -7315,7 +8694,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | Children | Tëlüm-ëx | Cosmic | Os Nascidos (perdidos) |
 | Kraeth | Kräëth-ëx | Cosmic | Dragons guardians |
 | Grande Kraeth | Mëgä-Kräëth | Cosmic | O greater dos dragons |
-| Thul'Kar | Thül'Kär-ëx | Cosmic | Gigantes de pedra |
+| Thul'Kar | Thül'Kär-ëx | Cosmic | Stone giants |
 | Veluth | Vëlüth | Cosmic | O atmospheric |
 | Abyrn | Äbÿrn | Cosmic | Serpentes oceanic |
 | Serenynth | Sërënÿnth | Cosmic | O liminal |
@@ -7326,19 +8705,19 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 
 | Portuguese | HIGH ZANUAX | Etimologia |
 |-----------|-------------|------------|
-| deus | dëüsël | < "o brilhante" |
+| god | dëüsël | < "the bright one" |
 | divindade | dïvïnïtäy | < "natureza divina" |
 | sagrado | säkrël | < "separado" |
 | profano | prōfänël | < "diante do templo" |
 | milagre | mïräkülël | < "coisa admirable" |
-| profecia | prōfëtïäy | < "falar antes" |
+| prophecy | prōfëtïäy | < "to speak before" |
 | revelation | rëvëläçïōnël | < "descobrir" |
 | mystery | mÿstërïël | < "fechado" |
 | ritual | rïtüälël | < "modo de fazer" |
 | sacrifice | säkrïfïçïël | < "fazer sagrado" |
-| oraction | ōräçïōnël | < "falar a deus" |
-| blessing | bënëdïkçïōnël | < "dizer bem" |
-| curse | mälëdïkçïōnël | < "dizer mal" |
+| prayer | ōräçïōnël | < "to speak to god" |
+| blessing | bënëdïkçïōnël | < "speak well" |
+| curse | mälëdïkçïōnël | < "speak ill" |
 | pecado | pëkkätël | < "errar o alvo" |
 | redemption | rëdëmptïōnël | < "comprar de volta" |
 | salvaction | sälväçïōnël | < "tornar are" |
@@ -7381,7 +8760,7 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 **SERENYNTH (Ordem do Limiar)**
 | Termo | HIGH ZANUAX | Description |
 |-------|-------------|-----------|
-| Serenynth | Sërënÿnth | O entre-spaces |
+| Serenynth | Sërënÿnth | The between-spaces |
 | Limiar | Sërën-lïmïnël | Fronteira |
 | Passagem | Sërën-tränsïtël | Movimento between |
 
@@ -7420,6 +8799,15 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
   conflitos: {
     title: "Conflicts",
     icon: "Sword",
+    landing: {
+      subtitle: "The Price of Ambition",
+      description: "War in Sethael is never merely political — it is the mechanism by which civilizations deplete themselves. From the Northern Massacre that sowed the seeds of vengeance to the catastrophic Campaign of 778 AF, each conflict accelerates the inevitable.",
+      stats: [
+        { value: "285,000", label: "Soldiers in 778 AF" },
+        { value: "463", label: "Years of Grudge" },
+        { value: "67", label: "Days of March" }
+      ]
+    },
     entries: {
       "massacre-norte": {
         title: "The Northern Massacre (315-350 AF)",
@@ -7433,17 +8821,17 @@ Esta é a natureza do legado: transmitir more do que se compreende. Civilization
 | Mortos | ~60% da population |
 
 **O Que Aconteceu**
-Kravorn II decidiu "limpar" o norte. Enviou armies para exterminar os Kaeldur. Durante 35 anos, aldeias foram queimadas, families massacradas, children mortas.
+Kravorn II decided to "cleanse" the north. He sent armies to exterminate the Kaeldur. For 35 years, villages were burned, families massacred, children killed.
 
 **Consequences**
 | Consequence | Detalhe |
 |--------------|---------|
-| Migraction | Sobreviventes fugiram para Vrethkaeldur |
+| Migration | Survivors fled to Vrethkaeldur |
 | Ódio | Juramento de revenge eterno |
 | Memory | Cada family Kaeldur lembra seus mortos |
 
 **Legacy**
-O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 AF. No foi guerra — foi justice.`,
+The Massacre is the reason the Kaeldur destroyed Tornael's army in 778 AF. It was not war — it was justice.`,
         tags: ["massacre", "kravorn ii", "kaeldur", "history"]
       },
       "campanha-778": {
@@ -7456,9 +8844,9 @@ O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 A
 
 | Mês | Evento |
 |-----|--------|
-| **Mês 0** | Frota parte de Veluthaar (550 navios) |
-| **Mês +2** | Exército parte da capital (285k homens) |
-| **Mês +2 + 7 dias** | Duathel — última festa antes da queda |
+| **Month 0** | Fleet departs Veluthaar (550 ships) |
+| **Month +2** | Army departs the capital (285k men) |
+| **Month +2 + 7 days** | Duathel — last feast before the fall |
 | **Mês +4** | Vaethor escreve a carta ao rei |
 | **Mês +4 a +4.5** | Exército chega a Kravethorn |
 | **Mês +5** | Travessia do canal (múltiplas viagens) |
@@ -7483,15 +8871,15 @@ O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 A
 |---------|------------|-------|
 | Navios | 550 | Cruzam 18.000 km via Vel-Nakh |
 | Homens | 35.000 | Elite: cavalaria, engenheiros |
-| Warhorses | 8.000 | Cavalaria pesada (não cruza montanhas) |
+| Warhorses | 8,000 | Heavy cavalry (doesn't cross mountains) |
 | Paladins | 7.000 | Elite em armadura pesada |
 | Siege engines | 200 | Trebuchets, catapultas, carros de guerra |
 
 **Missão:** Atacar a costa leste das Terras Além. Movimento de pinça.
 
-**Status:** Partiu 4 meses antes da carta de Vaethor. Destino desconhecido — 29 frotas anteriores desapareceram em Vel-Nakh.
+**Status:** Departed 4 months before Vaethor's letter. Fate unknown — 29 previous fleets disappeared in Vel-Nakh.
 
-### EXÉRCITO TERRESTRE (Rota por Kaelthrek)
+### LAND ARMY (Route via Kaelthrek)
 | Recurso | Quantidade | Notas |
 |---------|------------|-------|
 | Navios | 210 | Travessia do canal (400 km) |
@@ -7500,15 +8888,15 @@ O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 A
 | Paladins | 3.000 | Reserva |
 | Siege engines | 100 | Equipamento restante |
 
-**Missão:** Atravessar Kaelthrek, descer pelo leste, cercar a capital das Terras Além.
+**Mission:** Cross Kaelthrek, descend through the east, surround the capital of the Lands Beyond.
 
-**Status:** 2 meses de marcha quando Vaethor escreve. A ~2 semanas de Kravethorn.
+**Status:** 2 months of march when Vaethor writes. About ~2 weeks from Kravethorn.
 
 ---
 
 ## DISTÂNCIAS E TEMPOS
 
-| Rota | Distância | Velocidade | Tempo |
+| Route | Distance | Speed | Time |
 |------|-----------|------------|-------|
 | Capital → Kravethorn | ~1.000 km | 15 km/dia | ~67 dias |
 | Travessia do canal | 400 km | — | 2-4 semanas (múltiplas viagens) |
@@ -7518,41 +8906,1131 @@ O Massacre é a reason pela qual os Kaeldur destroyed o army de Tornael em 778 A
 
 ## COMANDO
 
-| Posição | Nome | Notas |
+| Position | Name | Notes |
 |---------|------|-------|
-| Rei | Tornael Vael | Comandante supremo. Morre de VETH-NAKH antes de Kaelthrek |
+| King | Tornael Vael | Supreme commander. Dies in Kravethorn (Day ~82-85) after discovering port delays |
 | Príncipe | Krav Vael XIX (14 anos) | Assume comando após morte do pai |
-| General | Kraveth Vaelmar | Único comandante competente. Capturado |
-| Almirante | Durel Vaemar | Logística, não combate |
+| General | Kraveth Vaelmar | Only competent commander. Captured |
+| Admiral | Durel Vaemar | Logistics, not combat |
 
 ---
 
-## O PLANO (e sua falha)
+## THE PLAN (and its failure)
 
 **Estratégia:** Movimento de pinça
-1. Frota ataca pelo leste (via Vel-Nakh)
-2. Exército ataca pelo norte (via Kaelthrek)
+1. Fleet attacks from the east (via Vel-Nakh)
+2. Army attacks from the north (via Kaelthrek)
 3. Cercam a capital das Terras Além
 
-**Por que falhou:**
+**Why it failed:**
 - Frota provavelmente perdida em Vel-Nakh (29 precedentes)
 - Kaelthrek é um desfiladeiro de 30m de largura
-- 285.000 homens = coluna de 37 km impossível de defender
+- 285,000 men = 37 km column impossible to defend
 - Kaeldur atacaram de cima: avalanches, flechas, pedras
-- Tornael morreu de VETH-NAKH antes da batalha
+- Tornael died in Kravethorn (Day ~82-85) — exhaustion, cold, stress from port delays
 - Krav (14 anos) assumiu comando de um exército já condenado
 
-**Resultado:** Destruição total. ~18 sobreviventes confirmados. Krav e Kraveth capturados.
+**Result:** Total destruction. ~18 confirmed survivors. Krav and Kraveth captured.
 
 ---
 
 ## FONTES NO MANUSCRITO
 
-- **Cap II (The Letter of Vaethor Zumax):** Dados militares, advertência ignorada
-- **Cap V (The Letter from the North):** Relato da derrota por Kraveth
-- **Cap VI (The Hall of Fire):** Krav entre os Kaeldur
-- **Dry Wood:** Setharen revela o plano de reorganização`,
+- **Cap II (The Letter of Vaethor Zumax):** Military data, warning ignored
+- **Cap V (The Letter from the North):** Account of the defeat by Kraveth
+- **Cap VI (The Hall of Fire):** Krav among the Kaeldur
+- **Dry Wood:** Setharen reveals the reorganization plan`,
         tags: ["campanha", "778-af", "desastre", "tornael", "militar", "dados"]
+      },
+      "logistics-march-778": {
+        title: "Logistics of the March to the North",
+        content: `# THE LOGISTICS OF THE MARCH TO THE NORTH
+## Campaign of 778 AF — Master Orientation
+
+---
+
+# PART I: STRATEGIC OVERVIEW
+
+## The Pincer Strategy
+
+King Tornael's campaign employed a pincer movement:
+
+| Element | Route | Distance | Time |
+|---------|-------|----------|------|
+| **LAND ARMY** | Vaelhem Thel → Kravethorn | 1,000 km | ~67 days |
+| **SOUTHERN FLEET** | Veluthaar → Lands Beyond (circumnavigation) | ~18,000 km | ~5-6 months |
+
+**The Plan:** The army would cross the channel at Kravethorn, descend through Kaelthrek Pass, and meet the fleet at a pre-arranged point on the eastern coast of Lands Beyond. Together, they would surround the Kaeldur capital.
+
+**The Reality:** The fleet never arrived. The army was destroyed.
+
+---
+
+## Southern Fleet Timeline
+
+**Departure:** Early spring 778 AF (approximately Month 1 of campaign)
+
+**Route:** Veluthaar → Southern Ocean → around the Spine → eastern coast of Lands Beyond
+
+**Naval Logistics:**
+| Parameter | Value |
+|-----------|-------|
+| Average speed (favorable winds) | 100-120 km/day |
+| Average speed (mixed conditions) | 80-100 km/day |
+| Distance | ~18,000 km |
+| Estimated voyage time | **150-180 days (5-6 months)** |
+| Required stops for water/provisions | Every 7-14 days |
+| Ships | ~200 vessels (transports, warships, supply ships) |
+| Troops embarked | ~30,000 (secondary force) |
+
+**CRITICAL:** The fleet departed **before** the army left Vaelhem Thel, accounting for the longer voyage time. By the time the army was destroyed in the mountains, the fleet had not yet rounded the Spine.
+
+**Fate of the Fleet:** Unknown. Possibly returned when news reached them. Possibly lost at sea. Possibly reached their destination and found no army to meet. This remains one of the great mysteries of the campaign.
+
+---
+
+# PART II: ARMY COMPOSITION
+
+## Total Forces
+
+| Category | Number | Notes |
+|----------|--------|-------|
+| **TOTAL ARMY** | ~285,000 | Largest force since Kravorn |
+| Infantry (line) | 210,000 | 42 legions equivalent |
+| Infantry (auxiliary) | 35,000 | Light troops, archers, slingers |
+| Cavalry (heavy) | 8,000 | Noble cavalry, lance and sword |
+| Cavalry (light) | 12,000 | Scouts, skirmishers, mounted archers |
+| Artillery crews | 3,000 | Ballistae, onagers, siege equipment |
+| Engineers | 4,000 | Bridge builders, road makers, sappers |
+| Medical corps | 2,000 | Surgeons, assistants, stretcher-bearers |
+| Staff officers | 1,000 | Commanders, scribes, messengers |
+| Servants (military) | 10,000 | Muleteers, cooks, smiths |
+
+---
+
+## Legion Structure (Duratheon Model)
+
+Based on late Roman organization with Duratheon adaptations:
+
+### Standard Legion (~5,380 men)
+| Unit | Size | Commander |
+|------|------|-----------|
+| Legion | ~5,380 | Legatus |
+| Cohort (10 per legion) | 490-980 | Pilus Prior |
+| Century (5 per cohort) | 98 | Centurion |
+| Vethkar (2 per century) | 49 | Vethkarn |
+| Tenthar (7 per vethkar) | 7 | Decanus |
+
+*Note: See "Military Structure — The Law of Seven" for complete explanation of the veth-zumax (base-7) system.*
+
+### First Cohort (Elite)
+- Double strength: 980 men
+- Houses the Legion standard
+- Veterans and best recruits
+
+### Cohorts II-X
+- 5 centuries of 98 men each
+- Total: 490 men per cohort
+- Cohort VI: "Finest of the Young Men"
+- Cohort VIII: "Selected Troops"
+- Cohort X: "Good Troops"
+- Cohorts II, IV, VII, IX: Training cohorts, newer recruits
+
+---
+
+## Tenthar (Group of Seven) — The Smallest Unit
+
+| Element | Value |
+|---------|-------|
+| Men | **7 soldiers** (veth-zumax: Law of Seven) |
+| Leader | Decanus |
+| Tent | 1 goatskin tent (3m × 3m) |
+| Mule | 1 (shared, carries tent and heavy equipment) |
+| Equipment | Shared: tent poles, cooking gear, entrenching tools, quern stone |
+| Personal | Each man: armor, weapons, 3-day rations, cloak, sarcina (pack) |
+
+**The tenthar ate, slept, marched, and died together.**
+
+---
+
+## Soldier Types
+
+### LINE INFANTRY (210,000)
+| Type | Equipment | Role |
+|------|-----------|------|
+| **Spearman** | Spear (2.5m), oval shield, short sword, helmet, mail | Main battle line |
+| **Swordsman** | Gladius-style sword, large shield, helmet, plate | Close combat |
+| **Pikeman** | Long pike (4-5m), light shield, helmet | Anti-cavalry |
+
+### AUXILIARY INFANTRY (35,000)
+| Type | Equipment | Role |
+|------|-----------|------|
+| **Archer** | Composite bow, 40 arrows, short sword, leather armor | Ranged support |
+| **Slinger** | Sling, 50 lead bullets, dagger, no armor | Skirmishing |
+| **Skirmisher** | Javelins (3-5), small shield, light armor | Harassment |
+
+### CAVALRY (20,000)
+| Type | Equipment | Role |
+|------|-----------|------|
+| **Heavy cavalry** | Lance, sword, full horse armor, plate armor | Shock |
+| **Light cavalry** | Javelins, sword, leather armor, unarmored horse | Scouting, pursuit |
+| **Mounted archers** | Composite bow, sword, leather armor | Mobile harassment |
+
+---
+
+## Artillery and Siege Equipment
+
+| Type | Quantity | Crew | Transport |
+|------|----------|------|-----------|
+| **Ballista** (bolt-thrower) | 250 | 10 per engine | 2-mule cart |
+| **Onager** (stone-thrower) | 50 | 10 per engine | Ox-drawn wagon |
+| **Siege towers** | 20 (disassembled) | 50 per tower | Multiple wagons |
+| **Battering rams** | 30 (disassembled) | 30 per ram | Multiple wagons |
+
+**CRITICAL:** The siege equipment was designed for assaulting Kaeldur fortifications. It proved useless in the mountain passes and was largely abandoned.
+
+---
+
+# PART III: THE BAGGAGE TRAIN
+
+## Animals
+
+| Type | Number | Carrying Capacity | Purpose |
+|------|--------|-------------------|---------|
+| **Mules** | ~45,000 | 150 kg each | Tents, equipment, food |
+| **Oxen** | ~8,000 | 650 kg per team (wagon) | Heavy wagons, artillery |
+| **Horses (war)** | ~25,000 | N/A | Cavalry mounts |
+| **Horses (draft)** | ~5,000 | 350 kg per team | Light wagons |
+| **Horses (officer)** | ~3,000 | N/A | Officer mounts |
+
+### Mule Allocation per Legion
+| Category | Mules | Notes |
+|----------|-------|-------|
+| Tents | 108 | 2 per tenthar (tent + poles) |
+| Food (3-day reserve) | 288 | Grain, dried meat, oil |
+| Equipment/supplies | 288 | Spare weapons, leather, rope |
+| Artillery | 60 | 10 ballistae × 6 mules each |
+| Officers | 50 | Personal baggage |
+| Medical | 20 | Surgical supplies, stretchers |
+| **TOTAL** | ~814 | Per legion |
+
+---
+
+## Wagons
+
+**Ratio:** 25-35 wagons per 1,000 men
+
+| Type | Number | Drawn By | Carries |
+|------|--------|----------|---------|
+| **Food wagons** | 3,000 | 2-4 oxen | Grain, salted meat, wine |
+| **Equipment wagons** | 2,000 | 2-4 oxen | Spare armor, weapons, tools |
+| **Artillery wagons** | 500 | 4-6 oxen | Ballistae, onagers (disassembled) |
+| **Medical wagons** | 200 | 2 horses | Wounded, surgical supplies |
+| **Officer wagons** | 300 | 2-4 horses | Personal baggage, furniture |
+| **Treasury wagons** | 50 | 4-6 oxen, heavily guarded | Pay chests, valuables |
+| **TOTAL** | ~6,050 | | |
+
+---
+
+## Daily Consumption
+
+| Resource | Per Soldier | Army Total (285,000) | Notes |
+|----------|-------------|---------------------|-------|
+| Grain | 1 kg | 285,000 kg | ~285 tons/day |
+| Meat | 0.2 kg | 57,000 kg | Salted, dried |
+| Water | 3 liters | 855,000 liters | Plus horses/mules |
+| Fodder (horses) | 10 kg/horse | 330,000 kg | 33,000 horses |
+| Fodder (mules) | 5 kg/mule | 225,000 kg | 45,000 mules |
+| Fodder (oxen) | 15 kg/ox | 120,000 kg | 8,000 oxen |
+| **TOTAL FODDER** | — | ~675 tons/day | |
+| Firewood | 1 kg | 285,000 kg | Cooking, warmth |
+
+**Provisions carried:** 30-45 days (assuming partial foraging)
+**Actual duration before crisis:** ~25 days
+
+---
+
+# PART IV: CAMP FOLLOWERS
+
+## Categories
+
+Every army attracted a tail of non-combatants. Duratheon's 285,000 soldiers dragged behind them an estimated 40,000-60,000 camp followers.
+
+| Category | Estimated Number | Function |
+|----------|------------------|----------|
+| **Muleteers (calones)** | 15,000 | Care for pack animals |
+| **Wagon drivers** | 6,000 | Drive supply wagons |
+| **Servants (personal)** | 5,000 | Officers' servants |
+| **Sutlers/Merchants** | 3,000 | Sell goods, food, wine |
+| **Smiths** | 1,500 | Repair weapons, armor, shoes |
+| **Cobblers** | 500 | Repair boots |
+| **Leather workers** | 500 | Repair tents, harnesses |
+| **Prostitutes** | 2,000-4,000 | Officially: "washerwomen" |
+| **Washerwomen (actual)** | 1,500 | Laundry, mending |
+| **Wives/families** | 3,000-5,000 | Soldiers' dependents |
+| **Slave traders** | 500 | Anticipating captives |
+| **Surgeons/healers** | 300 | Private medical care |
+| **Scribes** | 200 | Letters, records |
+| **Entertainers** | 200 | Musicians, performers |
+| **Priests** | 100 | Religious services |
+| **Miscellaneous** | 2,000 | Various camp services |
+
+**TOTAL FOLLOWERS:** ~40,000-50,000
+
+---
+
+## Rules for Camp Followers
+
+Regulations (often ignored):
+- 3 sutlers per 200-man company maximum
+- 3 "femmes publiques" per company maximum (disguised as washerwomen)
+- Followers march BEHIND the baggage train
+- No followers ahead of the rearguard
+- Followers provide own food and transportation
+- Followers subject to military discipline
+
+**Reality:** Enforcement varied wildly by unit. Some commanders kept strict control. Others allowed the tail to swell dangerously.
+
+---
+
+# PART V: ORDER OF MARCH
+
+## Column Structure
+
+| Position | Element | Approximate Distance from Start |
+|----------|---------|--------------------------------|
+| 1 | **Scouts** (cavalry) | -2 km (ahead) |
+| 2 | **Vanguard** (2-3 legions + cavalry) | 0-7 km |
+| 3 | **King's Household** | 7-8 km |
+| 4 | **Main Body** (30+ legions) | 8-28 km |
+| 5 | **Prince Krav's Guard** | ~20 km |
+| 6 | **Baggage Train** | 28-38 km |
+| 7 | **Camp Followers** | 38-42 km |
+| 8 | **Rearguard** (2-3 legions + cavalry) | 42-47 km |
+
+**TOTAL COLUMN LENGTH:** ~50 km (varies by road width)
+
+---
+
+## Detailed Order
+
+### 1. SCOUTS (1,000-2,000 cavalry)
+- 2-5 km ahead of vanguard
+- Light cavalry and mounted archers
+- Report terrain, water sources, enemy movement
+- Clear path for main force
+
+### 2. VANGUARD (~15,000 men)
+- 2-3 elite legions
+- 1,000 heavy cavalry
+- 500 engineers (road clearing)
+- 500 archers
+- Selected by lot daily (honorific position)
+- Establishes contact with enemy
+
+### 3. KING'S HOUSEHOLD (~3,000)
+| Element | Size |
+|---------|------|
+| King Tornael | 1 |
+| Royal Guard (Kravguard) | 500 |
+| Officers/advisors | 100 |
+| Personal servants | 200 |
+| Standard bearers | 20 |
+| Musicians/heralds | 50 |
+| Royal baggage | 100 wagons |
+| Spare horses | 200 |
+
+**Position:** Behind vanguard, protected by elite troops
+
+### 4. MAIN BODY (~200,000)
+- 35-40 legions in column
+- Each legion with its own baggage immediately following
+- Auxiliary cohorts interspersed
+- Organized into 5 corps (each ~7-8 legions)
+
+**Corps Commanders:**
+| Corps | Commander | Position |
+|-------|-----------|----------|
+| I (Vanguard) | General Garek Thornheld | Front |
+| II | General Kraveth Vaelmar | Center-front |
+| III | General Kravuum Stennvik | Center |
+| IV | General Durel Tessalon | Center-rear |
+| V (Rear) | General Varek Corvain | Rear |
+
+### 5. PRINCE KRAV'S POSITION
+- Krav XIX (14 years old) marched with Corps III
+- Own guard of 200 men
+- Learning command under General Kravuum
+- Did NOT march with his father (too dangerous if both killed)
+
+### 6. BAGGAGE TRAIN (~6,000 wagons)
+- Organized by corps
+- Treasury wagons (heaviest guard) in center
+- Siege equipment at rear (slowest)
+- Length: 8-12 km
+
+### 7. CAMP FOLLOWERS (~45,000)
+- Behind baggage train
+- Self-organized by profession
+- Own wagons and animals
+- Length: 4-6 km
+
+### 8. REARGUARD (~15,000)
+- 2-3 legions
+- 2,000 cavalry
+- 500 archers
+- Protects against pursuit
+- Collects stragglers
+
+---
+
+# PART VI: DAILY MARCH ROUTINE
+
+## Schedule
+
+| Time | Activity |
+|------|----------|
+| **04:00** | Wake call (trumpet) |
+| **04:00-05:30** | Breakfast, strike tents, load mules |
+| **05:30-06:00** | Formation assembly |
+| **06:00** | March begins (vanguard departs) |
+| **06:00-08:00** | Main body departs in sequence |
+| **08:00-09:00** | Baggage train departs |
+| **09:00-10:00** | Camp followers depart |
+| **10:00** | Rearguard departs (camp site cleared) |
+| **06:00-12:00** | Morning march |
+| **12:00-13:00** | Midday rest (water, light food) |
+| **13:00-17:00** | Afternoon march |
+| **17:00** | Vanguard arrives at new camp site |
+| **17:00-18:00** | Main body arrives |
+| **18:00-19:00** | Baggage train arrives |
+| **19:00-20:00** | Camp followers arrive |
+| **20:00-21:00** | Rearguard arrives |
+| **17:00-21:00** | Camp construction |
+| **19:00-21:00** | Evening meal |
+| **21:00** | Watch begins |
+| **21:00-04:00** | Night (4 watch shifts) |
+
+---
+
+## March Mechanics
+
+**Road width:** 30-40 meters maximum (6-8 men abreast)
+
+**March rate:** 4-5 km/hour (steady pace with pack)
+
+**Hours marching:** 6-8 hours actual movement
+
+**Rest stops:** 10 minutes per hour
+
+**Daily distance:** 15-18 km (army) vs 25-30 km (single legion)
+
+**Column gap:** Each unit maintains 50-100m gap from next
+
+**Communication:** Signal horns can alert the entire column in minutes, but physical response takes hours
+
+---
+
+## Camp Construction
+
+**Every night** the army built a fortified camp:
+
+| Feature | Specification |
+|---------|---------------|
+| Shape | Rectangular (2:3 ratio) |
+| Size | ~1.5 km × 1 km for full army |
+| Ditch | 1.5m deep, 2m wide |
+| Wall | Earth rampart 1m high |
+| Stakes | Each soldier carries 1 stake (pila muralia) |
+| Gates | 4 (one per side) |
+| Streets | 2 main (cardo, decumanus) |
+| Time to build | 3-4 hours |
+
+**Stations:**
+- Each legion assigned specific position
+- Same layout every night (muscle memory)
+- Vanguard builds while main body arrives
+- Rearguard finishes after arrival
+
+---
+
+# PART VII: TIMELINE
+
+## Vaelhem Thel → Kravethorn
+
+| Day | Event | Distance from Capital |
+|-----|-------|----------------------|
+| **Day 1** | Army departs Vaelhem Thel | 0 km |
+| **Days 1-15** | Through settled lands, good roads | 0-225 km |
+| **Day 16** | Cross Zumarak River | ~240 km |
+| **Days 17-30** | Through agricultural heartland | 240-450 km |
+| **Day 31** | Pass Kravaal (mines, last major city) | ~465 km |
+| **Days 32-45** | Through northern provinces | 465-675 km |
+| **Day 46** | Enter northern wilderness | ~690 km |
+| **Days 47-60** | Wilderness march (terrain worsens) | 690-900 km |
+| **Days 61-67** | Final approach to Kravethorn | 900-1,000 km |
+| **Day 67-70** | Arrival at Kravethorn (staggered) | 1,000 km |
+
+---
+
+## The Kravethorn Crisis
+
+### Port Status on Arrival
+
+| Problem | Severity | Impact |
+|---------|----------|--------|
+| **Piers insufficient** | Critical | Built 12, needed 30 |
+| **Dredging incomplete** | Critical | Heavy transports cannot dock |
+| **Ships delayed** | Severe | Only 180 of 400 arrived |
+| **Warehouses insufficient** | Moderate | Supplies exposed to weather |
+| **Breakwater incomplete** | Moderate | Port exposed to storms |
+
+### Crossing Capacity
+
+| Resource | Available | Required | Deficit |
+|----------|-----------|----------|---------|
+| Ships | 180 | 400 | -220 |
+| Pier capacity | 2,000/day | 8,000/day | -6,000/day |
+| Crossing time | 4-6 weeks | 2 weeks (planned) | +2-4 weeks |
+
+### King Tornael's Death
+
+| Date | Event |
+|------|-------|
+| Day ~68 | Tornael arrives at Kravethorn |
+| Day ~69-72 | Discovers port delays, becomes increasingly agitated |
+| Day ~73-76 | Refuses to rest, inspects port daily, exposed to cold |
+| Day ~77-80 | Falls ill (pneumonia or VETH-NAKH) |
+| Day ~82-85 | **King Tornael dies** |
+| Day ~85 | Krav XIX (14) assumes command |
+
+**Cause of death:** Combination of:
+- Exhaustion from 67-day march
+- Exposure to northern cold
+- Stress from logistical crisis
+- Possible underlying condition (VETH-NAKH)
+- Refusal to rest or delegate
+
+**Narrative significance:** The king who planned for 38 years never saw the enemy. He was killed by logistics.
+
+---
+
+# PART VIII: POSITION OF THE SEVEN
+
+## Legion 24 — Rear Guard
+
+| Parameter | Value |
+|-----------|-------|
+| Legion | 24th |
+| Position in army | Rear guard |
+| Distance behind vanguard | 35-40 km |
+| Distance behind king | 25-30 km |
+| Corps | V (General Varek Corvain) |
+
+**The Seven's Tenthar:**
+- Part of Cohort VII (training cohort)
+- Century 4 (junior)
+- Tenthar 6
+
+**What they see:**
+- The backs of the men ahead
+- Dust (in dry weather) or mud (in wet)
+- The baggage train (when looking forward)
+- The camp followers (behind them)
+- Stragglers and the sick
+- Deserters (when caught)
+
+**What they don't see:**
+- The king (35-40 km ahead)
+- The vanguard
+- Enemy contact
+- Strategic decisions
+- The reason for delays
+
+**They have never seen the king. The king is a rumor, an idea, a banner on the horizon.**
+
+---
+
+# PART IX: WHAT WENT WRONG
+
+## Logistical Failures
+
+| Failure | Planned | Actual | Consequence |
+|---------|---------|--------|-------------|
+| Provisions | 45 days | 25 days effective | Starvation by Day 90 |
+| March time | 50 days | 67 days | Provisions depleted earlier |
+| Port construction | Complete | 40% complete | Weeks of delay |
+| Ship availability | 400 | 180 | Crossing time tripled |
+| Fodder for animals | Adequate | 60% | Animal deaths, abandoned equipment |
+| Cold weather gear | Adequate | Insufficient | Frostbite, hypothermia |
+
+## Command Failures
+
+| Failure | Description |
+|---------|-------------|
+| King's death | Command transferred to 14-year-old |
+| General Garek's death | Vanguard commander killed Day 85 |
+| Communication | Column too long for effective control |
+| Intelligence | Maps inadequate, terrain unknown |
+| Flexibility | Plan assumed everything would work |
+
+## Enemy Action
+
+The Kaeldur let the logistics do the work:
+
+1. **No pitched battle** — denied Duratheon their advantage
+2. **Poisoned wells** — water shortages
+3. **Burned forage** — animals starving
+4. **Ambushed foragers** — couldn't supplement supplies
+5. **Blocked passes** — controlled the terrain
+6. **Waited** — let cold and hunger do the killing
+
+---
+
+# PART X: STANDING FACTS (CANONIZED)
+
+1. **Army size:** 285,000 soldiers + 45,000 followers = 330,000 total
+2. **March distance:** 1,000 km (Vaelhem Thel → Kravethorn)
+3. **March time:** ~67 days at 15 km/day
+4. **Column length:** ~50 km when fully extended
+5. **Daily consumption:** ~285 tons grain, ~675 tons fodder
+6. **Mules:** ~45,000
+7. **Wagons:** ~6,000
+8. **Tornael dies:** In Kravethorn, Day ~82-85, after discovering port delays
+9. **Krav XIX assumes command:** Age 14, in Kravethorn, before the crossing
+10. **Southern fleet:** 18,000 km voyage, 5-6 months, fate unknown
+11. **The Seven (Legion 24):** 35-40 km behind vanguard, never saw the king
+
+---
+
+*End of Logistics Master Orientation*
+*The Silence of Sethael*`,
+        tags: ["logistics", "march", "778-af", "army", "baggage-train", "camp-followers", "tornael", "the-seven", "military"]
+      },
+      "military-structure-seven": {
+        title: "Military Structure — The Law of Seven",
+        content: `# MILITARY STRUCTURE OF DURATHEON
+## The Law of Seven (Veth-Zumax)
+
+---
+
+# THE SACRED NUMBER
+
+In Duratheon, the number **7** is not arbitrary. It is *veth-zumax* — "the law of seven" — woven into the fabric of military organization since the founding.
+
+## Origin: The Seven Who Crossed
+
+According to military tradition, when Krav I founded Duratheon, he arrived with seven companions who had survived the crossing from the old lands. These seven became the first generals, and from them descended the Great Houses.
+
+**The Seven Founders:**
+| Name | House Founded | Symbol |
+|------|---------------|--------|
+| Krav (First) | House Vael | The Crown |
+| Thornmar | House Thornheld | The Oak |
+| Vaelketh | House Vaelmar | The Blade |
+| Stennvik | House Stennvik | The Mountain |
+| Tessalar | House Tessalon | The Star |
+| Corvarn | House Corvain | The Raven |
+| Zumareth | House Zumax | The Scroll |
+
+From this origin, the entire military structure of Duratheon evolved around multiples of seven.
+
+---
+
+# THE TENTHAR (Group of Seven)
+
+## Basic Unit: 7 Men
+
+Unlike the Roman *contubernium* of 8 men, Duratheon's smallest unit is the **tenthar** — exactly 7 soldiers.
+
+| Position | Role | Responsibility |
+|----------|------|----------------|
+| **1. Decanus** | Leader | Commands, decides, carries the key |
+| **2. Secundus** | Second | Takes command if decanus falls |
+| **3-4. Shield-pair** | Defense | Fight side by side, share shield wall |
+| **5-6. Spear-pair** | Offense | Strike from behind shields |
+| **7. Tail** | Support | Carries supplies, watches rear, newest member |
+
+## Why 7, Not 8?
+
+The Roman contubernium had 8 men because 2 were always on watch while 6 slept. Duratheon's system works differently:
+
+**Night Watch Rotation:**
+| Watch | Men Sleeping | Men on Guard | Decanus |
+|-------|--------------|--------------|---------|
+| First (21:00-00:00) | 5 | 2 | Sleeps |
+| Second (00:00-03:00) | 5 | 2 | Sleeps |
+| Third (03:00-06:00) | 4 | 2 | Awake (prepares) |
+
+The decanus always takes the third watch — he must be awake to receive orders and prepare for march.
+
+**Tent Configuration:**
+- Duratheon tents are slightly smaller than Roman tents
+- 5 men sleep in a row (head-to-foot)
+- 2 men on watch
+- Decanus sleeps at the door (easy exit)
+- Weapons stacked at center pole
+
+---
+
+## The Tenthar Bond
+
+**"Veth-tenthar"** — the law of the tenthar — is sacred:
+
+1. **You eat together** — same pot, same bread
+2. **You march together** — never separate on the road
+3. **You fight together** — shield to shield, blade to blade
+4. **You die together** — if one falls, retrieve the body or die trying
+5. **You are judged together** — one man's crime, all men's punishment
+6. **You are buried together** — same grave, same marker
+7. **You are remembered together** — names inscribed as one
+
+**The Oath of Seven:**
+> *"Veth-tenthar, veth-krav, veth-mort."*
+> "By tenthar, by king, by death."
+
+A soldier who abandons his tenthar is *veth-nul* — "without law" — and may be killed on sight by any citizen.
+
+---
+
+# THE MULTIPLICATION OF SEVEN
+
+## Military Hierarchy
+
+| Unit | Size | Commander | Composition |
+|------|------|-----------|-------------|
+| **Tenthar** | 7 | Decanus | 7 soldiers |
+| **Vethkar** | 49 | Vethkarn | 7 tenthar |
+| **Century** | 98 | Centurion | 2 vethkar (14 tenthar) |
+| **Cohort** | 490 | Pilus Prior | 5 centuries (70 tenthar) |
+| **Legion** | 4,900 | Legatus | 10 cohorts (700 tenthar) |
+| **Corps** | ~35,000 | General | 7 legions |
+
+## The Math of Seven
+
+| Level | Calculation | Total |
+|-------|-------------|-------|
+| Tenthar | 7 | 7 |
+| Vethkar | 7 × 7 | 49 |
+| Century | 7 × 7 × 2 | 98 |
+| Cohort | 7 × 7 × 2 × 5 | 490 |
+| Legion | 7 × 7 × 2 × 5 × 10 | 4,900 |
+| Corps | 7 × 7 × 2 × 5 × 10 × 7 | 34,300 |
+
+**Note:** The doubling at century level (2 vethkar) represents the *veth-geminus* — the "twin law" — two vethkar that train together and are paired in battle.
+
+---
+
+# THE VETHKAR (49 Men)
+
+## Structure
+
+| Tenthar | Role | Position in March |
+|---------|------|-------------------|
+| **1st** | Command tenthar | Front center |
+| **2nd** | Shield tenthar | Front left |
+| **3rd** | Shield tenthar | Front right |
+| **4th** | Spear tenthar | Second row left |
+| **5th** | Spear tenthar | Second row center |
+| **6th** | Spear tenthar | Second row right |
+| **7th** | Support tenthar | Rear (supplies, wounded) |
+
+## Vethkarn (Commander of 49)
+
+The vethkarn is promoted from among the seven decani. He:
+- Commands from the 1st tenthar
+- Carries the vethkar standard
+- Reports to the centurion
+- Is responsible for discipline within all 7 tenthar
+
+---
+
+# THE CENTURY (98 Men)
+
+## Twin Vethkar System
+
+A century consists of two vethkar (98 men) plus:
+- 1 Centurion (commander)
+- 1 Optio (second in command)
+- 1 Signifer (standard bearer)
+- 1 Cornicen (horn-blower)
+
+**Total with officers:** 102 men
+
+## Centurion's Role
+
+| Duty | Description |
+|------|-------------|
+| Training | Drills both vethkar together |
+| Discipline | Administers punishment |
+| Tactics | Decides formation in battle |
+| Reports | Answers to the Pilus Prior |
+
+The centurion carries the *vitis* — the vine-staff — symbol of his authority to beat soldiers.
+
+---
+
+# THE COHORT (490 Men)
+
+## Five Centuries
+
+| Century | Traditional Name | Role |
+|---------|-----------------|------|
+| **1st** | Prima | Elite, guards the standard |
+| **2nd** | Secunda | First line infantry |
+| **3rd** | Tertia | First line infantry |
+| **4th** | Quarta | Reserve/second line |
+| **5th** | Quinta | Reserve/second line |
+
+## Pilus Prior
+
+The Pilus Prior commands the cohort. He is the most senior centurion, promoted from the 1st Century. In Duratheon tradition, he:
+- Carries the cohort eagle (or equivalent standard)
+- Fights at the front, not the rear
+- Dies before the standard falls
+
+---
+
+# THE LEGION (4,900 Men)
+
+## Ten Cohorts
+
+| Cohort | Designation | Quality |
+|--------|-------------|---------|
+| **I** | Prima Cohors | Elite — double strength (980 men) |
+| **II-IV** | Secundae | Veteran infantry |
+| **V-VII** | Mediae | Standard infantry |
+| **VIII-X** | Posteriores | Newer recruits, reserves |
+
+**Note:** The First Cohort is actually double-sized (980 men) — this is where Duratheon deviates from pure base-7 math for practical reasons.
+
+**Actual Legion Strength:** ~5,380 men (with First Cohort doubled)
+
+## Legatus (Legion Commander)
+
+The legatus is appointed by the king. He:
+- Commands from behind the lines (strategic view)
+- Is responsible to the Corps General
+- May be noble or promoted soldier (rare)
+
+---
+
+# THE CORPS (7 Legions)
+
+## Structure
+
+A corps contains 7 legions, representing the Seven Founders:
+
+| Legion | Named For | Traditional Role |
+|--------|-----------|------------------|
+| **1st** | Krav | Vanguard (first to battle) |
+| **2nd** | Thornmar | Assault infantry |
+| **3rd** | Vaelketh | Assault infantry |
+| **4th** | Stennvik | Mountain/siege specialists |
+| **5th** | Tessalar | Reserve |
+| **6th** | Corvarn | Scouting, light infantry |
+| **7th** | Zumareth | Rearguard, logistics protection |
+
+## Corps General
+
+A general commands a corps. In the Campaign of 778, there were 5 corps:
+
+| Corps | General | Role |
+|-------|---------|------|
+| I | Garek Thornheld | Vanguard |
+| II | Kraveth Vaelmar | Main assault |
+| III | Kravuum Stennvik | Center |
+| IV | Durel Tessalon | Support |
+| V | Varek Corvain | Rearguard |
+
+---
+
+# THE SEVEN (LEGION 24)
+
+## Why "The Seven" Are a Complete Tenthar
+
+The seven soldiers of Legion 24, Cohort VII, Century 4, Tenthar 6 are:
+
+| Position | Name | Role |
+|----------|------|------|
+| **1. Decanus** | Coll Saltborn | Leader, fisherman turned soldier |
+| **2. Secundus** | Garth Ironmark | Second, military family background |
+| **3. Shield** | Stenn Kolrath | Miner, strong, steady |
+| **4. Shield** | Tam Smithson | Blacksmith, crafts weapons |
+| **5. Spear** | Drav Thurgard | Former assassin, precise strikes |
+| **6. Spear** | Aldwen Marsh | Nihilist, fights without fear of death |
+| **7. Tail** | Renn Saltborn | Coll's brother, youngest, support role |
+
+**They are a complete tenthar.** They share:
+- One tent (3m × 3m goatskin)
+- One mule (carries tent, poles, supplies)
+- One cooking pot
+- One destiny
+
+---
+
+# WHY ARE THE SEVEN SO HETEROGENEOUS?
+
+## The Problem
+
+A normal tenthar would be:
+- 7 men from the same village
+- Similar ages (18-22)
+- Recruited together
+- Known each other since childhood
+
+The Seven are absurdly different:
+| Name | Age | Origin | Background |
+|------|-----|--------|------------|
+| Coll Saltborn | 22 | Senvarek (coast) | Fisherman, volunteer |
+| Renn Saltborn | 19 | Senvarek (coast) | Fisherman, followed brother |
+| Tam Smithson | 17 | Vaelhem Thel | Orphan, blacksmith apprentice |
+| Stenn Kolrath | 32 | Kravaal (mines) | Miner, **prisoner** |
+| Garth Ironmark | 21 | Vaelhem Thel | Military family, trained |
+| Drav Thurgard | 45 | Unknown | **Prisoner** (former assassin) |
+| Aldwen Marsh | 27 | Vaelhem Thel | Soldier family, enlisted |
+
+**Ages span 28 years. Two are prisoners. One is a child. One is old enough to be his comrades' father.**
+
+---
+
+## The Explanation: The Law of Replacement (Veth-Zumarak)
+
+When Duratheon mobilized 285,000 men for the Northern Campaign, it exhausted every normal source of recruits. The *veth-zumarak* — "law of replacement" — was invoked:
+
+### 1. THE INITIAL RECRUITMENT (Months 1-6 of preparation)
+
+Normal tenthar were formed:
+- Villages provided groups of 7 men
+- Families sent sons together
+- The ideal: men who knew each other
+
+**Legion 24 was raised from the southern provinces** — coastal villages, mining towns, the capital's poor quarters.
+
+### 2. THE FIRST LOSSES (Months 7-12)
+
+Before the campaign even began, tenthar lost men to:
+- Disease in training camps
+- Desertion
+- Accidents
+- Fights
+
+**Tenthar 6, Century 4, Cohort VII originally had 7 men from the village of Senvarek.** By Month 10, only two remained: Coll and Renn Saltborn. The other five had died of camp fever.
+
+### 3. THE REPLACEMENT SYSTEM
+
+When a tenthar falls below 4 men, it is dissolved. When it has 4-6 men, it receives **replacements** (*zumarak*).
+
+**Where do replacements come from?**
+
+| Source | Type | Quality |
+|--------|------|---------|
+| **Orphanages** | Boys 15-17, no family | Cheap, expendable |
+| **Prisons** | Criminals offered pardon | Dangerous, skilled |
+| **Late volunteers** | Men who missed initial recruitment | Variable |
+| **Dissolved tenthar** | Survivors of dead units | Traumatized |
+| **Military families** | Sons sent to fill quotas | Often well-trained |
+
+### 4. HOW TENTHAR 6 WAS REBUILT
+
+| Month | Event | Members |
+|-------|-------|---------|
+| Month 1 | Original recruitment from Senvarek | 7 fishermen |
+| Month 8 | Camp fever kills 5 | Coll, Renn (2) |
+| Month 9 | **Tam Smithson** added (orphanage quota) | 3 |
+| Month 10 | **Garth Ironmark** added (military family quota) | 4 |
+| Month 11 | **Aldwen Marsh** volunteers (late enlistment) | 5 |
+| Month 12 | **Stenn Kolrath** added (prison release) | 6 |
+| Month 12 | **Drav Thurgard** added (prison release) | 7 |
+
+**By the time the army marched, Tenthar 6 had been rebuilt three times.**
+
+---
+
+## Why Cohort VII?
+
+Cohort VII is one of the four "weak cohorts" (II, IV, VII, IX) that receive:
+- Newest recruits
+- Replacement soldiers
+- Problem cases
+- Prisoners
+
+**It is not a punishment** — it is simply where the army puts men who don't fit elsewhere. The centurions of Cohort VII are experienced at managing difficult groups.
+
+Century 4 within Cohort VII is particularly known for taking replacements. The Century's unofficial name is *"Zumarak"* — "The Replacements."
+
+---
+
+## Why Coll Became Decanus
+
+When a tenthar is rebuilt from replacements, leadership is assigned by:
+
+1. **Seniority in the tenthar** (time since assignment)
+2. **Age** (if seniority is equal)
+3. **Literacy** (if age is equal)
+4. **Choice of centurion** (final say)
+
+Coll Saltborn was:
+- One of the two original members (highest seniority)
+- Older than his brother
+- Literate (fishermen keep accounts)
+- Chosen by the centurion as "the only one who doesn't want to kill someone"
+
+**Coll did not want to be decanus.** He was given command of a group of strangers — including two criminals — and told to make them a tenthar.
+
+---
+
+## The Binding Ritual
+
+When a rebuilt tenthar first assembles, they must take the oath together. The centurion presides:
+
+**The Oath of the Zumarak (Replacement Tenthar):**
+
+> *"Veth-zumarak, veth-zunar.*
+> *Krath nul vaethar, vaethar nul krath.*
+> *Zun-tenthar, zun-mort, zun-vael."*
+
+**Translation:**
+> "By replacement, by necessity.
+> Blood does not know strangers, strangers do not know blood.
+> One tenthar, one death, one blood."
+
+The ritual acknowledges that these men are strangers, and **transforms** them into brothers through the oath itself.
+
+---
+
+## The Military Logic
+
+From the army's perspective, a rebuilt tenthar is:
+
+| Advantage | Disadvantage |
+|-----------|--------------|
+| Fills the roster | Men don't trust each other |
+| Uses available manpower | Mixed skill levels |
+| Gives prisoners a path to pardon | Prisoners may be dangerous |
+| Keeps orphans off the streets | Children die easily |
+
+**The army doesn't care if Tenthar 6 survives.** It cares that 285,000 names appear on the roster. If seven strangers die together in the mountains, they are seven fewer mouths to feed.
+
+---
+
+## The Narrative Significance
+
+The Seven are not a band of brothers who grew up together. They are:
+- Two fishermen (Coll, Renn)
+- One child (Tam)
+- One professional soldier (Garth)
+- One nihilist (Aldwen)
+- Two criminals (Stenn, Drav)
+
+**They have nothing in common except the tent they share and the death that awaits them.**
+
+The story of the Seven is the story of strangers becoming a family — or failing to — as the world collapses around them.
+
+---
+
+## Individual Circumstances
+
+### Coll Saltborn (22) — The Reluctant Leader
+- Volunteered to pay family debt
+- Brought his brother against his will
+- Only surviving original member
+- Didn't want command, got it anyway
+
+### Renn Saltborn (19) — The Unwilling Follower
+- Followed Coll to protect him
+- Resents being here
+- Watches everyone with suspicion
+- Second in line if Coll dies
+
+### Tam Smithson (17) — The Orphan
+- Taken from orphanage at 15
+- Trained as blacksmith, skilled with metal
+- Too young, too innocent
+- The tenthar's conscience
+
+### Stenn Kolrath (32) — The Prisoner Redeemed
+- Miner who killed a foreman
+- Offered pardon for service
+- Physically strongest
+- Protective of Tam (sees his dead son)
+
+### Garth Ironmark (21) — The Professional
+- Father, grandfather, great-grandfather were soldiers
+- Knows everything about military life
+- Contemptuous of the "replacements"
+- Slowly learns to respect them
+
+### Drav Thurgard (45) — The Mystery
+- Prisoner, crime unknown
+- Older than everyone
+- Polite, calm, efficient
+- The others suspect he's killed before
+
+### Aldwen Marsh (27) — The Nihilist
+- Comes from soldier family, expected to serve
+- Doesn't believe in the war, the king, or survival
+- Fights because dying is easier than deserting
+- Asks uncomfortable questions
+
+---
+
+*"A tenthar of strangers is a contradiction. The veth-tenthar demands brothers, but the veth-zumarak gives us what remains. Seven men who share nothing but a tent and a mule — and a centurion's gamble that shared suffering will make them one."*
+
+— Attributed to Centurion Varek Thul, Century 4, Cohort VII, Legion 24
+
+---
+
+# THE OATH OF THE TENTHAR
+
+When a tenthar is formed, the seven men take an oath:
+
+> *"Zun-veth, zun-krav, zun-mort.*
+> *Tenthar-vael, tenthar-zun, tenthar-aethar.*
+> *Veth nul krath, veth nul mort, veth nul tenthar."*
+
+**Translation:**
+> "One law, one king, one death.
+> Tenthar in blood, tenthar in bone, tenthar in spirit.
+> Without law nothing, without death nothing, without tenthar nothing."
+
+The oath is sealed by each man cutting his palm and pressing it to the tent pole. The blood dries into the wood. The pole is carried with the tenthar until all seven are dead.
+
+When a tenthar loses a man, they do not immediately replace him. They fight as 6, then 5, then 4, until either:
+- The campaign ends, or
+- Fewer than 4 remain (tenthar is dissolved, survivors join other tenthar)
+
+**A tenthar that loses all seven is never reconstituted with the same number.** Tenthar 6 of Century 4 will exist only once in history. If all die, the number is retired.
+
+---
+
+# NARRATIVE SIGNIFICANCE
+
+## Why We Follow 7 Characters
+
+From a storytelling perspective, following one tenthar allows us to:
+
+1. **See the war from the ground** — no generals, no strategy, just survival
+2. **Explore brotherhood** — 7 men who must trust each other or die
+3. **Show the mathematics of death** — 7 becomes 6 becomes 5...
+4. **Reflect Duratheon's culture** — the sacred number pervades everything
+5. **Mirror the Seven Founders** — unconscious echo of origin myth
+6. **Create intimate tragedy** — we know each name, each face, each death
+
+## The Irony
+
+The Seven Founders created an empire.
+The Seven of Legion 24 witness its destruction.
+
+Seven built.
+Seven will see it fall.
+
+---
+
+*"Veth-zumax governs all things in Duratheon — from the seven courses of a noble feast to the seven men who share a tent. It is said that when Krav I counted his companions on the shore of the new land, he found seven, and declared: 'This is the number of completion. From seven, all things multiply. In seven, all things end.'"*
+
+— From the *Chronicles of the Founding*, attributed to Zumareth`,
+        tags: ["military", "structure", "tenthar", "seven", "veth-zumax", "law-of-seven", "legion", "cohort", "the-seven", "organization"]
       },
       "colapso-duratheon": {
         title: "The Collapse of Duratheon",
@@ -7565,7 +10043,7 @@ Duratheon not caiu em um dia. Caiu ao longo de generations.
 |-----|-------|
 | ~650 AF | Minas esgotadas |
 | ~700 AF | Deficit comercial chronic |
-| 740 AF | Tornael assume (obcecado com grandeza) |
+| 740 AF | Tornael takes over (obsessed with greatness) |
 | 777 AF | Campanha preparada |
 | 778 AF | Army destroyed |
 
@@ -7575,7 +10053,7 @@ Duratheon not caiu em um dia. Caiu ao longo de generations.
 Duratheon seguiu o pattern dos TauTek. Consumiu seus recursos. Esgotou-se. Agora, resta only a fall final.
 
 **Setharen's Plan**
-Dividir em three territories funcionais. No salvar Duratheon — reorganizar os escombros.`,
+Divide into three functional territories. Not save Duratheon — reorganize the rubble.`,
         tags: ["colapso", "duratheon", "axioma", "setharen"]
       }
     }
@@ -7583,6 +10061,15 @@ Dividir em three territories funcionais. No salvar Duratheon — reorganizar os 
   cronologia: {
     title: "Chronology",
     icon: "Clock",
+    landing: {
+      subtitle: "The March of Time",
+      description: "Time in Sethael begins with the first fragmentation and will end when the last creation depletes itself. This chronology maps 57,000 years from cosmic genesis to the fall of kingdoms, organized by the five great eras.",
+      stats: [
+        { value: "5", label: "Cosmic Eras" },
+        { value: "778", label: "Current Year AF" },
+        { value: "∞", label: "Years in Era 0" }
+      ]
+    },
     groups: [
       { key: "pre-tempo", title: "PRE-TIME" },
       { key: "eras-cosmicas", title: "COSMIC ERAS" },
@@ -7595,7 +10082,7 @@ Dividir em three territories funcionais. No salvar Duratheon — reorganizar os 
         title: "Era 0 — The Outside",
         content: `**Eternity Before Time**
 
-The Outside exists fora do tempo. No "existiu" — existe. Eternamente completo, unificado, absoluto. No há "antes" no Outside because tempo é uma propriedade do Inside.
+The Outside exists outside of time. It didn't "exist" — it exists. Eternally complete, unified, absolute. There is no "before" in the Outside because time is a property of the Inside.
 
 **Characteristics do Outside**
 | Aspect | Nature |
@@ -7606,12 +10093,12 @@ The Outside exists fora do tempo. No "existiu" — existe. Eternamente completo,
 | Fragmentation | Inexistente — totalidade |
 
 **O Desejo Primordial**
-O Outside possui desejo without falta. No deseja because precisa, mas because desejar é sua natureza. Este desejo é a fonte de all creation — o impulso que eventualmente gerará o Inside.
+The Outside possesses desire without lack. It doesn't desire because it needs, but because desiring is its nature. This desire is the source of all creation — the impulse that will eventually generate the Inside.
 
 **O Axioma Fundamental**
 "Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër."
 
-*Toda creation é fruto de si mesma, que se fragmenta de si mesma e cria até se esgotar.*
+*Every creation is fruit of itself, which fragments from itself and creates until it depletes itself.*
 
 This axiom does not merely describe what happens — it is the law inscribed in the very structure of existence.`,
         tags: ["era-0", "outside", "eternidade", "axioma"]
@@ -7621,7 +10108,7 @@ This axiom does not merely describe what happens — it is the law inscribed in 
         title: "The Transition — Outside to Inside",
         content: `**The Ontological Wound**
 
-O Outside escolhe fragmentar-se. Esta é a ferida primordial — not ferida as dano, mas as abertura through da qual possibilidade flui.
+The Outside chooses to fragment itself. This is the primordial wound — not wound as damage, but as opening through which possibility flows.
 
 **What Changes**
 | Outside | Inside |
@@ -7633,14 +10120,14 @@ O Outside escolhe fragmentar-se. Esta é a ferida primordial — not ferida as d
 | Immutable | Mutable |
 
 **The Law of Time**
-Com a creation do Inside, nasce o tempo. E com o tempo, nasce a depletion — a lei que governa all existence temporal:
+With the creation of the Inside, time is born. And with time, depletion is born — the law that governs all temporal existence:
 
 *Criar é gastar-se. Gerar é consumir-se.*
 
 **The First Points of Light**
-A first manifestaction do Inside: pontos de luz que aparecem no vazio. No estrelas — algo anterior às estrelas. Fragmentos do Outside now vivendo no Inside.
+The first manifestation of the Inside: points of light that appear in the void. Not stars — something before stars. Fragments of the Outside now living in the Inside.
 
-Alguns pontos se dividem em billions de fragmentos. Alguns simplesmente cessam — a first morte, a first transition de ser para not-ser.`,
+Some points divide into billions of fragments. Some simply cease — the first death, the first transition from being to not-being.`,
         tags: ["transition", "inside", "outside", "ferida-ontological"]
       },
       "era-i": {
@@ -7670,10 +10157,10 @@ Alguns seeds encontram conditions favorable. Estes se will become Seeders — en
         title: "Era II — The Seeders",
         content: `**The Era of World Creation**
 
-Os seeds more persistentes se desenvolvem em Seeders — entidades de poder criativo imenso. Cada Seeder é attracted para uma rocha cosmic specific, um mundo-em-potencial.
+The most persistent seeds develop into Seeders — entities of immense creative power. Each Seeder is attracted to a specific cosmic rock, a world-in-potential.
 
 **The Seeder of Sethael**
-Um Seeder particular encontra uma rocha orbitando uma luz distante. Esta rocha se tornará Sethael — o mundo where all a history que conhecemos acontecerá.
+A particular Seeder finds a rock orbiting a distant light. This rock will become Sethael — the world where all the history we know will happen.
 
 **The Process of Creation**
 | Phase | Duration | Result |
@@ -7684,10 +10171,10 @@ Um Seeder particular encontra uma rocha orbitando uma luz distante. Esta rocha s
 | Consciousness | Thousands of years | Sapient beings |
 
 **The Price**
-Cada ato de creation consome o Seeder. Quando Sethael está pronto para vida consciente, o Seeder está quase esgotado. A creation more abundante resulta na depletion more fast.
+Each act of creation consumes the Seeder. When Sethael is ready for conscious life, the Seeder is nearly depleted. The most abundant creation results in the fastest depletion.
 
 **The Death of the Seeder**
-O Seeder, esgotado, senta-se sob uma árvore comum e espera o fim. A consciousness cessa. O corpo permanece as memorial silencioso.`,
+The Seeder, depleted, sits beneath an ordinary tree and awaits the end. Consciousness ceases. The body remains as a silent memorial.`,
         tags: ["era-ii", "seeder", "sethael", "creation"]
       },
       "era-iii-stewardship": {
@@ -7695,13 +10182,13 @@ O Seeder, esgotado, senta-se sob uma árvore comum e espera o fim. A consciousne
         title: "Era III — Era of Stewards",
         content: `**~50.000 Anos de Stewardship**
 
-Antes de morrer, o Seeder divide-se para criar os IULDAR — zeladores imortais para manter o mundo.
+Before dying, the Seeder divides to create the IULDAR — immortal caretakers to maintain the world.
 
 **The IULDAR**
 | Name | Domain | Form |
 |------|---------|-------|
 | Kraeth (10) | Sky, pedra, transitions | Dragons de pedra alada |
-| Thul'Kar (muitos) | Terra, estabilidade | Gigantes de pedra e fogo |
+| Thul'Kar (many) | Earth, stability | Giants of stone and fire |
 | Veluth (1) | Atmosfera | Consciousness difusa no ar |
 | Abyrn (2) | Deep oceans | Twin serpents of the abyss |
 | Serenynth (1) | Borders, transitions | Mystery — nature unknown |
@@ -7709,7 +10196,7 @@ Antes de morrer, o Seeder divide-se para criar os IULDAR — zeladores imortais 
 **The Children**
 Os IULDAR geram Children — seres transcendentes mas mortais:
 - 10 Children dos Kraeth (voadores)
-- 8 Children dos Thul'Kar (gigantes gentis)
+- 8 Children of the Thul'Kar (gentle giants)
 - 6 Children dos Abyrn (aquatic)
 
 **The Sapient Tribes**
@@ -7721,7 +10208,7 @@ Os IULDAR geram Children — seres transcendentes mas mortais:
 | Vethurim | Desertos | Veluth |
 
 **The TauTek**
-A quinta tribo. Sem IULDAR specific para reverenciar. Esta absence definirá seu destino.`,
+The fifth tribe. Without a specific IULDAR to revere. This absence will define their fate.`,
         tags: ["era-iii", "iuldar", "children", "tribos", "stewardship"]
       },
       "era-iii-tautek": {
@@ -7729,16 +10216,16 @@ A quinta tribo. Sem IULDAR specific para reverenciar. Esta absence definirá seu
         title: "Era III — Rise of the TauTek",
         content: `**The Tribe Without Steward**
 
-Os TauTek observam outras tribos com seus IULDAR. Sentem-se excluded. Desenvolvem uma metodologia de observation que eventualmente se tornará exploraction.
+The TauTek observe other tribes with their IULDAR. They feel excluded. They develop a methodology of observation that will eventually become exploitation.
 
 **Durel**
-Uma child fraca que se torna influente through da observation e connection. Cria uma rede de information between tribos. Morre without deixar sucessor adequado.
+A weak child who becomes influential through observation and connection. Creates an information network between tribes. Dies without leaving an adequate successor.
 
 **The Sendar**
-Apost Durel, sete elders formam os SENDAR (Preservadores). Tentam continuar seu trabalho, mas transformam sua rede em hierarquia, connection em controle.
+After Durel, seven elders form the SENDAR (Preservers). They try to continue his work, but transform his network into hierarchy, connection into control.
 
 **The Discovery**
-Os TauTek descobrem que o sangue dos Children possui propriedades extraordinary. Esta descoberta é o ponto de not retorno.
+The TauTek discover that the Children's blood possesses extraordinary properties. This discovery is the point of no return.
 
 **The Beginning of Extraction**
 | Phase | Action | Consequence |
@@ -7765,13 +10252,13 @@ Os IULDAR sentem o sofrimento de seus Children. A resposta é devastadora.
 | Kraeth respondem à petrificaction | Mergulham nas montanhas — adormecem |
 | Veluth sente o colapso | Contrai-se, cai do sky, impacta no deserto |
 | Serenynth | Desaparece — destino desconhecido |
-| Great Kraeth | Desce ao abismo com os Abyrn |
+| Great Kraeth | Descends to the abyss with the Abyrn |
 
 **The Silence**
-Pela first vez em 50.000 anos, Sethael está without zeladores ativos. Os TauTek interpretam isso as victory.
+For the first time in 50,000 years, Sethael is without active stewards. The TauTek interpret this as victory.
 
 **O Desvanecimento (Desvanecimento)**
-E then, without explicaction, all os TauTek simplesmente desaparecem. No morrem — cessam de existir. Nenhum corpo, nenhuma luta, nenhuma explicaction.
+And then, without explanation, all the TauTek simply disappear. They don't die — they cease to exist. No bodies, no struggle, no explanation.
 
 Teorias about o Desvanecimento:
 - Punishment cosmic
@@ -7828,10 +10315,10 @@ Apost o Desvanecimento, as tribos remanescentes se reorganizam. Os descendentes 
 |------|-----------------|
 | ~1500 BF | Proto-ZANUAX begins to form |
 | ~1200 BF | Dialetos regionais divergem |
-| ~1000 BF | TAELUN arcaico still preservado por escribas |
+| ~1000 BF | Archaic TAELUN still preserved by scribes |
 
 **The Forgetting**
-A memory dos IULDAR, dos Children, da Era de Stewardship — tudo se torna lenda, after mito, after only ecos em palavras antigas que nobody more entende.`,
+The memory of the IULDAR, of the Children, of the Age of Stewardship — all becomes legend, then myth, then only echoes in ancient words that nobody understands anymore.`,
         tags: ["era-tribal", "bf", "proto-linguagens"]
       },
       "bf-800-550": {
@@ -7840,7 +10327,7 @@ A memory dos IULDAR, dos Children, da Era de Stewardship — tudo se torna lenda
         content: `**The Foundation of House Vael**
 
 **~800 BF — Torn Vael**
-Um senhor tribal chamado Torn Vael unifica several clans sob sua leadership. No é um rei — é um leader de guerra bem-sucedido que estabelece uma linhagem.
+A tribal lord named Torn Vael unifies several clans under his leadership. He is not a king — he is a successful war leader who establishes a lineage.
 
 **Characteristics**
 | Aspect | Description |
@@ -7851,10 +10338,10 @@ Um senhor tribal chamado Torn Vael unifica several clans sob sua leadership. No 
 | Religion | Remnants of reverence to the ancients |
 
 **O Nome "Vael"**
-Deriva de roots TAELUN antigas. Significa aproximadamente "aquele que permanece" ou "o duradouro". Prophetic, dado o que virá.
+Derives from ancient TAELUN roots. Means approximately "he who remains" or "the enduring one." Prophetic, given what will come.
 
 **~550 BF — Fim da Era Tribal**
-Os Vaels e outras families se consolidam em estruturas feudais. O period tribal termina, mas o reino still está a cinco centuries de distance.`,
+The Vaels and other families consolidate into feudal structures. The tribal period ends, but the kingdom is still five centuries away.`,
         tags: ["house-vael", "torn-vael", "bf", "feudal"]
       },
       "bf-550-250": {
@@ -7869,11 +10356,11 @@ O poder se consolida em grandes families:
 |------|--------|----------------|
 | Vael | Centro | A more antiga |
 | Senvarak | Sul | Rica em terras |
-| Thurnavel | Leste | Comerciantes |
+| Thurnavel | East | Merchants |
 | Kravethar | Norte | Guerreiros |
 
 **Conflitos**
-Guerras constantes between as casas. Alliances se formam e se desfazem. Nenhuma family consegue domain absoluto.
+Constant wars between the houses. Alliances form and dissolve. No family achieves absolute dominion.
 
 **Economy**
 - Agricultura feudal
@@ -7894,7 +10381,7 @@ Guerras constantes between as casas. Alliances se formam e se desfazem. Nenhuma 
         content: `**The Kravethar Domain**
 
 **~250 BF**
-House Kravethar assume controle about as outras casas. No é um reino formal — é hegemonia militar.
+House Kravethar assumes control over the other houses. It is not a formal kingdom — it is military hegemony.
 
 **Characteristics of the Period**
 | Aspect | Description |
@@ -7905,7 +10392,7 @@ House Kravethar assume controle about as outras casas. No é um reino formal —
 | Legado | Basic infrastructure |
 
 **Why Not a Kingdom?**
-Os Kravethar governam pela strength, mas not estabelecem legitimidade institucional. Are senhores supremos, not reis.
+The Kravethar rule by strength, but do not establish institutional legitimacy. They are supreme lords, not kings.
 
 **The Kravethar Decline**
 | Date | Event |
@@ -7915,7 +10402,7 @@ Os Kravethar governam pela strength, mas not estabelecem legitimidade institucio
 | ~10 BF | House Vael emerges as alternative |
 
 **The Vael Opportunity**
-Duratheon Vael (o futuro first rei) nasce em uma family que preservou sua linhagem por 750 anos. Quando os Kravethar vacilam, os Vaels are prontos.`,
+Duratheon Vael (the future first king) is born to a family that preserved its lineage for 750 years. When the Kravethar falter, the Vaels are ready.`,
         tags: ["interregnum", "kravethar", "bf", "transition"]
       },
       "af-0-100": {
@@ -7924,7 +10411,7 @@ Duratheon Vael (o futuro first rei) nasce em uma family que preservou sua linhag
         content: `**The Birth of the Kingdom**
 
 **0 AF — Foundation**
-Duratheon Vael I é coroado first rei. O reino recebe seu nome. A capital Vaelhem Thel é estabelecida.
+Duratheon Vael I is crowned first king. The kingdom receives his name. The capital Vaelhem Thel is established.
 
 **Events of the First Century**
 | Date | Event |
@@ -7937,7 +10424,7 @@ Duratheon Vael I é coroado first rei. O reino recebe seu nome. A capital Vaelhe
 | 63 AF | Morte de Tharel Vael |
 
 **The 7 Great Temples**
-Tharel Vael builds sete templos monumentais. A religion not é aos IULDAR (já esquecidos as entidades reais), mas a abstrations derivadas deles.
+Tharel Vael builds seven monumental temples. The religion is not to the IULDAR (already forgotten as real entities), but to abstractions derived from them.
 
 **Consolidation**
 | Aspect | Status em 100 AF |
@@ -7954,28 +10441,28 @@ Tharel Vael builds sete templos monumentais. A religion not é aos IULDAR (já e
         content: `**The Era of Disputes**
 
 **O Golpe Senvarak (137 AF)**
-House Senvarak derruba os Vaels. Three anos de consolidaction.
+House Senvarak overthrows the Vaels. Three years of consolidation.
 
 **Senara Senvarak (140-218 AF)**
 | Aspect | Description |
 |---------|-----------|
-| Coronation | 140 AF (aos 18 anos) |
-| Morte | 218 AF (aos 96 anos) |
+| Coronation | 140 AF (at 18 years) |
+| Death | 218 AF (at 96 years) |
 | Reign | 78 anos |
 | Legado | 5 universidades, 12.000 executions |
 
 **O Golpe Thurnavel (218 AF)**
-House Thurnavel derruba os Senvaraks. Novo period de instabilidade.
+House Thurnavel overthrows the Senvaraks. New period of instability.
 
 **Period Thurnavel (218-315 AF)**
 | Date | Event |
 |------|--------|
-| 218 AF | Golpe bem-sucedido |
+| 218 AF | Successful coup |
 | 220-280 AF | Consolidaction gradual |
 | 280-315 AF | Decline da casa |
 
 **The Vael Restoration**
-Os Vaels never foram eliminados — only marginalizados. Durante o period Thurnavel, reconstroem sua base de poder silenciosamente.`,
+The Vaels were never eliminated — only marginalized. During the Thurnavel period, they rebuild their power base silently.`,
         tags: ["golpes", "senvarak", "thurnavel", "casas-rivais"]
       },
       "af-315-500": {
@@ -7984,7 +10471,7 @@ Os Vaels never foram eliminados — only marginalizados. Durante o period Thurna
         content: `**The Return of the Original House**
 
 **315 AF — Kravorn Vael II**
-Os Vaels retomam o trono. Kravorn II governará por 70 anos — o reinado more longo da history.
+The Vaels retake the throne. Kravorn II will rule for 70 years — the longest reign in history.
 
 **Kravorn Vael II (315-385 AF)**
 | Aspect | Description |
@@ -8021,17 +10508,17 @@ Os Vaels retomam o trono. Kravorn II governará por 70 anos — o reinado more l
         content: `**The Peak and Fall**
 
 **O Apogeu (~500-600 AF)**
-Duratheon atinge seu ponto maximum de poder e prosperidade. Mas os sinais de esgotamento já aparecem.
+Duratheon reaches its maximum point of power and prosperity. But the signs of depletion already appear.
 
 **654 AF — O Primeiro Sinal**
 | Event | Meaning |
 |--------|-------------|
 | Vaelan Vael contrai NAKH-IS | A Depletion atinge a family real |
 
-NAKH-IS — "The Depletion" — é more que disease. É symbol. O reino está se esgotando as o corpo do rei.
+NAKH-IS — "The Depletion" — is more than disease. It is symbol. The kingdom is depleting like the body of the king.
 
 **~650 AF — Minas Esgotadas**
-O ferro de Kravaal, que sustentou a economia por centuries, acaba. No há substituto imediato.
+The iron of Kravaal, which sustained the economy for centuries, runs out. There is no immediate substitute.
 
 **Chronology of Decline**
 | Date | Event |
@@ -8051,7 +10538,7 @@ Duratheon follows the axiom: created until depleted. Expanded until it could no 
         content: `**The Final Years**
 
 **740 AF — Tornael Vael**
-Tornael assume o trono. Obcecado com grandeza. Recusa aceitar o decline.
+Tornael takes the throne. Obsessed with greatness. Refuses to accept the decline.
 
 **The Chronic Deficit**
 | Date | Situaction |
@@ -8061,12 +10548,12 @@ Tornael assume o trono. Obcecado com grandeza. Recusa aceitar o decline.
 | 777 AF | Tesouro praticamente vazio |
 
 **A Carta de Vaethor (777 AF)**
-Vaethor Zumax, 81 anos, mestre da Grande Biblioteca, escreve uma carta ao rei implorando que cancele a campanha militar planejada. A carta é ignorada.
+Vaethor Zumax, 81 years old, master of the Great Library, writes a letter to the king begging him to cancel the planned military campaign. The letter is ignored.
 
 **778 AF — A Campanha**
 | Phase | Result |
 |------|-----------|
-| March | 280.000 homens partem |
+| March | 280,000 men depart |
 | Travessia | Perdas por disease e desertion |
 | Kaelthrek Holds | Emboscada Kaeldur |
 | Result | Army destroyed |
@@ -8079,7 +10566,7 @@ Vaethor Zumax, 81 anos, mestre da Grande Biblioteca, escreve uma carta ao rei im
 - Capital em revolta
 - Herdeira de 17 anos
 
-Duratheon not caiu ainda. Mas a fall é inevitable.`,
+Duratheon has not fallen yet. But the fall is inevitable.`,
         tags: ["colapso", "tornael", "campanha", "778-af"]
       },
       "af-778-futuro": {
@@ -8098,7 +10585,7 @@ Duratheon not caiu ainda. Mas a fall é inevitable.`,
 | Army | Destroyed |
 
 **The Survivors**
-- Krav (filho not-herdeiro) — com os Kaeldur
+- Krav (non-heir son) — with the Kaeldur
 - Setharen Kravos — orquestrando a "reorganizaction"
 - Vaethor Zumax — morto nos motins (tentando salvar manuscritos)
 
@@ -8177,22 +10664,34 @@ O ciclo continua.`,
   livros: {
     title: "Books",
     icon: "Book",
+    landing: {
+      subtitle: "The Chronicles",
+      description: "The Silence of Sethael is an epic tragedy spanning cosmic creation to civilizational collapse. Beginning with the Prologue trilogy that covers 57,000 years of divine history, it culminates in The Depletion — the fall of Duratheon told through seven perspectives.",
+      stats: [
+        { value: "2", label: "Major Works" },
+        { value: "21+", label: "Chapters Written" },
+        { value: "7", label: "POV Characters" }
+      ]
+    },
     structure: [
-      {
-        key: "prologo",
-        title: "Prologue: When Gods Labored",
-        volumes: [
-          { key: "vol-i", title: "Volume I: The Primordial Cosmology" },
-          { key: "vol-ii", title: "Volume II: The Era of Stewardship" },
-          { key: "vol-iii", title: "Volume III: The Era of Profanation" }
-        ]
-      },
       {
         key: "the-depletion",
         title: "The Depletion",
         volumes: [
           { key: "part-i", title: "Part I" },
-          { key: "part-ii", title: "Part II" }
+          { key: "part-ii", title: "Part II" },
+          { key: "part-iii", title: "Part III" },
+          { key: "part-iv", title: "Part IV" }
+        ]
+      },
+      {
+        key: "prologo",
+        title: "Prologue: When Gods Labored",
+        secondary: true,
+        volumes: [
+          { key: "vol-i", title: "Volume I: The Primordial Cosmology" },
+          { key: "vol-ii", title: "Volume II: The Era of Stewardship" },
+          { key: "vol-iii", title: "Volume III: The Era of Profanation" }
         ]
       }
     ],
@@ -8843,7 +11342,7 @@ VAETHOR ZUMAX
 Master of the Greater Library, Guardian of the Royal Archives,
 Servant of the Crown for more than five decades, under your father and under you
 
-Written in the fifteenth year of Your Majesty's campaign preparations,
+Written on the second month after Your Majesty's departure,
 On the twelfth day of the month of KRAVETHOR,
 In the city of Vaelhem Thel, under the seal of the Greater Library
 
@@ -8863,286 +11362,101 @@ May Sthendur guide the hand that writes and the eyes that read.
 
 ⁂
 
-Your Majesty,
+My Lord,
 
-I take the boldness of beginning this letter with this verse from the philosopher Verathar Senthek, but I do so out of desperation, as the final measure of one who no longer fears for his own life — for he understands that it no longer makes sense to fear for something that will inexorably cease to exist if I do not act thus.
+I take the boldness of beginning this letter with those words because I have tried everything else.
 
-I write to you with compassion, but with truth. I beg you to hear me as you once did when you were still young, as your father heard me before you — whom I greatly respected, and whose memory I do not intend to tarnish. You owe nothing, my Lord. You have nothing to prove. Life is breath, wind, a dry leaf that autumn carries away without asking permission.
+I requested audience three times in the months before your departure; three times I was told the King was occupied with matters of greater urgency. I wrote twice to the Royal Council; I received no response. I spoke with Vice-Counselor Setharen Kravos on four separate occasions; he listened with great patience, agreed with every concern I raised, and assured me he would bring these matters to the appropriate attention. I have spent many evenings in conversation with Her Majesty the Queen; she understands what I have tried to say, but understanding is not power, and the Queen does not command armies.
 
-And with this truth, I continue with my sincerity, which I can no longer contain.
-
-⁂
-
-Permit me, Your Majesty, to remind you of what the archives hold and what the counselors have forgotten.
-
-Fifteen hundred years ago, a merchant named Torn Vael looked upon the scattered Kumtek and saw what no one else saw: that debts were stronger than swords, that alliances were more durable than conquests. He bought a tribe without shedding blood. He died at sixty-eight years, surrounded by seven children. Where now are the bones of Torn? Dust. Where is the glory? Only ink on parchments that few read.
-
-Nine hundred years ago, Jak Vael VI united Kumtek and Kravtek under one banner. He was called "Lord of the West." He reigned forty-six years. He died surrounded by glory. Where is Jak now? The same earth that the beggar treads who sleeps on the temple steps.
-
-Seven hundred and seventy-seven years ago, Duratheon Vael looked upon these lands and said: "I shall give my name to the world." And he did. He built this kingdom that bears his name. He sat upon the throne he himself created. He died at seventy-four years, convinced he had built something eternal. Your Majesty — the chair in which you sit is cracking. The marble he polished is worn by the feet of generations. The name remains, but the man is dust.
-
-Six hundred years ago, Senara Senvarak, called the Illuminated, reigned for seventy-eight years — crowned at eighteen, the second longest reign in our history. She founded five universities. She expanded this library where I now write. She ordered the execution of more than twelve thousand souls — one hundred and fifty-four per year, Your Majesty, on average. She believed that knowledge would free humanity. She died at ninety-six years reading a treatise on the nature of justice. Her last words were: "I am not finished yet." But she was finished. As we all shall be. Where is Senara? The same darkness that awaits servant and king.
-
-Four hundred and sixty years ago, your ancestor Kravorn Vael II, called the Subjugator, conquered all there was to conquer in the west. Six hundred and seventy thousand dead lie in lands he took. Countless battles. Two hundred kills by his own hand. He reigned seventy years — the longest reign in our history, taking the throne at nineteen. The most feared man these lands have ever known. He marched his armies to the very feet of the great mountain wall — Nakh'Thurn, the barrier that divides the world — and believed he had reached the edge of all things. He died at eighty-nine years — not in battle, not in glory, but slipping on a polished marble staircase in the palace he himself had rebuilt. His last words, Your Majesty, the guards recorded them: "It wasn't Sthendur. It was just a staircase." Where is Kravorn, the terror of the west? Bones in a tomb that needed repairs in your grandfather's reign because the rain was getting in.
-
-Seventy-three years ago, Vaelan Vael, called the Beloved, sat upon this very throne. He loved without boundaries — men and women, nobles and servants, light skins and dark. His heart knew no barriers. He fathered many children whom he sheltered in his palace. He contracted NAKH-IS, the disease that has no cure. He infected his wife without knowing. She died demented and disfigured. He lived seven more years — blind, mutilated, rotting in a dark room. While he agonized, Your Majesty, he called the names of children who were already corpses. No one told him. Where is Vaelan, the man who loved the world? The same earth. The same silence. The same oblivion.
+I record these attempts not to complain, my Lord, but so that the record is clear. I have done what a servant of the Crown can do. This letter is what remains.
 
 ⁂
 
-Your Majesty, I do not tell you this to sadden you. I tell you because I need you to understand a truth that your counselors will not tell you:
+Master Verathar wrote to your great-grandfather on the eve of the Eastern Consolidation. His letters survive in the archive — I have touched them, my Lord, the very pages his hand touched. Master Korathen advised your grandfather before the Second Fleet; his counsel shaped the campaign that followed. Your father kept my letters in a chest beside his bed. I found them after his death, annotated in his own hand. Some he had agreed with. Some he had dismissed. But he had read them all.
 
-None of them endured.
-
-Torn, who bought a tribe. Jak, who united two. Duratheon, who gave his name to the world. Senara, who illuminated and bloodied. Kravorn, who subjugated all. Vaelan, who loved all.
-
-All were flesh, blood and bone.
-All bled.
-All fell.
-None endured.
-
-And you, my Lord — forgive me the necessary cruelty — you too shall not endure.
-
-The question is not whether you shall fall. The question is what shall remain when you fall.
+I mention this not to compare myself to greater men. I mention it because this exchange — between library and throne, between those who keep records and those who make them — is older than either of us. It has served the kingdom for generations. I do not know why it has fallen silent now.
 
 ⁂
 
-Your Majesty,
+But perhaps, my Lord, it is worth remembering what silence costs.
 
-You have built something formidable. I do not deny it. Three hundred and twenty thousand men. Seven hundred and sixty ships. The war chariots, the trebuchets, the catapults — three hundred siege engines that took our smiths a decade to forge. Twelve thousand warhorses bred for battle. Ten thousand paladins in armor that cost more than most villages will see in a generation. Fifteen years of preparation. The largest force since Kravorn. Perhaps the largest force the world has ever seen.
+You know the histories as well as I do — better, perhaps. I taught them to you when you were young, in that small room off the eastern gallery, when you were still a prince who asked questions and waited for answers.
 
-The cost has been immense.
+Fifteen hundred years ago, Torn Vael looked upon the scattered tribes and saw what no one else saw: that contracts outlast swords, that a man bound by debt is more reliable than a man bound by chains. He built slowly. He built patiently. His enemies laughed at him. His enemies' grandchildren served his grandchildren.
 
-The provinces bled to feed this army. The mines emptied to arm it. The forests fell to build the ships. The treasury — fifteen years in deficit, Your Majesty — has been hollowed out to pay for what now marches north. And still we maintain thirty-five thousand soldiers scattered across the kingdom, guarding cities that grow hungrier, patrolling roads that carry fewer merchants each year. The cost has been immense. And we have only begun.
+Four hundred years ago, Kravorn marched until there was nothing left to conquer. Sixty-three men fell to his blade — each one recorded, each name preserved in the archives I keep. He was the terror of the west. He died on a staircase. The guards recorded his last words: *"It wasn't Sthendur. It was just a staircase."*
 
-The fleet has already sailed.
-
-Five hundred and fifty ships departed Veluthaar four months past — two months before the army even began its march from the capital. I stood on the harbor walls and watched them go. Thirty-five thousand of our finest men. Eight thousand warhorses — the heavy cavalry that cannot cross mountains, that must arrive by sea or not at all. Seven thousand paladins in armor worth more than the villages they were conscripted to protect. Two hundred siege engines — the trebuchets, the catapults, the war chariots that will batter down walls we have never seen. The engineers who know how to use them. The supplies to feed an army for six months.
-
-All of it sails now somewhere beyond Vel-Nakh, that passage which has swallowed twenty-nine fleets before them. By my calculations, if they survived the crossing, they should be approaching the eastern shores of Lands Beyond within the month. If they survived. We will not know for months — if we ever know at all.
-
-I said nothing as they departed, Your Majesty. What could I have said? The decision was made. The ships were loaded. The men were singing as they cast off, believing they sailed toward glory.
-
-I cannot call them back. No one can. They are beyond recall, beyond prayer, beyond everything but the mercy of currents that have shown no mercy before.
-
-But the army marches still.
-
-Two hundred and eighty-five thousand men have marched for two months now. They left the capital as you did, following the northern roads toward Kravethorn. I watched you depart, Your Majesty — you and young Krav riding at the head of the column, banners snapping in the wind, the people cheering from the walls. That was sixty-three days ago. By my calculations, you should reach Kravethorn within days — within a fortnight at most.
-
-And then the crossing begins.
-
-Two hundred and ten ships wait in Kravethorn's harbor to ferry the army across the channel — four hundred kilometers of open water to the northern shore. Five crossings, perhaps six, to move two hundred and eighty-five thousand men with their remaining supplies: four thousand warhorses, three thousand paladins, one hundred siege engines, the infantry that forms the bulk of our force. Each wave waiting alone on hostile shores while the fleet returns for the next. Weeks of vulnerability. Weeks during which the Kaeldur — if they chose — could destroy each landing in detail before the next arrived.
-
-This, Your Majesty, is what can still be stopped. This is what I beg you to reconsider.
-
-I write this from the Greater Library, where I have spent fifty-three years serving your family. The halls are quiet now. The scholars have gone — most conscripted as scribes for the army, the rest fled to provinces that no longer exist. I am alone with the archives, alone with the weight of everything I know and everything I fear.
-
-The fleet is beyond saving. But the army — your army, with you and your son at its head — still marches on roads that lead back to the capital. There is still time. There is still choice.
-
-The cost has been immense. But it can be so much worse.
-
-The treasury has perhaps one year of reserves remaining — one year, if the campaign proceeds. With what will you pay the soldiers in the second winter? The provinces that fed us are exhausted. The mines that armed us are empty. The forests that built our ships are stumps. We have spent everything to reach this moment, and this moment asks us to spend more — to spend what we do not have, to borrow against a future that may never come.
-
-I spoke to you of those who die of hunger in our beautiful marble avenues. You saw from the palace the magnificence — the white marble, the red stone, the gold on the gates, the bronze statues. But did you ever descend to the alleys behind the avenues? Did you see the children with visible ribs? The old men who once were farmers, now begging for what they once cultivated? The women selling what they can sell to feed children who will die nonetheless?
-
-Nine hundred thousand souls now live in this capital. Fifty years ago, there were four hundred thousand. They came from the provinces, Your Majesty. They came because the provinces died. Zumarack, where I was born — a fishing village, once — is empty now. The fields my father worked are salt. The houses where my people lived are ruins. I walked those streets last year, Your Majesty. I found no one who remembered my name. And now the capital dies too, slowly, while we pour its last strength into ships and swords and men who may never return.
-
-The cost has been immense.
-
-It can still be so much worse.
+I could name the others — the Illuminated, the Beloved, the Builder. Seventeen generations of Vaels. All flesh. All bone. All dust now, regardless of what they conquered or failed to conquer. The question is never whether we fall. The question is what remains when we do.
 
 ⁂
 
-Perhaps, then, this information may dissuade you.
+Your army is magnificent. I do not dispute this.
 
-Your Majesty, the lands beyond Nakh'Thurn have not forgotten.
+I watched the columns forming for weeks before your departure. I saw the banners catching the spring light until the streets seemed to burn with color. I heard the songs the soldiers sang as they marched through the gates — songs of glory, of conquest, of the kingdom they would build beyond the mountains. The largest force since Kravorn. Perhaps the largest the world has ever seen.
 
-They have never forgotten.
+I am not a military man. I cannot speak to formations or supply lines or the logistics of moving three hundred thousand men across a thousand kilometers. The generals have planned this campaign for fifteen years. I trust they know their craft. I trust they have prepared for the difficulties of the northern passage — the cold, the terrain, the peoples who dwell in those mountains. What troubles me is not the crossing.
 
-You know the history as well as I do — perhaps better, for I taught it to you when you were young. Four hundred years ago, Kravorn marched east until he reached the great wall of mountains. At the feet of Nakh'Thurn, he found a people. They were not warriors. They were farmers, herders, living in the shadow of peaks they believed marked the end of the world. Kravorn believed the same. He had conquered everything there was to conquer.
-
-And so he made an example of them.
-
-Villages burned. Children killed before their mothers. Entire settlements erased so that no memory of resistance would remain. The Durtek, we called them afterward — "hollow stones," an insult, a dismissal of what little remained.
-
-But not all of them died, Your Majesty.
-
-The survivors fled north, into the mountains themselves, into cold our soldiers could not endure. And there, in the ice, they did what we never expected: they endured. They found passes we did not know existed. They built homes in stone and snow. They learned to survive where survival seemed impossible.
-
-Four hundred years, Your Majesty. Four hundred years of memory. Four hundred years of preparation.
-
-They call themselves Kaeldur now — the People of Fire. And they have made their home in the one place that matters: the passage of Kaelthrek.
+What troubles me is what lies beyond.
 
 ⁂
 
-Your Majesty, I must speak plainly about Kaelthrek, for I fear the generals have filled your ears with fantasies.
+Lands Beyond.
 
-Your spies have walked those lands. I know — I have read their reports, every memorandum that has crossed my desk in thirty years. They speak of a small people, perhaps forty thousand souls. They speak of villages, of forges, of warriors who train in the snow. They have counted heads, sketched formations, estimated numbers.
+We have maps, my Lord. I have studied them all — the old charts, the merchant sketches, the fragments that travelers have brought back over the centuries. They disagree with each other. They contradict themselves. Some show kingdoms; some show emptiness. Some mark cities that other maps do not acknowledge. We do not know what is there. We have never known.
 
-But Your Majesty — your spies walked those lands in summer.
+The southern sea route is closed — Vel-Nakh has swallowed twenty-nine fleets, and I see no reason to believe the thirtieth would fare differently. To our southwest lies Vethurack, but Vethurack leads only to itself. The land route through the northern passes is the only way. Your father understood this. You understand this.
 
-Summer, when the passes are clear and the cold is merciful. Summer, when the Kaeldur show themselves, tend their flocks, live as any mountain people might live. Summer, when a spy from Duratheon can walk among them and return with reports that make the generals smile.
+But the only way to *where*, my Lord? To *what*?
 
-What do we know of them in winter? What defenses have they built in the decades since our last expedition? What weapons have they forged in mountains we cannot reach? What traps have they laid in passes we have never seen in snow?
+In recent months, I have spoken with travelers — merchants who trade in the far ports, sailors who have met sailors who have met others still. The information is third-hand, fourth-hand, filtered through languages and distances and the natural tendency of men to exaggerate. I cannot vouch for any of it. But I will tell you what I have heard.
 
-We do not know. We have never known. We have assumed — and assumption is the comfort of fools.
+They speak of weapons that spit fire. Bronze tubes that hurl metal at distances our archers cannot match. Not magic — mechanism. I have heard this from too many sources. The details vary, but the core remains consistent. They speak of men scarred in ways our physicians cannot explain — faces where fire had eaten through to bone, limbs torn away as if by beasts that roar like thunder. Survivors who walk among the living like warnings made flesh.
 
-I have tried to tell you this before, Your Majesty. I fear I am repeating myself. But repetition is all that remains to me.
-
-Your father spoke of Kaelthrek as a road — an inconvenience to be crossed on the way to greater things. "We will pass through them," he said. "They are few, we are many." You have spoken the same words. You dream of making the Holds a garrison, a gate to Lands Beyond, a base from which to launch the true campaign eastward.
-
-But Kaelthrek is not merely a passage, Your Majesty. It is the only passage. The only place where Nakh'Thurn can be crossed. The only route to Lands Beyond that does not require ships to brave waters that have swallowed every fleet we have ever sent.
-
-The Kaeldur know this. They have known it for four hundred years. They have made their home in the one place we must pass — and they have had four centuries to prepare for the day we would come.
+I do not know if these accounts are true. I know only that they are consistent — too many sources, too many details that align despite the distances between the men who speak them. And I know that we have nothing like what they describe.
 
 ⁂
 
-And what lies beyond? Lands Beyond — the destination your father dreamed of, and his father before him, and his father before him. What do we truly know of it?
+Perhaps I am wrong.
 
-Nothing, Your Majesty. We know nothing.
+Perhaps the travelers exaggerate. Perhaps the weapons are less terrible than rumor makes them. Perhaps our formations, our discipline, our numbers will prove sufficient against whatever waits on the other side of the mountains. I am an old man who has spent his life among books. I have read accounts of wars I never fought, studied campaigns I never marched in, analyzed battles from the safety of a desk surrounded by candles and dust. Perhaps that has made me a coward who sees shadows where men of action see only obstacles.
 
-Merchants speak of wonders — but merchants speak of whatever sells. Travelers return with stories — but the stories change with each telling. Your father believed in treasures beyond imagination. His father believed the same. Generations of Vaels have stared east at mountains they could not cross, dreaming of what lies beyond.
-
-Perhaps they are right. Perhaps Lands Beyond holds riches that would make our marble seem like common stone.
-
-Perhaps it holds nothing but sand and disappointment.
-
-We do not know. No one from Duratheon has ever reached it and returned.
-
-But I must tell you something, Your Majesty, that weighs upon me more heavily than all the rest.
-
-We believe ourselves great. The greatest kingdom in the world, some say. Three hundred and twenty thousand men — the largest army ever assembled. Seven hundred and sixty ships. Marble palaces that gleam in the sun.
-
-But the world, Your Majesty, is vast beyond our reckoning.
-
-I have spent fifty years in this library, reading every account, every traveler's tale, every merchant's log that has reached our shores. And what I have learned is this: we are small. Duratheon is a kingdom of ten million souls clinging to a peninsula at the edge of a continent we have never crossed. Beyond Nakh'Thurn lies Lands Beyond — and Lands Beyond alone holds thirty-five million, perhaps forty million souls. Four times our number, Your Majesty. And that is merely the land we can name.
-
-Beyond that? We do not know. Our maps show blank spaces where other maps show empires. Civilizations that have never heard of Duratheon. Peoples who would not recognize our banners, our gods, our language. The Setharim of the eastern coasts trade with lands so distant that the journey takes years. The peoples of Nakh'Sethar have built cities in deserts we cannot imagine.
-
-We are not the center of the world, Your Majesty. We are a corner of it. A small, exhausted corner that has consumed everything within reach and now dreams of consuming more.
-
-The world fell silent to us, Your Majesty. It ignored us. But we understood wrong.
-
-We thought they did so out of fear. That they hid so as not to be noticed by great Duratheon, by the invincible kingdom, by the shadow of Kravorn that still hung over the continent.
-
-No, Your Majesty.
-
-They simply did not care. We are distant. We are small. We are nothing to them.
-
-And some of them — those who remember what Kravorn did — have been waiting. Preparing. Not for conquest, but for resilience. For the day Duratheon would come again.
+I do not know. I know only what the patterns suggest.
 
 ⁂
 
-Perhaps Your Majesty wonders why I speak only of the mountain route, when the maps show water to our south.
+I do not know why I write this now.
 
-The Passage of Vel-Nakh.
+I have never spoken of it — not to your father, not to you, not to anyone in this palace. Perhaps because it never seemed relevant. Perhaps because some things belong only to us, and sharing them feels like losing them.
 
-To our southwest lies Vethurack — that great island of sand and stone. Between Vethurack and the southern reaches of Lands Beyond lies a passage that has swallowed every fleet that ever attempted it. Your great-grandfather Taelor Vael sent seventeen expeditions through those waters. Your grandfather sent twelve more. Twenty-nine fleets, Your Majesty. Not one ship returned. The currents there do not negotiate. The fog descends without warning. The rocks appear where no rocks should be. Sailors speak of Vel-Nakh as a living thing — a mouth that swallows and does not spit back.
+My father arrived in Vaelhem Thel once, when he was young. He landed at Skelmaar and walked eleven days to reach the capital. He told me about those days many times — the blisters, the hunger, the white walls rising from the plain. He spoke of a tree near the training fields, already old when he saw it. Soldiers trained beneath it. The same formations, he said. The same movements. Over and over. He watched for an hour, maybe two.
 
-And even if ships survived the passage — what then? The southern route adds months to any journey. The lands beyond Vel-Nakh are unknown to us. We do not know what peoples dwell there, what empires have risen while we stared at our marble walls.
+*"This is a kingdom that knows what it is,"* he told me. *"This is a place that endures."*
 
-The sea route is closed, Your Majesty. It has always been closed. It will remain closed until the gods themselves redraw the waters.
+He never returned to the capital. He followed other Vethurim south to Zumarack, worked the fields, died there with an accent he never lost and stories he never stopped telling.
 
-And so your father looked to the land. Through Kaelthrek, over Nakh'Thurn, down the eastern slopes — the only route we know. This was your father's dream. This is the dream that has consumed fifteen years of your reign.
+I was twelve when I arrived in Vaelhem Thel. I walked past many trees near the training fields. Perhaps one of them was the tree my father saw. Perhaps none of them were. It does not matter. What matters is what I saw beneath them: soldiers training. The same formations. The same movements. I am eighty-one now. Seventy years I have walked past those fields.
 
-⁂
-
-To our southwest, across calmer waters, lies Vethurack — the great island I mentioned. Your Majesty knows of it, though you have never deigned to visit. You call its peoples "merchants and slavers." You dismiss them as men who count coins instead of conquering lands.
-
-"They have no marble," you said once. "They build in mud and leather while we build in stone that will last a thousand years." You laughed. The counselors laughed with you.
-
-I did not laugh, Your Majesty. I could not.
-
-My parents came from Vethurack.
-
-I was born in Zumarack, a village of immigrants on the southern coast of your kingdom, where my father worked the same fields his father had fled to escape the desert winds. My mother wove carpets in the old patterns — patterns your nobles would later purchase as exotic curiosities, never knowing that the woman who made them lived three streets from the harbor where their ships docked.
-
-I know you have always wondered, Your Majesty, why I look as I do. Why my skin carries the color of sand at dusk. Why my hair whitened so early — not from age, but from blood. The Vethurim call it *thurnakh*, the mark of those born between worlds. My father had it. His mother had it. I inherited it along with the accent I spent decades erasing and the name I could not change.
-
-Zumax. It is not a Durathek name. It never was.
-
-Yet while you prepared for war, they prepared for wealth.
-
-The Vethurim have spent centuries learning to survive where survival seems impossible. The banking houses of Thul-Varen hold more gold than our treasury has seen in three generations. The shipyards of Keth-Arum build vessels that put ours to shame. They cannot cross Vel-Nakh — no one can — but they trade with every shore they can reach.
-
-They could not have helped you reach Lands Beyond. But they might have helped you build something other than graves.
-
-I do not say this to defend my blood, Your Majesty. I say it because there was another path. There is always another path. But you will not take it. I know you will not. Because your father raised you to believe that kings conquer, and merchants merely count. And because I — the son of farmers who fled a land you despise — am not the voice you wish to hear.
+The formations have not changed. The movements have not changed. The world has changed, my Lord. We have not.
 
 ⁂
 
-There is a tree in the eastern training field. Three hundred years old, perhaps four hundred. I saw it when I was young — a boy of twelve, newly arrived in the capital, carrying letters of recommendation from a provincial scholar who had seen something in me worth cultivating. My father never saw it. He died in Zumarack, still speaking with an accent, still weaving fishing nets in the Vethurim style, still dreaming of the desert he had escaped and the son he had sent away to become something he could never be.
+I am not asking you to turn back. I know that is impossible — the army has marched too far, the fleet has sailed, and a king cannot uncommit without losing everything a king requires to remain king.
 
-Beneath that tree, Your Majesty, generations of soldiers trained the same formations. The same movements. The same commands. The tree saw everything — and nothing changed. The world changed. The enemies changed. The weapons changed. We did not change.
+But the army has not yet crossed the mountains. There is still time — not to retreat, but to learn. To send scouts ahead with different questions. To seek more information before committing everything to a single pass, a single route, a single encounter with peoples we do not understand.
 
-General Kravuum Thel is seventy years old and has never fought a real battle. Admiral Durel Vaemar is a logistics specialist, not a naval combatant. Counselor Zurath Senvel is the grandson of the man who ordered the massacre of Vaelan's bastards — a coward disguised as prudent, who tells you what you wish to hear to keep his power. Patriarch Sthendur Thavel has not believed in Sthendur for decades, but blesses whatever he is asked to bless. Lord Varek Thensar controls the treasury yet cannot explain where half of it has gone. And General Kraveth Vaelmar — a good man, perhaps the only one among them with true military understanding — is too loyal to question what loyalty demands.
-
-I have spoken with Setharen Kravos many times over the years, Your Majesty. The Vice-Counselor is perhaps the most reasonable mind in that chamber. He listens. He understands the numbers. He sees what I see — I am certain of it. Yet in all these years, I have watched him nod gravely at every warning I have raised, agree with every concern, express sympathy for every argument — and then do nothing. He sits in council meetings and says little. He watches the others speak and does not contradict them. When I have pressed him — begged him, Your Majesty, to use his influence — he has only smiled sadly and said: "The Council has decided. What can one man do against the tide?"
-
-I once believed him powerless. A reasonable man trapped among fools. Now I am not certain what I believe. A man that intelligent, that patient, who has survived four reigns and three purges — surely he could do something if he wished. Unless he does not wish. Unless his inaction is itself a kind of action.
-
-But these are the suspicions of an old man who has grown paranoid in his archives. Setharen Kravos is probably exactly what he appears to be: a careful bureaucrat who has learned that survival requires silence. I do not blame him. I have been silent too, for too long.
-
-These are the men who surround you. These are the men who lead you to ruin.
+Torn Vael built a kingdom by learning before he acted. He sent merchants before he sent soldiers. He understood his enemies before he fought them — and then he made them allies instead. We do not understand what lies beyond the mountains. Perhaps we should, before we try to conquer it.
 
 ⁂
 
-Your Majesty, I have saved the worst for last. The reason I write tonight, when I should be sleeping. The reason my hand trembles as it has not trembled in years.
+I think of the young Krav, fourteen years old, who marches beside you — a boy who did not choose this war but inherited it, as sons inherit the dreams of their fathers.
 
-Three days ago, my personal scouts returned. Men I sent east years past — not through Kaelthrek, but by the long southern route, through Vel-Nakh's mercy or luck. They did not reach Lands Beyond. No one from Duratheon ever has. But they reached those who trade at its borders. They spoke with merchants who had seen what lies beyond.
+I think of Aelara, who waits in the palace with her mother, who asks questions that no one answers, who watches the empty space above the fireplace where the conquest has already been carved in her father's imagination.
 
-What they told me, Your Majesty… I can scarcely bring myself to write it.
+I think of the Queen, who has waited fifteen years, who understands more than anyone will credit, who speaks to old librarians in the evenings because no one else will tell her the truth.
 
-The peoples of the far east possess weapons that spit fire.
+I think of the nine hundred thousand souls in this city who grow thinner each month, whose sons marched north with songs on their lips.
 
-Bronze tubes that explode with thunder and hurl balls of metal at distances our arrows could never reach. Not magic — mechanism. Not legend — reality. My scouts saw the scars on men who had faced these weapons and survived. They saw the fear in the eyes of warriors who had never feared anything.
-
-Our shields, Your Majesty. Our octagonal formations that the generals call "perfect." Our armor, our discipline, our three hundred thousand trained soldiers.
-
-Paper. Paper against fire.
-
-Even if we passed the Kaeldur — and we will not — Lands Beyond awaits us with weapons we cannot imagine, much less resist. We are marching toward our own annihilation, Your Majesty. Not merely defeat. Annihilation.
-
-This is why I write. This is why I beg. Not because I am old and afraid of change. Because I have seen, in the reports that sit upon my desk, the shape of our extinction.
-
-⁂
-
-I beg you, Your Majesty. Return to yourself.
-
-Cancel this campaign. Not out of cowardice — out of wisdom. Use the army not to conquer, but to defend. Use the ships not to invade, but to fish — feed this city that dies of hunger while its palaces gleam. Use what remains of the treasury not for war, but to rebuild the provinces your ancestors drained to death.
-
-There is no glory in conquering ashes. There is no honor in dying for a dream that was never yours — it was your father's, who raised you for a world that no longer exists.
-
-⁂
-
-The young Krav Vael is still very young. Fourteen years only. If you fall in this campaign, Your Majesty, who will govern? The counselors? Those fools? Those… forgive me the word the ink should not carry, but which truth demands: those imbeciles?
-
-Queen Senthara awaits you. She has waited fifteen years while you plan a war that should never happen. She loves you, Your Majesty — she still loves you, despite everything. Perhaps… perhaps it is time to return to her. To watch your son grow. To govern the kingdom you have, instead of dying for the kingdom you dream of.
-
-⁂
-
-I have little ink left. I have little life left — eighty-one years already weigh upon these hands that tremble as they write.
-
-I know not what more to say.
-
-I have spoken the truth. It is all a servant can do.
-
-If you order my execution for this letter, I shall die knowing I tried.
-
-If you burn it without reading, at least it will have existed — at least the words will have touched the air before turning to ash, as all things turn.
-
-But if you read it, Your Majesty… if you read it to the end…
-
-Then perhaps there is hope.
-
-Not for me. For Duratheon.
-
-For the young Krav, who does not deserve to inherit ruins.
-
-For the Queen, who does not deserve to weep over an empty tomb.
-
-For the nine hundred thousand who will die of hunger if the army leaves and does not return.
-
-For the three hundred thousand who will die in the mountains, in the cold, far from home, without understanding why.
+I think of the three hundred thousand who march with you now, who believe they march toward victory because no one has told them otherwise.
 
 ⁂
 
@@ -9154,22 +11468,34 @@ Every creation is fruit of itself.
 Which sunders from itself.
 And creates until it depletes itself.
 
-Be not, Your Majesty, the king who depleted Duratheon.
+I do not know if this letter will reach you. I do not know if you will read it. I do not know if anything I have written matters, or if the decisions were made long ago in rooms where librarians are not welcome.
 
-Be the king who saved it.
+If I am wrong, I will be grateful.
 
-Your loyal servant until the last breath,
+If I am right — well. Perhaps this letter will survive in the archive. Perhaps someone, someday, will find it among the records and know that the warnings were spoken. That the patterns were visible to those who looked. That at least one man, in a room full of dust and silence, saw what he believed were shadows gathering — and wrote them down, because writing things down is all he ever knew how to do.
+
+Perhaps that is enough. Perhaps it is nothing.
+
+Your loyal servant,
 
 **VAETHOR ZUMAX**
-Son of Zumarack, Master of the Greater Library
+Born in Zumarack, citizen of Duratheon
+Son of immigrants, servant of the Crown
+Master of the Greater Library
 
-I came to this kingdom with nothing but letters and hunger. Your grandfather gave me my first position. Your father gave me this library. You gave me fifty years of service in which I tried, however imperfectly, to repay the debt.
+[Seal of the Greater Library in black wax]
 
-This letter is my final payment.
+---
 
-May Sthendur — if he exists — illuminate you.
+*[ARCHIVAL ANNOTATION — ENTRY 4402]*
 
-[Seal of the Greater Library in black wax]`,
+*Disposition: Manuscript prepared in duplicate by the author's hand.*
+*Copy I: Sealed in Royal Crimson. Entrusted at dawn to Kaelen, High Courier, with orders to overtake the Vanguard before the Crossing of the Teeth.*
+*Copy II: Sealed in Library Black. Interred herein, Vault of the Third Era, Row VII.*
+
+Handwritten note below the entry, in the author's hand:
+
+*"I watched Kaelen ride out through the North Gate until the dust swallowed him. He rides a fast horse. But I fear the silence rides faster."*`,
         tags: ["manuscript", "volume-iv", "chapter-1", "vaethor-zumax", "letter", "vethurim", "vethurack", "zumarack"]
       },
       "vol4-ch1b": {
@@ -9179,505 +11505,1173 @@ May Sthendur — if he exists — illuminate you.
         content: `**III**
 *The Empty Space*
 
-The fourth day of the week, when the nobles gathered in the Great Hall of the palace to dine beneath the light of the chandeliers. Just another Duathel like so many others.
+The fourth day of the week.
 
-The Thul-Vaelhem — the Sacred Hall of the Vaels — had been built to intimidate. And intimidate it did. The ceiling vanished into the gloom above the chandeliers, so high that the paintings on the frescoes could barely be distinguished from the floor. White marble everywhere, but not the cold white of bare stone — a golden white, almost alive, a reflection of the thousands of crystals and precious gems that hung from the golden chandeliers. The light danced on the polished surfaces as if the hall itself were breathing.
+Duathel.
 
-The columns. Sixteen in all, eight on each side, each one so broad that it would take five men with outstretched arms to embrace it. On the capitals, reliefs in gold depicted scenes of the founding — Duratheon Vael raising the first stone, the seven temples of Sthendur rising from the earth, the first banner fluttering over Vaelhem Thel. Details that no one could see from the floor. But nothing in Duratheon was done carelessly. Least of all in the palace. Least of all in the Thul-Vaelhem.
+The word had once meant something. A day of gratitude. A day of pause between labor and worship. A day to acknowledge what had been granted and what might yet be taken away. But words, like gold, lost weight when handled too often.
 
-Between the columns stood the statues. Not the sixty-eight of the Approach — those stood outside, lining the processional avenue. These were different: twelve figures, six meters tall each, the six founding kings and their queens, perfectly sculpted in marble from Veluthaar. The stone eyes watched the living with the serenity of the dead. Or perhaps with boredom. Seven hundred and seventy-eight years of dinners. Seven hundred and seventy-eight years of trivialities whispered beneath their marble noses.
+Tonight, Duathel meant chandeliers, velvet, and rehearsed smiles.
 
-The crimson velvet curtains descended from golden rails — from such an absurd height that the silver-thread embroidery, meticulously stitched into every hem, was invisible to anyone standing on the floor. Artisans had spent years on those details. No one would ever see them. But that was Duratheon: perfection did not exist to be seen. It existed because anything less than perfect would be an offense to Sthendur.
+Senthara watched the Great Hall fill as it always did — gradually, predictably, according to a rhythm older than most of the families now walking its crimson carpet. Silk brushed marble. Boots struck stone with calculated softness. Voices layered themselves into a sound that was not noise, exactly, but never silence either.
 
-The carpet covered the entire hall — from one end to the other, fifteen meters wide by sixty long. They said it had been personally commissioned by Kravorn II, the Subjugator, after his final conquest. They also said — in whispers, never aloud — that the artisans were Vethurim. A people Duratheon despised, whose immigrants lived in coastal villages as second-class citizens, whose textiles the nobility purchased as "exotic curiosities" without ever admitting the mastery behind them. The irony did not escape those who paid attention: the floor the nobles trod upon, the carpet on which they danced and spilled wine, had been woven by the hands of a people who would not be welcome in that very hall.
+The Thul-Vaelhem had been built to intimidate.
 
-And the fireplace.
+It succeeded.
 
-It occupied the entire eastern wall of the hall — the wall to the right of those facing north, where the throne stood. Twenty meters wide. Ten tall. A monument of stone within another monument of stone. The carved reliefs narrated the history of Duratheon in chronological order: the founding of the temples, the construction of the university, the conquests of Kravorn, the peace treaties, the coronations. Seventeen artisans had worked for thirty-two years to complete it. Generations of hands upon the same stone.
+The ceiling vanished into shadow far above the chandeliers, so high that the frescoes painted there were no longer images but suggestions — divine forms dissolved into distance. White marble dominated everything, though not the cold white of quarries and tombs. This white was alive, almost golden, warmed by the thousands of crystals suspended in the chandeliers. When the light struck them, it fractured, scattering across columns and statues as if the hall itself were breathing.
 
-But at the top, a space remained empty.
+Senthara had once believed that.
 
-The scaffolding was still there during the day — the artisans working on a new relief, a space reserved for the Conquest of the Lands Beyond. The campaign that had not yet ended. The victory that had not yet happened. The king had already commissioned the scene: himself crossing the Northern Holds, the army marching behind, the banners of Duratheon fluttering over mountains no king had ever crossed.
+Now she knew better.
 
-But that night was not about conquests.
+The columns stood in two perfect rows — sixteen in all, eight to each side — each so broad that five men with outstretched arms could not encircle one. Their capitals were adorned with gold reliefs: Duratheon Vael raising the first stone of Vaelhem Thel; the seven temples of Sthendur rising from the earth; banners unfurling over lands already conquered. Details no one could see from the floor.
 
-That night was just another Duathel.
+But nothing in Duratheon was built to be seen. It was built to exist.
 
-The orchestra played — sixteen musicians under the baton of old Thaelor Duanax, court maestro for twenty-three years. A new composition, they said. Something he had written in the past weeks, while the army marched north and the capital grew strangely silent. The violins rose and fell in gentle waves. The choir — twelve voices trained since childhood — harmonized in High Zanuax:
+Between the columns stood the statues.
 
-*Glōrïäy ad Tornael!*
-*Glōrïäy ad vaëlōr!*
-*Glōrïäy ad fïlïël Sthendurël!*
-*Glōrïäy ad kë ïuläräk dürël Duratheonël!*
-*Glōrïäy ad kë vaëlōrärōm!*
-*Tornael Vael trē bënëdïktël*
-*Pätër-mätër ïpsël trē mëmōrätël*
-*Kwë Duratheon dürärōm*
-*Kwë Tornael vaëlōrärōm*
-*Tornael ïnklïnäräk teo*
-*Teo ïnklïnäräk ad Duratheon*
-*Küm Kravorn lïbëräräk pōpülël*
-*Küm Senara lümïnäräk teo*
-*Tornael ünïtäräk tërrä*
-*Glōrïäy ad vaëlōr!*
-*Glōrïäy ad fïlïël Sthendurël!*
+Twelve figures, each over six meters tall. The six founding kings and their queens, carved from Veluthaar marble so pale it seemed untouched by time. Their eyes, though sculpted without pupils, followed the living with an unsettling attentiveness. Or perhaps with boredom.
 
-Glory to Tornael. Glory to the king. Glory to the son of Sthendur. Words that most nobles did not understand but pretended to, repeating the refrains with rehearsed fervor.
+Seven hundred and seventy-eight years of dinners.
 
-The ebony table stretched through the center of the hall. Forty places. At the northern head, the throne of the king — empty. Tornael had departed seven days ago, marching to join the army, to provide the "final motif" for the fireplace. Beside the empty throne, in a smaller but equally ornate chair, sat the queen.
+The velvet curtains descended from golden rails at a height so absurd that the silver-thread embroidery woven into their hems was invisible to anyone standing below. Artisans had spent years stitching those details. No one would ever see them.
+
+The carpet stretched the length of the hall — fifteen meters wide, sixty long — dyed in a crimson so deep it swallowed light. It had been commissioned, they said, by Kravorn II, the Subjugator, after his final conquest.
+
+They also said — quietly, carefully — that it had been woven by Vethurim hands.
+
+Senthara's eyes traced the carpet as nobles crossed it without thought, their shoes pressing patterns into fabric crafted by a people who would not be permitted to stand in this hall. The floor beneath their feet. The luxury beneath their dances. The bloodless wealth of conquest.
+
+And then there was the fireplace.
+
+It dominated the eastern wall — twenty meters wide, ten tall — a monument within a monument. Reliefs carved into its stone narrated the history of Duratheon in chronological order: the founding of the temples, the building of the university, the subjugation of the coastal holds, the coronations of kings whose names still shaped law.
+
+Seventeen artisans had worked for thirty-two years on those carvings. Generations of hands, passing the same tools from father to son.
+
+At the top, a space remained empty.
+
+Scaffolding still clung to the stone during the day. A new relief had been commissioned: the Conquest of the Lands Beyond. Tornael had described the scene in precise detail — himself crossing the Northern Holds, banners snapping behind him, the army stretching like a living river across mountains no king had ever crossed.
+
+But that victory had not yet happened.
+
+And until it did, the stone waited.
+
+Tonight, however, was not about conquest.
+
+Tonight was just another Duathel.
+
+The orchestra played.
+
+Sixteen musicians sat beneath the chandeliers, Maestro Duanax standing before them, his white hair tied neatly at the nape of his neck. He had served the court for twenty-three years. He had outlived three patrons, two queens, and one execution.
+
+The piece was new. Senthara could tell. The violins rose and fell uncertainly at first, then found their rhythm. A choir of twelve voices joined them, trained since childhood to shape breath into devotion.
+
+High Zanuax filled the hall.
+
+Glōrïäy ad Tornael.  
+Glōrïäy ad vaëlōr.  
+Glōrïäy ad fïlïël Sthendurël.
+
+Words most of the nobles did not understand. Words they mouthed anyway, smiling as if familiarity itself were faith.
+
+The ebony table stretched through the center of the hall, set for forty. At its northern head stood the king's throne.
+
+Empty.
+
+Tornael had departed seven days ago, marching north to join the army. He had insisted on leaving before the fleet sailed, before the final preparations were complete. He wanted to be seen crossing the Holds. He wanted the artisans to know exactly which moment to carve.
+
+Beside the empty throne sat the queen.
 
 Senthara.
 
-She watched the nobles dance without truly seeing them. Her eyes — dark, deep, the same eyes her daughter had inherited — were fixed on some point beyond the velvet curtains, beyond the marble walls, beyond Vaelhem Thel. Thinking. As she always thought. As she had thought all week, since the king had departed, since the silence had descended upon the capital like a velvet shroud.
+And on the king's throne — the throne that should have remained empty — sat Aelara.
 
-The silence.
+Twelve years old. Dark hair like her mother's, dark eyes like her mother's, and the same poorly disguised impatience as her father. The stone seat dwarfed her; her feet did not reach the floor. She sat not with the nervous stiffness of a child afraid of falling, but with the loose, restless posture of someone enduring a tedious duty. Her heel tapped against the carved base of the throne in a steady rhythm, the movement small but relentless.
 
-That was what disturbed her. For months — years, perhaps — the capital had been noise. The army massing, the drills in the squares, the forges working day and night to equip three hundred thousand men. Endless meetings in the palace. The Duathel dinners dominated by a single subject: the campaign, the campaign, always the campaign. The king monopolized the conversations, speaking of sieges and strategies, of ships departing from the southern ports while the army marched from the north. Brilliant, he would toast. Brilliant.
+Senthara's hand rested briefly on her daughter's shoulder — a touch, a promise, a fragile anchor — before returning to her lap.
 
-But now the army had departed. The forges had gone cold. The squares stood empty. And the Duathel dinners had returned to what they had always been before the king's obsession: trivialities. The new fabrics arriving from the coast. The maestro's composition. The scandal of Lord Kraveth with Lord Setharen's wife.
-
-Senthara could not remember the last time a Duathel had been so... normal.
-
-And that frightened her.
-
-On the king's throne — the throne that should have been empty — sat Aelara.
-
-Twelve years old. Dark hair like her mother's, dark eyes like her mother's, the same poorly disguised impatience as her father. She squirmed on the stone seat, her legs swinging because they could not reach the floor, her ink-stained fingers — blue and ochre, always blue and ochre — drumming on the golden armrest of the throne. She should have been in the painting hall. She should have been reading. She should have been anywhere but here, feigning interest in conversations about fabrics and music and things that did not matter.
-
-She was thinking of Krav.
-
-Her brother, three years older, marching with their father somewhere in the north. Krav, who always let her watch when he practiced swordplay. Krav, who told her stories of ancient battles when the tutors were not looking. Krav, who was probably living a real adventure at that very moment, while she rotted on an uncomfortable throne listening to music she did not understand.
-
-Aelara sighed.
-
-The queen noticed. Said nothing.
-
-Senthara turned her eyes back to the dancing nobles — swirls of silk and velvet, rehearsed laughter, calculated bows. She remembered the first day she had entered the palace, at sixteen, to marry a prince she barely knew. She remembered the hanging gardens — *how can gardens exist away from the earth?*, she had wondered with the innocence of one who did not yet understand that in Duratheon everything was possible if there was enough gold to pay for it. She remembered finding it all magical. Beautiful.
-
-*Is what is beautiful always beautiful?*
-
-The question arose uninvited. Senthara pushed it away, but it returned. It returned every night, since the silence had descended upon the capital. Since the conversations with Vaethor Zumax — the old librarian, her closest counselor, the only man in the palace who told her truths she did not want to hear. He had been against the campaign from the beginning. Not with the direct words that would have cost him his position, but with questions. Always questions. *How many kings have returned from the northern mountains, Your Majesty? How many armies have crossed the Holds and lived to tell of it?* She had no answers. Tornael had certainties. And certainties, she had learned, did not need answers.
-
-She looked at the fireplace. At the empty space at the top. At the conquest that had not yet been carved because it had not yet happened.
-
-And she wondered, for the first time in years, if it ever would.
+The fire crackled. Above it, the empty space waited.
 
 ⁂
 
-"Your Majesty? Queen Senthara?"
+"Your Majesty?"
 
-The voice came from behind, soft and familiar. Velira Sethak — daughter of old Dureth Sethak, master merchant whose fleet carried half the wheat that fed the capital — had returned to court after a month in the western ports, accompanying her husband. Luxaren Thalorn administered the docks of Veluthaar, and Velira had spent weeks complaining about the salt in the air and the lack of civilized conversation.
+Velira Tessalon's voice came from behind and just to the side, precisely where it should: close enough to be heard through the music, far enough not to startle.
 
-"May I keep you company?"
+Senthara turned her head.
 
-Senthara gestured to the space beside her. Velira sat down with a rustle of navy-blue silk — always navy blue, the color of her husband's house.
+Velira bowed, navy-blue silk falling like water around her. Always navy blue — the color of House Thalorn.
 
-"I have been watching you all evening," Velira said, lowering her voice. "I sense you are distant today. More distant than you usually are at our grand dinners."
+"May I keep you company?" Velira asked.
 
-The queen lowered her head. A half-smile, without joy.
+Senthara gestured to the space beside her. Velira sat with a soft rustle of silk, hands folded in her lap, spine straight but not rigid. Her eyes flicked briefly to Aelara on the throne, then back to the queen, a question unvoiced.
 
-"I am well."
+"I have been watching you all evening," Velira said. "You seem distant."
 
-She ran her hand over Aelara's hair. The princess was trying to remove ink from beneath her fingernail with the fierce concentration of one battling a mortal enemy.
+"I am here," Senthara said. "My body is, at least."
 
-"I am well. Just thinking."
+"And the rest?"
 
-"Thinking?"
+"Scattered," Senthara replied. "Between the northern passes, the eastern ports, and a boy who thinks war is an adventure."
 
-"Yes. Thinking." Senthara made a vague gesture with her hand. "About the food. Whether the cook will overdo the salt again like last week. About the new fabrics Lady Thornavel is wearing — did you see? Silk from Vethurack, they say, but I wager it is an imitation from Veluthaar. About the fact that the maestro chose to debut a new composition tonight, when half the court has not yet returned from the ports. He always does this, have you noticed? Premieres his music when there are fewer people to hear it. I think he is afraid of criticism."
+"Krav always thought that," Velira said. "Even when they were children."
 
-Velira nodded, waiting.
+The memory rose unbidden — two children racing through the western gardens, Krav with a branch he insisted was a sword, Aelara with ink on her hands and mud on her dress, uninterested in playing the princess he demanded as prize.
 
-"And about the campaign, of course." Senthara adjusted a fold in her dress that did not need adjusting. "About how the march is going. Seven days now, they must be reaching the northern provinces. Whether the eastern ports are ready to receive the fleet — there can be no delays, according to Tornael. The strategy depends on synchrony: the fleet arrives by sea, the army takes the Holds by land, and then — together — they encircle the capital of the Lands Beyond. Brilliant, he would say. Brilliant." She repeated the word as one repeats something heard too many times. "And about Krav, whether he is eating properly — you know how he is, he forgets to eat when he is excited about something."
+Senthara let the image fade.
 
-She stopped. Looked at Aelara, who was still battling the ink beneath her nails.
+"Do you miss the ports?" she asked. "You were there a month?"
 
-"Krav..." Her voice dropped lower. "My boy. I miss him already."
+"More or less," Velira said. "The king wanted someone he trusted to watch the loading. He trusts my husband, so I went."
 
-Aelara raised her eyes. For a moment, mother and daughter looked at each other — and there was something there that Velira could not name. Shared longing, perhaps. Or fear. Or simply the silent recognition that their family was incomplete, scattered between the capital and some cold place in the north.
+"And?" Senthara asked.
 
-Senthara looked away first.
+Velira hesitated. "The fleet is large. The engineers have done the impossible twice in as many years. Vel-Nakh's yards are overrun. Too many people. Too many ships." She looked toward the ceiling. "Too much that can go wrong."
 
-"And about Tornael... whether he is sleeping. He never sleeps well in tents, complains about the stones on the ground, the noise of the soldiers. Twenty years married and I still do not understand how a man who planned a war for fifteen years never thought to bring a decent mattress."
+"Yes," Senthara said softly. "Too much."
 
-Velira laughed.
+She glanced at the fireplace. At the empty space above the carved history of Duratheon.
 
-"Those are many thoughts for a single night."
+"Is it strange," she asked, "that we grow accustomed to everything?"
 
-"They are." Senthara looked at her own hands. "Many thoughts."
+Velira frowned. "Everything?"
 
-The silence stretched a moment. The music continued. The nobles danced.
+"Beauty," Senthara said. "Excess. Fire. Absence." She watched the flames shift, shadows leaping over the stone kings. "At first, fire blinds us. Then our eyes adjust. Soon we can stare into it without pain. We grow accustomed even to what should hurt."
 
-"And nothing else?" asked Velira, with the delicacy of one who has known someone long enough to recognize when a list of worries is too long to be true.
+A burst of laughter rose from a group near the far columns — too loud, too polished to be entirely sincere.
 
-Senthara did not answer immediately. Her eyes went to the fireplace, to the flames, to the empty space at the top.
+"The same is true of horror," Senthara added.
 
-"Is it not strange," she said, almost to herself, "that we grow accustomed to everything?"
+Velira followed her gaze to the fireplace. To the empty space.
 
-Velira frowned.
+"A useful thing, I suppose," Velira said, after a moment. "If we could not grow accustomed, no one would survive this city."
 
-"I am not certain I follow Your Majesty."
+"A useful thing," Senthara agreed. "And a dangerous one."
 
-"I mean... we grow accustomed to what is bad and to what is good. Life seems always to return to the same place. As if nothing we did changed anything at all."
-
-"I think Your Majesty needs to spend less time conversing with old Vaethor."
-
-The queen laughed — a brief sound, almost surprised.
-
-"You are a good friend, Velira. You always have been."
-
-"And I always will be." Velira touched the queen's arm. "We have much yet to live. Many things to do."
-
-"Such as?"
-
-Senthara's smile was gentle, but her eyes did not follow.
-
-Velira opened her mouth. Closed it. Thought.
-
-"Never mind," said Senthara. "I am merely being reflective. Merely wondering why, when we look at the fire for the first time, our eyes go blind for a moment... but then grow accustomed. And we can stare indefinitely, for as long as we wish. We grow accustomed."
-
-"A good thing," said Velira, attempting lightness. "That way we can sit near the fireplace without being harmed."
-
-"True. True."
-
-Aelara had stopped picking at her nails. She was listening now, though she pretended not to be.
-
-Senthara turned her head toward the fireplace. The flames danced across the stone reliefs, casting shadows over dead kings and past conquests. At the top, the empty space waited.
+She felt Aelara shift again beside her, the tap of the girl's heel against stone a faint counterpoint to the music.
 
 ⁂
 
-Silence.
+On the other side of the hall, Luxaren Thalorn watched his wife.
 
-The music, the conversations, the clinking goblets — all noise. No distinguishable sound, yet all of it heard. The princess in her world. The queen in hers. Velira between the two.
+Velira sat beside the queen as if she had been born there. She leaned in when the queen spoke, nodded at the appropriate moments, laughed — softly, elegantly — when Senthara's mouth curved in that almost-smile she used when she wished to reassure and unsettle at the same time.
 
-"But then—"
+Luxaren's jaw ached.
 
-They spoke at the same time. Laughed.
+*That woman*, he thought. *That woman and her ideas.*
 
-"Please, Your Majesty," said Velira.
+He lifted his goblet and drank. The velutharn slid down his throat, sweet and heavy, warming his chest without calming anything that mattered.
 
-"How is life? What do you intend to do this winter?"
+"That cow," he muttered. "That rat. That—"
 
-"Ah, yes." Velira adjusted the folds of her dress. "Luxaren and I are going south, to stay at my father-in-law's manor. You should come. It is not quite a palace, but it has every comfort. And I, as Your Majesty knows..." She lowered her voice. "I am with child. I cannot take risks during the winter. It can be rather cruel in Vaelhem Thel."
+"Careful, Luxaren," Aldric Stennvik said beside him, without looking away from the hall. The old man's voice was dry as dust. "Some thoughts are best kept between a man and his cup."
 
-"Do not remind me." The queen smiled. "At least we have fireplaces and furs."
+"I am between a man and his cup," Luxaren said, and drank again.
 
-"There you are! I have been looking for you all—" A halt. "Your Majesty!"
+Aldric ignored the comment. At seventy-two, administrator of what remained of the eastern mines, he had outlived four kings and three purges by knowing exactly when to pretend he had heard nothing.
 
-Luxaren Thalorn froze. He bowed to the queen, then to the princess — who remained profoundly bored with everything happening around her. He was a man of perhaps thirty-five years, narrow face, pointed nose, the sort of features that seemed permanently offended by something.
+Luxaren watched Velira's hand touch the queen's arm. Intimate. Too intimate.
 
-But it was Aelara who broke the moment.
+He hated how natural she looked there.
 
-A laugh. Loud, genuine, impossible to contain — the sort of laugh that only the innocence of a child could permit.
+He hated that she did not look for him.
 
-"Those are the ugliest breeches I have ever seen in my life!"
+He hated, most of all, that he could not decide whether he wanted her attention or her absence.
 
-The princess's finger pointed directly at Luxaren's legs.
+Regulus Corvain and Cassien Agrias approached, drawn by the orbit of Aldric's influence or perhaps by the bottle in Luxaren's hand.
 
-He reacted without grace, straightening his spine, clutching his goblet of crystal and silver, glancing from side to side as if seeking witnesses to an affront. He wore the latest fashion of the capital — a true marvel of courtly style, they said. Blue velvet, naturally. Silver embroidery, naturally. But silk ruffles at the cuffs and breeches that clung like a second skin, following the curves of his thin legs until they met the round prominence of his belly. Pearlescent stockings. Blue velvet shoes with silver buckles.
+"…wouldn't it be better," Luxaren was saying, not entirely sure when he had begun speaking aloud, "if women led the battles and men stayed behind to manage things properly? At least then something would be done right."
 
-"The latest fashion," he said, his voice tense. "Master Kanteth Luxoren assured me. One of the finest tailors in the kingdom."
+Regulus caught only the tail of the sentence. "It would be better," he said calmly, "but then there would be no victories to tell our children. And we would all be someone else's slaves."
 
-Luxaren forced a laugh.
+Cassien laughed louder than necessary. He always did.
 
-"Children. So... spirited."
+Luxaren swallowed another mouthful of velutharn. The hall's light played on the surface, turning it to molten gold. He imagined it spilling.
 
-The queen suppressed a genuine smile — perhaps the first in days. But her posture returned.
+"The roads north are holding?" Aldric asked, shifting the conversation as neatly as he might have shifted a ledger. "I hear the passes are still unstable. Rockfalls. Snow where there should be none this late."
 
-"My daughter, mind how you speak."
+"The road is long," Regulus said. "An army that size takes time. More than a thousand kilometers to Kravethorn. Three months at least. After seven days they will have barely left the central provinces."
 
-"It is quite all right, Your Majesty." Luxaren made a magnanimous gesture with his free hand. "But, as I was saying—" He turned to Velira. "There you are. I need you to come with me. Master Sthenmar Duravel is showing the drawings for the renovation of the Great Temple of Sthendur. We are patrons, as Your Majesty knows. Our name will be on the wall of benefactors. Come."
+"The fleet left two months before," Cassien said, eager to contribute. "They should be near Vel-Nakh by now. Quite a crossing."
 
-The last word came out too firm. Almost a command.
+"The Vethurim built those ships," Regulus said. "It will be a miracle if half of them hold together."
 
-Luxaren was a good husband — if we may call someone that who provides comfort and position. But he had a reputation. Insecure, they said. Prone to a certain... sharpness when things did not proceed as he wished. Nothing that reached the wrong ears, of course. But the corridors of the palace had long memories.
+"Impressive, isn't it," Aldric murmured, "how dependent we are on people we despise."
 
-Velira rose. Head lowered.
+Luxaren's lip curled. "Despise is a strong word," he said. "We simply understand their place."
 
-"With your leave, Your Majesty, I—"
+"And they," Aldric said, "understand ours."
 
-Senthara's hand caught her arm.
+⁂
 
-When the queen raised her eyes to Luxaren, there was no smile. There was stone. The same stone as the statues. The same stone as the fireplace.
+Senthara felt the weight of certain gazes the way a sailor feels weather in his bones.
 
-"If you do not mind, my good friend," she said, her voice soft as silk and firm as iron, "Velira will remain at my side this evening. Perhaps this week."
+The group near the columns had grown. Aldric's white hair, Regulus's calm profile, Cassien's too-wide smile, Luxaren's narrow face and narrow eyes, always darting. They spoke in a knot, slightly removed from the main flow of dancers and clusters.
+
+Aelara's gaze had settled on them.
+
+Of course it had.
+
+The girl had an instinct for finding the center of a threat even when she could not yet name it.
+
+⁂
+
+"The king," Luxaren said suddenly, forcing himself back to the conversation as if he had not just spent several heartbeats glowering at a twelve-year-old. "What if he does not return?"
+
+The words fell heavier than he expected.
+
+Cassien's laughter cut off. Aldric's goblet paused halfway to his lips. Regulus's face did not change, but something in his eyes cooled.
+
+"The king will return," Cassien said, too quickly.
+
+"Of course," Luxaren went on, emboldened by the rush of his own recklessness and the velutharn warming his veins. "Of course he will. Three hundred thousand men. A thousand kilometers of mountain passes. Lands Beyond that no one has seen and returned to describe. Some say they have weapons we cannot imagine. Some say—"
+
+"Some say many things," Regulus interrupted, his voice flat. "That is why we do not build policy on rumor."
+
+Luxaren ignored him.
+
+"The campaign has emptied the treasury," he said. "The provinces have been bled dry. Taxes raised, then raised again. If the army does not return with the riches of Lands Beyond, what then? There will be nothing left. Nothing. The kingdom will be—"
+
+"Luxaren."
+
+It was Aldric this time. A small sound escaped him — not quite a cough, not quite a laugh.
+
+"Arithmetic," the old man murmured. "It seems even velutharn cannot dull your talent for it."
+
+Luxaren took it as agreement. Emboldened, he glanced back toward the throne.
+
+The princess had moved.
+
+She was no longer seated straight ahead. She stood now near one of the columns, no more than a few paces behind Cassien, half in shadow. Her hands were clasped loosely before her. Her chin was lifted just enough to be defiant without being disrespectful.
+
+Her gaze was on him.
+
+Not drifted, not curious, not wandering. Fixed.
+
+*How long has she been standing there?*
+
+The thought sliced through the pleasant fog of drink with painful clarity.
+
+He could not remember when she had approached. Could not remember what he had been saying before he noticed her. Could not remember—
+
+*The king. What if he does not return. The kingdom will be—*
+
+His hand jerked.
+
+The velutharn spilled — not much, but enough. Amber on white. The liquid splashed across the polished marble like golden blood, catching the light from the chandeliers as it spread.
+
+A servant appeared almost before the first drop hit the floor, cloth already in hand, movements efficient, unhurried. This was not the first spill the hall had seen. It would not be the last.
+
+Someone laughed somewhere — a genuine laugh this time, reacting to some harmless joke near the tables. The music did not falter. The choir held its line.
+
+Luxaren did not look at the stain.
+
+He looked at the throne.
+
+Senthara was watching him.
+
+Not Aelara. Not the spill. Him.
+
+Their eyes met across the length of the hall. Dark eyes, steady. Her face remained composed, the careful expression of a queen who has learned to carry an entire realm on the muscles around her mouth.
+
+For a fraction of a second — no more than that — something shifted.
+
+An eyebrow raised a fraction. The corner of her lips loosened.
+
+A microexpression, almost imperceptible, that said only:
+
+*I know.*
+
+Luxaren's heart stumbled.
+
+She could not know. There was nothing to know. He had only spoken words, drunken words, the sort of words men spoke at Duathel when velutharn flowed too freely and the music was too loud to carry them beyond the cluster of their companions. He had not done anything.
+
+Not yet.
+
+But those eyes. Those dark, patient eyes, watching him from beside the empty throne, above the carpet woven by a despised people, beneath the empty space waiting for a conquest that might never be carved.
+
+Luxaren turned away.
+
+Aldric set his goblet down with deliberate care. His face had gone neutral, the expression of a man who had learned to survive by not having expressions at all.
+
+"If you will excuse me, gentlemen," he said. "My years advise me to enjoy the feast while my teeth still permit it."
+
+He touched Luxaren's arm as he passed. His voice dropped, almost gentle.
+
+"You think too much," he said. "A man can lose his head that way. Overloaded." He tapped his temple twice. "The mind is not meant to carry so much weight."
+
+Then he was gone, swallowed by the currents of the hall.
+
+The silence that followed in their small circle was heavier than the noise around them. Cassien and Regulus exchanged a look. When a man like Aldric left a conversation, it meant the conversation had become dangerous.
+
+Luxaren opened his mouth to recover, to laugh it off, to pretend he had been joking.
+
+The halberds struck the floor.
+
+Once. Twice. Three times.
+
+⁂
+
+The sound cut cleanly through the music, through the conversations, through the comfortable rhythm of utensils and glassware. The royal guards at the entrance brought the shafts of their weapons down in perfect unison, then held them upright once more.
+
+Silence descended upon the Thul-Vaelhem like a shroud.
+
+Luxaren's hands clenched around air. The goblet was gone, taken by the servant. He had nothing to hold, nothing to anchor himself with. For a moment — a long, vertiginous moment — he was certain something had happened.
+
+News from the north. A name spoken. An accusation.
+
+But it was only ritual.
+
+The speech before dinner. The tradition of every Duathel.
+
+He forced his shoulders to unknot.
+
+Across the hall, Senthara rose from her chair.
+
+⁂
+
+Senthara adjusted the folds of her dress with fingers that did not quite feel like her own. The hall watched her, or pretended not to. The smell of burning oak and cedar mingled with the fermented sweetness of velutharn rising from a hundred goblets. The choir fell quiet. The musicians lowered their instruments.
+
+She glanced, briefly, at the empty throne beside her.
+
+"It seems," she said, and her voice was clear in the silence, "that Duathel comes whether we deserve it or not."
+
+A few soft chuckles. Habit, more than amusement.
+
+"I have stood here many times," she went on. "You are more accustomed to my husband's voice, but his duties have taken him elsewhere. So you have mine."
+
+She paused, letting the reality of that settle. The king was gone. The queen remained. The hall did not like inversions of order.
+
+"Seven days ago," she said, "my husband and my son — and the sons of many in this hall — departed for the greatest campaign in Duratheon's history."
+
+The air shifted. Shoulders straightened. Spines grew a fraction taller, as if proximity to the idea of glory might confer some of it.
+
+"Do not be deceived by comfort," Senthara said. "By fire. By music. By the food laid before us."
+
+She turned her head toward the fireplace. The reliefs. The empty space at the top.
+
+"At the end of tonight's dinner," she said, "there will be food left over. As there always is."
+
+Her eyes swept over the tables. Silver platters waiting to be filled. Bowls that would not be emptied.
+
+"Tomorrow," she said, "that food will be given to the pigs."
+
+A ripple, not quite of laughter, not quite of offense, passed through the hall.
+
+"From the window of my chamber," Senthara continued, "I see domes of gold that blind my eyes at midday. But I know where the children die in the streets."
+
+Her gaze found a woman in a green dress near the middle of the hall. The woman looked at her husband with a small, confused frown.
+
+"Perhaps," Senthara said, "perhaps the food could go elsewhere."
+
+She heard her own voice falter. It angered her.
+
+"Forgive me," she said, more quietly. "I am rambling."
+
+She sat.
+
+For three heartbeats, nothing moved.
+
+Then someone near the far end of the table murmured, "Glōrïäy ad Sthendur," too loudly, too quickly, as if throwing a rope to a drowning crowd. Others echoed the words with palpable relief, clinging to the familiar syllables.
+
+The musicians returned bows to strings, breath to brass. Conversation resumed — in whispers at first, then in cautious sentences, then in the easy murmur of people who had decided, collectively, to forget something.
+
+Some speeches were made to be remembered.
+
+This one, Senthara realized, had been made to be forgotten.
+
+⁂
+
+From his place near the columns, Luxaren let out a breath he had not realized he was holding.
+
+He had expected many things from the queen. A careful reassurance of the campaign's brilliance. A reminder of their historical duty. A blessing over the absent king, smoothly delivered, easily repeated.
+
+He had not expected pigs.
+
+"Bold," Regulus said, his tone unreadable.
+
+"Reckless," Cassien muttered.
+
+⁂
+
+The dinner proceeded.
+
+Courses arrived in careful sequence — meats glazed in honey and cloves, roots roasted in oil pressed from olives grown in holds that had not yet seen soldiers march across them, fish brought from the eastern ports in defiance of distance and common sense. The velutharn flowed, golden in the goblets, catching and bending the firelight.
+
+Senthara ate little.
+
+She kept Velira close, drawing her into small, practical conversations about tapestries and roof repairs and the state of the western cisterns — matters dull enough to be safe, important enough to be real. Velira answered with the ease of someone accustomed to making herself useful.
+
+When Luxaren approached, Senthara felt him long before she saw him.
+
+"There you are," he said, stopping before them and forcing a smile too wide for his narrow face. "Velira, I need you to come with me. There are people I must speak with, and I require your presence."
+
+The last words came out more sharply than he intended. Almost like a command.
+
+Velira began to rise, head lowered.
+
+"With your leave, Your Maj—"
+
+Senthara's hand tightened around Velira's forearm.
+
+She lifted her gaze to Luxaren.
+
+"If you do not mind, my good friend," she said, and her voice was soft as silk, firm as carved stone, "Velira will remain at my side this evening. Perhaps this week."
 
 Luxaren blinked.
 
-"No, Your Majesty. Not at all. I understand perfectly." A smile that did not reach his eyes. "I am pleased to leave her in the highest of company."
+For a moment, the hall continued without them — music, laughter, the gentle symphony of silver against porcelain — but in the small radius between throne, carpet and husband, the air froze.
 
-"Thank you."
+"No, Your Majesty," he said carefully. "Of course I do not mind. I am… pleased to leave her in the highest of company."
 
-He bowed again — to the queen, to the princess, to Velira — and retreated. His blue velvet shoes made a soft sound on the Vethurim carpet as he withdrew.
+"Thank you," Senthara said.
 
-Velira sat. Her smile contained, satisfied.
+Velira did not look up.
 
-"Thank you, my queen."
+Luxaren bowed, first to the queen, then — briefly, because form demanded it — to the girl who had returned to the throne.
 
-"I never quite understood why you married him."
+He turned and walked away.
 
-Velira looked at her own hands.
+His blue velvet shoes made a soft sound on the Vethurim carpet. Near the fireplace, the stain of his spilled velutharn had vanished utterly. No trace remained. No evidence that anything had happened.
 
-"He is a good man. He is merely..."
+But something had happened.
 
-"Weak."
+As Luxaren took his place at the far end of the table, alone, watching his wife sit beside the queen, his thoughts returned to the look Senthara had given him across the hall. That infinitesimal shift of eyebrow and mouth.
 
-The silence lasted a moment.
-
-"No." Velira raised her eyes. "Well... he needs me."
-
-The queen smiled gently and held her friend's hand.
-
-"Who does not?"`,
-        tags: ["manuscript", "volume-iv", "chapter-3", "maela", "aelara", "velira", "luxaren-thalorn", "duathel", "palace"]
-      },
-      "vol4-ch1c": {
-        title: "IV — Amber on White",
-        book: "the-depletion",
-        volume: "part-i",
-        content: `**IV**
-*Amber on White*
-
-On the other side of the hall, away from the tables where the servants had begun to serve, Luxaren Thalorn watched his wife.
-
-That cow. That rat. That fucking witch.
-
-"Careful with your words, Luxaren." Aldric Stennvik raised his goblet without looking at him — a man of seventy-two years, administrator of what remained of the eastern mines. "I can imagine who you're speaking of. It's not wise to say certain thoughts aloud."
-
-"I know, I know." Luxaren drained another goblet of velutharn with ferocity. His eyes would not leave Velira — laughing, laughing — while she spoke with the queen. The goblet was empty. He did not remember drinking. "It's just that... Ah, wouldn't it be good if women went off to lead battles while men stayed behind... administrating?"
-
-Aldric let out a dry laugh.
-
-Regulus Corvain and Theron Agrias approached in time to hear the end of the sentence, but not the beginning.
-
-"It would be good," said Regulus, "but we wouldn't have victories to tell our children about. And we'd probably all be someone's slaves."
-
-Theron laughed louder than the others — he always laughed louder than the others.
-
-"Regulus," said Aldric, "any news of the march? Isn't it interesting that we're acting so trivially while the most important event of the last three decades is happening?" He paused. "Not that I care, honestly. I care about the king, but I have no interest in wars."
-
-"Well, Lord Stennvik, the road is long. An army of that size takes time to march — more than a thousand kilometers to Kravethorn, perhaps three months in total. After seven days, they've barely left the central provinces." Regulus drank without haste. "The fleet, of course, departed two months before the army — they should be approaching Vel-Nakh by now, if they haven't already entered it. It will be quite a crossing. The tests the king conducted last year were not entirely successful, but they improved the ships — at least that's what Tariq Bashani said."
-
-"The Vethurim?" Theron wrinkled his nose. "Impressive how we depend on those people."
-
-"Impressive how we pretend we don't," said Aldric.
-
-Luxaren was not listening. On the other side of the hall, Velira had touched the queen's arm. The two of them were laughing at something. He gripped the empty goblet hard enough for his knuckles to turn white.
-
-"Well, honestly, I'm grateful I never learned to fight," he said, forcing himself back into the conversation. "Not everyone was made for it. That's why we're here — handling administrative matters."
-
-"Have you thought about going to Kravethorn?" Aldric asked. "To accompany the embarkation."
-
-"Not at all. That's for Setharen and his friends." Luxaren made a vague gesture with his empty goblet. "They say the city has become quite beautiful. And free of beggars."
-
-Theron let out another guffaw. Regulus merely smiled — a smile that did not show his teeth.
-
-The music continued in the background. The main table was being set with the finest gastronomy in all the kingdom, as was tradition on every Duathel. The servants moved in silence between the columns, carrying silver trays.
-
-"It's incredible that there's no solution for those people," said Regulus. "Vel-Zumarakh is completely overrun. You can't pass through there even by carriage, let alone on horseback. I suggested to the king that they be conscripted for the war, but his advisors insisted that every warrior needed to contribute genuinely to the campaign. Soldiers are expensive, they said."
-
-Luxaren nodded without hearing. His eyes had returned to the other side of the hall.
-
-The queen was still holding Velira's hand.
-
-The queen's refusal was lodged in his throat. No matter how much he drank, he could not swallow it. He had even forgotten the reason he had gone to call his wife — well, perhaps it was not so important after all. Perhaps he had merely wanted to keep her away from the queen. She had dangerous ideas. She dominated the minds of everyone around her.
-
-Except the mind of her husband.
-
-Dumb as a door.
-
-"Luxaren?"
-
-Without realizing it, he had spoken aloud. Aldric was watching him with a raised eyebrow. Luxaren laughed — a forced, harsh sound — and pretended he had been speaking of himself.
-
-"Me. I'm dumb as a door. I just forgot about..."
-
-Aldric laughed. "I see."
-
-The old man adjusted the folds of his cloak and gave a small bow to the group.
-
-"If you'll permit me, gentlemen, I think I should enjoy the feast. You know how it is — I shouldn't have many Duathel left." He looked from one to another. "With your leave. Luxaren. Theron. Regulus. Enjoy as you wish."
-
-Before departing, he approached Luxaren and gave two small taps on his forehead.
-
-"Be careful not to lose your head cursing so much."
-
-And he was gone.
-
-Theron and Regulus exchanged a glance — as if they had missed something — but did not give it much thought.
-
-"Well," said Theron, breaking the silence. "What did you think of the latest vintage of velutharn?"
-
-He was merely trying to make conversation with the nobles, speaking of something he thought he understood. Luxaren was not concerned. He took another gulp from another goblet and said only:
-
-"It's all the same to me."
-
-And left, leaving Theron and Regulus alone.
-
-Regulus laughed — a cold sound, without joy. He looked at Theron with the contempt he usually reserved for everyone, but which he applied with special frequency to him. Then he too left without saying a word.
-
-Theron remained alone among the columns, holding a goblet of velutharn that no one wanted to discuss.
-
-⁂
-
-Luxaren walked.
-
-Not back to his wife. Not back to the men who had already departed. He walked toward the great fireplace, the monument of stone within another monument of stone.
-
-His eyes wandered. Between the queen and Velira. Between the nobles laughing and dancing. Between the flames and the empty space above them — the conquest that had not yet been carved because it had not yet happened. The queen. The people. The void.
-
-For a moment — a fraction of a second, no more — his eyes met Senthara's.
-
-She was smiling. She was happy. She was holding Velira's hand as one holds something that belongs to them.
-
-But when her eyes met his, something changed.
-
-The eyebrow slightly raised. The smile slightly loosened. A micro-expression, almost imperceptible, that said one thing only:
-
-I know.
-
-In that fraction of a second, Luxaren stumbled.
-
-The velutharn spilled on the polished marble — amber on white, like golden blood. A servant appeared from nowhere to clean it. Someone laughed somewhere. The music continued.
-
-Luxaren did not look down. Did not look at the servant. Did not look at the stain on the floor.
-
-He looked at the fireplace. At the fire. At the empty space at the top.
-
-And for the first time that night, he did not think of his wife.
-
-He thought of himself.
-
-And thinking of himself, he decided it was time to leave.
-
-When he turned his back to the fireplace, the sound of halberds cut through the hall.
-
-The royal guards struck their shafts against the marble — once, twice, three times. Silence descended upon the Thul-Vaelhem like a shroud.
-
-Luxaren froze.
-
-His heart raced. His hands, suddenly cold, gripped the empty goblet hard enough for the crystal to creak. For a moment — a terrible, endless moment — he thought something had happened. News. A discovery. A name spoken aloud that should not be spoken.
-
-But it was only the ritual. The speech before dinner. The tradition of every Duathel.
-
-He breathed. Forced his hands to relax. No one had noticed. No one was looking at him.
-
-No one except the queen.
-
-⁂
-
-Senthara adjusted the folds of her dress. Looked down. Looked to the sides. When she spoke, her voice was clear, but there was something in it that was not usually there.
-
-"Another Duathel. Another..."
-
-She stopped. Breathed.
-
-"I think I've given this speech so many times. Though you're more accustomed to my husband's voice. Or even Krav's." A brief smile. "But even I am tired of doing and saying the same things. Celebrating the Duathel. Your grace. Maestro Thaelor's music." She made a vague gesture toward the orchestra. "Anyway. So much to be grateful for."
-
-The nobles smiled. Some raised their goblets.
-
-"But I wanted to remind you," Senthara continued, "that seven days ago, my husband and my son — and the sons of so many here — departed for the greatest military campaign in Duratheon's history."
-
-The silence changed in quality.
-
-"Do not be deceived by our comfort. By our food. By the fireplaces that begin to be lit as we approach the middle of spring and think that summer was yesterday."
-
-She looked at the great fireplace. At the empty space at the top.
-
-"Summer was yesterday. But after summer, we have months to prepare for winter. Even animals do this. And we should do the same."
-
-Lady Thornavel coughed — a small, discreet sound that no one would recognize as discomfort.
-
-"At the end of tonight's dinner," said Senthara, "there will be food left over. As there always is on every Duathel. And the next day, we give it to the pigs."
-
-A pause.
-
-"Today I wanted it to be different."
-
-Silence.
-
-"Everyone will take some food and give it to the poor in the streets."
-
-Someone near the columns murmured something. A gray-haired man furrowed his brow as if he had not heard correctly. A woman in a green dress looked at her husband with an expression that asked for translation.
-
-"Perhaps this is what is beautiful," said Senthara, almost to herself. "I don't know. I've never done this. And I doubt anyone here has."
-
-Another cough. This one louder. Someone cleared their throat.
-
-"From the top of my chamber, I see golden domes that blind my sight during the day. But I can still see the places where children die in the streets. Of hunger."
-
-A whisper ran along the side of the hall — not words, just sound. The sound of people who do not know what to do with their faces.
-
-Regulus, near the columns, merely raised his goblet to his lips — a slow, deliberate movement. He did not smile. He did not frown. He simply drank, as one drinks while waiting for rain to pass.
-
-"Perhaps this is what is beautiful," she repeated. "What if, instead of gold, we had people who had a place to live? Food? A warm blanket for cold nights? A place to clean themselves properly?" She paused. "Perhaps the smell you complain about so much could improve. Perhaps this is a beauty that lasts longer."
-
-No one responded.
-
-The queen looked at the hall. At the faces that had been smiles and were now masks — some confused, others tense, others completely empty. She was speaking, she realized now, in a language these people did not know. Not the High Zanuax of hymns that no one understood. Something worse. A language made of ideas that had no place in this hall.
-
-"Anyway." Senthara straightened her shoulders. "I think I'm rambling. Perhaps it's necessary. Perhaps this is the meaning of Duathel — to celebrate life and grace while misfortune exists. To celebrate our luck and the blessing granted by Sthendur."
-
-She looked at her own hands. At the rings. At the velvet of the dress that cost more than a family from Vel-Zumarakh would see in an entire lifetime.
-
-"Especially the luck of my house. As queen of the greatest kingdom that has ever existed in the world."
-
-The sentence came out like someone releasing a weight — not with pride, but with something that might have been shame. Or exhaustion. Or simply the awareness that her words were confused, full of good intentions, but without the strength to change her own life. Without the strength to change anyone's life there.
-
-She wanted to find beauty again. She wanted something — anything — to cure the sadness that had settled in her chest since the silence had descended upon the capital.
-
-But beauty would not come from a speech.
-
-And she knew it.
-
-"Glōrïäy ad Sthendur," someone murmured — too quickly, too relieved.
-
-"Glōrïäy ad Sthendur," others echoed, clinging to the familiar words like shipwreck survivors to debris.
-
-"Well." The queen lowered her eyes. "Forgive me. I'm just thinking of my husband and my son."
-
-She sat down.
-
-The silence lasted a moment longer than it should have. Two. Three.
-
-Senthara raised her hand — a small gesture, almost hesitant — and waved to the orchestra. Maestro Thaelor, who had been standing with his baton suspended in the air, blinked as if waking from a trance. He raised his arms. The violins came in out of sync, then found each other, then pretended they had always been together.
-
-The servants began to move. The silver trays appeared between the columns. The nobles began to speak again — in whispers first, then in murmurs, then in their usual voices. Life returned to the Thul-Vaelhem like water filling a hole in the sand.
-
-But something had changed.
-
-No one could say what. No one would try. The dinner would proceed. The food would be served. The velutharn would flow. And the next day, the leftovers would go to the pigs — as they always had, as they always would.
-
-Some speeches are made to be heard.
-
-This one had been made to be forgotten.
-
-⁂
-
-Near the fireplace, Luxaren Thalorn remained motionless.
-
-He was not thinking about the speech. He was not thinking about the poor, or the gold, or the children dying in the streets.
-
-He was thinking about the moment when the halberds struck the floor. About the cold that ran down his spine. About the name he almost heard spoken.
-
-The queen had looked at him. For a fraction of a second. With that micro-expression that said I know.
-
-But she did not know.
+*I know.*
 
 She could not know.
 
-Luxaren placed the empty goblet on the tray of a passing servant, adjusted the sleeves of his navy-blue doublet, and walked toward the tables — where Velira was already seated, where the food was already being served, where life continued as if nothing had happened.
+There was nothing to know.
 
-Because nothing had happened.
+Yet.
 
-Yet.`,
-        tags: ["manuscript", "volume-iv", "chapter-4", "luxaren-thalorn", "maela", "regulus", "theron", "aldric", "duathel", "palace", "speech"]
+The fire burned in the great hearth, throwing light over kings carved in stone. Above them, the empty space waited for a victory that might never come. Aelara sat upon the throne that should have remained empty, her heel tapping softly against stone — the smallest, most persistent sound in a hall full of people determined not to hear anything at all.
+
+Outside, beyond the marble walls and golden domes, beyond the ordered streets and guarded gates, the silence grew.
+`,
+        tags: ["manuscript", "volume-iv", "chapter-3", "aelara", "senthara", "velira", "luxaren-thalorn", "aldric-stennvik", "duathel", "palace", "amber-on-white"]
       },
-      "vol4-ch2": {
-        title: "V — The Letter from the North",
+      "vol4-ch1c": {
+        title: "IV — The March",
+        book: "the-depletion",
+        volume: "part-i",
+        content: `**IV**
+*The March*
+
+*POV: Tam Smithson | Day 16 | Rear Guard*
+
+⁂
+
+Sixteen days and Tam still hadn't gotten used to what could be called beautiful.
+
+Thousands of standards and banners rippled above the column that stretched until it disappeared on the horizon. Most were simple—pennants of centuries and cohorts, numerals in blue on white backgrounds, already dirty with dust and smoke. But among them, from time to time, the real banners appeared.
+
+The standard of Duratheon.
+
+Tam had seen it up close only once, on the day of departure, when the column formed in the fields outside the capital. A golden sun on a field of marble white. Eight points—four larger ones pointing to the corners of the world, four smaller ones between them, and thin rays radiating from each as if the sun itself were burning through the fabric. And in the center, within the golden disc: a clenched fist. Geometric, angular, made of straight lines as if it had been carved from metal, not drawn. The fingers facing the observer. *This land is ours. We will not let go.*
+
+And beside it, always beside it, the standard of House Vael.
+
+A golden tree of infinite branches, its roots as deep as its crown was tall. And circling it, two golden dragons—serpentine bodies coiled around the roots, climbing up the sides of the trunk, their heads meeting above the crown like twin guardians. The background was deep blue, the blue of the sky before dawn. The tree and dragons gleamed as if they had light of their own.
+
+That day, on the day of departure, everything gleamed.
+
+Now, sixteen days later, Tam saw those standards only from afar—blurs of color in the haze of dust, forty thousand paces ahead, where the king marched with his guard. What he saw up close were the dirty pennants of Century 4, the numeral already smeared by the rain that had fallen three days ago.
+
+But still.
+
+Tam looked at all of it—the sea of people, the rows of men stretching forward and backward as far as the eye could see—and adjusted his uniform. Every time. It was automatic. He saw himself as part of it, of that enormous thing, and he needed to be correct.
+
+His uniform wasn't like that of the great soldiers, the ones who marched in the vanguard, the ones he couldn't even see. Those wore chainmail that clinked with every step, helms with crests, metal cuirasses with golden inlays. Tam had seen some on the day of departure—they looked like statues that had decided to walk.
+
+His uniform was different. The same as everyone else's. The same as the thousands of common soldiers who formed the body of the column.
+
+A coarse linen tunic down to mid-thigh, white when it was new, now a color somewhere between gray and yellow from all the sweat and dust. Underneath, a *gambeson*—the padded vest that protected against blows and cold, made of layers of linen stitched together, heavy enough to make your shoulders ache after a full day. Over everything, a woolen surcoat, white with a faded blue border that had once been vibrant.
+
+Thick wool trousers tucked into hard leather boots that rose to the calf—boots that hadn't been made for Tam's feet, but for someone's feet, a size distributed en masse, and that were now raising blisters in the wrong places. Leather bracers on his forearms, a wide belt with a cheap bronze buckle, and on his back the *sarcela* with everything a soldier needed to carry.
+
+But in the center of his chest, on the surcoat, there it was.
+
+Painted with yellow paint pretending to be gold—the crest of Duratheon. The eight-pointed sun. The clenched fist in the center. The paint was already starting to peel at the corners, and on some soldiers who had been marching longer, the sun looked more like a shapeless stain than a symbol. But on Tam's chest it was still intact. He took care of it. Cleaned it carefully when there was water. Avoided touching things that might scratch it.
+
+*I've never worn such fine clothes.*
+
+The thought came always. Every time he looked down, every time he adjusted his belt, every time he saw the yellow sun on his own chest. At the forge, Tam wore the same leather apron for years, the same pair of patched trousers, the same tunic that had belonged to someone else before it was his. Clothes were function. Clothes were protection against sparks and heat. Clothes weren't *fine*.
+
+But this—this was different. This was uniform. The same for everyone. With colors. With a symbol. With a purpose.
+
+Most of them probably thought the same, Tam imagined. The fishermen, the farmers, the miners, the orphans like him—people who had never worn anything that matched, anything that had been made with the intention of looking like something. Now they all looked like the same thing. Soldiers. Part of something greater.
+
+Tam adjusted his surcoat once more, aligned the sun in the center of his chest, and kept marching.
+
+⁂
+
+He saw Aldwen step in the shit before Aldwen noticed.
+
+It was the third time that day. Or fourth. Tam had stopped counting after he realized that counting didn't change anything—the road was more shit than dirt, and feet went where feet could go.
+
+"Fucking hell."
+
+Aldwen raised his boot. The brownish-green crust covered it up to the ankle. The smell rose.
+
+Tam watched as Aldwen scraped the boot on a rock. The movements were slow, almost lazy, as if even cleaning his own boot didn't deserve real effort. The sun of Duratheon on Aldwen's chest was almost unrecognizable—half the paint had peeled off, and he clearly didn't care. Tam didn't understand this. The blacksmith always said: *stay clean so you don't get sick*. It was one of the rules. Aldwen seemed to have no rules.
+
+"Stepped in another pile of shit," Aldwen said to no one in particular. "This isn't what I enlisted for."
+
+"What did you think?" Renn didn't even look back. He was adjusting the straps of his *sarcela*, the leather pack everyone carried. "That you'd march alongside the king?"
+
+"No, but at least his carriage maybe, anyway..." Aldwen shrugged. "Ah, fuck it."
+
+*Ah, fuck it.* Tam stored the phrase. Aldwen said that a lot. It was as if it were his answer to everything—to the shit on his boot, to the march, to life. Tam had learned to work to eat and eat to work. Aldwen seemed to have learned not to care about either.
+
+The math didn't add up.
+
+Tam looked ahead, at the mass of backs and packs and white surcoats with yellow suns that stretched until it disappeared in a haze of dust. The king was somewhere out there. Forty *vaelthar*, Renn had said once. Forty thousand paces. Tam tried to imagine, but couldn't. The blacksmith's forge was two hundred paces from the fountain where he fetched water. Forty thousand paces was... was a number that meant nothing.
+
+*The king is just a word*, Tam thought. Like "father" or "mother." Words that other people used and that he pretended to understand.
+
+⁂
+
+They marched in Legion 24, Cohort VII, Century 4, Tenthar 6.
+
+Tam had memorized this on the first day. It was easy—numbers were easy, the blacksmith had taught him. *Seven nails per horseshoe, four horseshoes per horse, twelve horses per order.* Numbers made sense. People were harder.
+
+Behind them came the camp followers—the women the army called "washerwomen" (Tam didn't know why the others laughed when they said it), the merchants who sold *zurra* for triple the price, the traveling blacksmiths who did poor work for quick money. Tam had seen their work. The blacksmith would have spat.
+
+Today the road was mud, piss, and excrement.
+
+And the air was worse.
+
+Tam breathed through his nose as little as possible, but it didn't help. The smell was in everything—the sour sweat of two hundred and eighty-five thousand men who hadn't bathed in days, the dung of the cows and oxen pulling the carts, the horse piss that left yellow puddles on the road, the human shit from those who couldn't hold it and shat while marching (Tam had seen, had swerved), the vomit of the sick who didn't stop walking, the rancid grease of poorly cooked food, the wet leather of *sarcelas* that never dried properly, the sweat of armpits, feet, groins, the rotting flesh of animals that died and were left behind.
+
+And there were still... the bodies.
+
+Tam didn't like to think about the bodies. But it was impossible not to think.
+
+At least once a day, sometimes more, the news arrived—someone had died. The news always arrived before the body. *One died from Third Corps. One died from Seventh Cohort. One died whose name no one knows.* Those who were lucky died in camp at night and were buried in the morning, before the march began. Those unfortunate by Sethendur were left behind while the column continued. They shat and vomited until they couldn't walk anymore. Then they sat. Then they lay down. Then they stopped moving.
+
+The worst were the mosquitoes.
+
+Tam had noticed this—near the bodies, the mosquitoes focused on the rotting. It was almost a relief. Away from the bodies, the mosquitoes came for the living.
+
+In the capital, Tam had seen corpses. In alleys, in gutters, sometimes at the forge door when morning came. The blacksmith always said the same thing: *they didn't stay clean*. And Tam believed. Believed that death was a consequence of not following the rules—not working, not eating, not staying clean.
+
+But in the army... in the army they followed the rules. Marched when ordered to march. Ate when given food. Tried to stay clean when there was water.
+
+And still they died.
+
+Tam didn't understand. The blacksmith's rules didn't work here. Or maybe the rules had never worked, and he just hadn't noticed before.
+
+Tam kept his eyes on the ground, choosing where to step.
+
+⁂
+
+"Shut up, both of you."
+
+Drav. The low, hoarse voice, full of phlegm. The *thornleaf* hanging from the corner of his mouth, smoke rising in gray wisps.
+
+Tam liked to watch Drav. Not "like" the way he liked Coll—Coll was easy to like, with the smile and the fishing stories and the certainty that everything would be fine. Drav was different. Drav was... interesting.
+
+The man was forty-something, maybe fifty. Hard to tell—his skin was tanned and lined like leather left in the sun, his beard always three days grown, his eyes the color of dirty water. One of them, at least. The other was lighter, almost yellow, like a wolf's eye. Tam had never asked about it. There were things you didn't ask Drav.
+
+He walked with an economy of movement that Tam admired. No wasted gesture. No unnecessary step. While others stumbled and cursed and shifted their *sarcelas* from shoulder to shoulder, Drav simply walked. As if he had been born walking. As if his body had forgotten how to do anything else.
+
+And he smelled of blood.
+
+Not fresh blood—not the bright, iron smell of a fresh wound. Something older. Something that had seeped into the pores and never came out. Tam knew that smell from the forge, from the butchers who brought their knives to be sharpened. But on them it was surface. On Drav it was deeper.
+
+Tam wondered what Drav had done before. What he had been. But there were things you didn't ask Drav.
+
+"I said shut up."
+
+Coll and Renn stopped their argument—something about fish, as always, something about who had caught more, or bigger, or better. The brothers argued constantly, but it was a comfortable argument, the kind that filled silence without meaning anything.
+
+Drav didn't look at them. His eyes were on the horizon, on the dust, on something Tam couldn't see.
+
+"Sergeant's coming."
+
+⁂
+
+Tam hadn't heard anything. Hadn't seen anything. But thirty seconds later, the sergeant appeared—a thick man with a red face and a voice like gravel, marching down the line with two soldiers behind him.
+
+"Century Four! Pick up the pace! You're falling behind!"
+
+The words were ritual. They were always falling behind. The column stretched for fifty thousand paces, and the rear guard was always falling behind because the rear guard started last and stopped first and spent the day watching the backs of men who had left before them.
+
+Drav didn't respond. Didn't even look at the sergeant. Just kept walking, the same pace as before, the *thornleaf* trailing smoke.
+
+The sergeant opened his mouth—Tam could see the anger building, the red face getting redder—and then stopped. His eyes found Drav. Lingered there.
+
+Something passed between them. Tam didn't know what. The sergeant's mouth closed. He turned to another soldier, shouted something about bootlaces, and moved on.
+
+Tam filed this away. Another thing to think about later. Another piece of the puzzle that was Drav.
+
+⁂
+
+In his *sarcela*, Drav carried almost nothing.
+
+Tam knew because he had watched—always watching, always learning—as Drav packed and unpacked at camp. A single change of clothes, worn thin. A small pouch of *thornleaf*. A waterskin. A piece of cloth that might have been a blanket or might have been a shroud. And his weapons.
+
+The weapons were wrong.
+
+Everyone else carried what the army gave them—the long *kravspear* for formation fighting, the short *vethblade* for close quarters, the round shield with the sun of Duratheon painted on it. Standard equipment. Standard training. Standard everything.
+
+Drav had refused it all.
+
+Tam had been there when it happened, on the third day of the march. The quartermaster had tried to issue Drav his equipment—the spear, the sword, the shield, the helm—and Drav had simply walked away. The quartermaster had shouted. Drav had kept walking. A sergeant had intervened. Drav had said something Tam couldn't hear, and the sergeant had gone pale, and that was the end of it.
+
+Now Drav carried only what he had brought: a short sword, barely longer than a large knife, and two actual knives—one strapped to his back, the other in his boot. No spear. No shield. Nothing that would help in formation. Nothing that fit the drills they practiced every third day, the octagonal formations that the officers said would win them the war.
+
+Tam had asked about it once. Just once.
+
+"Why no spear?"
+
+Drav had looked at him. Those mismatched eyes, one brown, one yellow. The *thornleaf* smoke curling around his face.
+
+"Fights are ugly," Drav had said. "Forget those acrobatic drills those soldiers do. People always end up rolling in the mud, poking eyes, biting balls. Have a short weapon, light and easy to reach. Aim for the guts. Rip and pull the fucker's insides out."
+
+Tam had nodded. Filed it away. Another rule. Different from the blacksmith's rules, but a rule nonetheless.
+
+⁂
+
+The brothers were talking again.
+
+Coll was telling a story—something about a fish he had caught, or almost caught, or would have caught if Renn hadn't done something wrong. Tam had heard variations of this story a dozen times. The details changed, but the structure was always the same: Coll's optimism, Renn's correction, the fish that got away or didn't.
+
+Tam watched them as they walked.
+
+They didn't look alike. Coll was taller, broader, with the easy smile and the hair that always fell into his eyes no matter how often he pushed it back. Renn was shorter, sharper, with the kind of face that always seemed to be calculating something. But they moved alike. Finished each other's sentences. Knew where the other was without looking.
+
+This was what brothers were, Tam supposed. He had never had a brother. Had never had anyone who knew where he was without looking.
+
+Renn said something—a correction, as always, something about the size of the fish or the time of day—and Coll laughed. Not a mocking laugh. A real laugh, the kind that came from the belly, the kind that made Tam's chest feel strange.
+
+He didn't understand it.
+
+The blacksmith had said: *no friends, only transactions*. Every relationship was an exchange—work for food, skill for shelter, silence for safety. Tam had never questioned this. It made sense. Numbers made sense.
+
+But Coll and Renn didn't transact. They just... were. Brothers. Together. A word Tam used and pretended to understand.
+
+⁂
+
+Stenn walked beside him for a while, not speaking.
+
+This was normal. Stenn rarely spoke. He was the biggest of them—taller than Coll, broader than anyone Tam had ever seen, with hands that could crush a man's skull and probably had. But he moved quietly, and he watched, and when he did speak, it was usually only a few words.
+
+Tam liked walking with Stenn. It felt safe. Like walking beside a wall.
+
+They passed a cart that had broken a wheel. Soldiers were trying to fix it, cursing as the oxen lowed and the line behind them grew. Stenn watched for a moment, then looked away.
+
+"Could help," he said.
+
+Tam looked up. "What?"
+
+"The wheel. Know how to fix it."
+
+"You do?"
+
+Stenn nodded. His eyes were still on the broken cart, on the soldiers struggling with tools they didn't know how to use.
+
+"Miner," he said. "Before. Fixed things in the dark."
+
+Tam filed this away. Stenn had been a miner. That explained the hands—the calluses, the strength, the way he moved in tight spaces. It explained a lot of things.
+
+"Why don't you help?"
+
+Stenn shrugged. The movement was massive, like a mountain shifting.
+
+"Not my cart."
+
+They kept walking. Behind them, the soldiers kept cursing. The cart would probably be abandoned by nightfall, its contents distributed among other carts that were already overloaded.
+
+That was how the army worked. You helped your own. The rest could rot.
+
+⁂
+
+Garth appeared beside them as the sun began to sink.
+
+He always appeared—never arrived, never approached, just appeared, as if he had been there all along and Tam simply hadn't noticed. It was unnerving. A man that size should not be able to move that quietly.
+
+Garth was noble. Tam knew this because of the uniform—the same basic pieces as everyone else, but different in ways that mattered. The sun on his chest wasn't painted. It was embroidered, gold thread on white wool, each ray precise and even. His boots fit. His belt had a real buckle, bronze that had been polished, not painted. And at his hip, instead of the standard *vethblade*, hung a sword with a proper hilt, wrapped in leather that showed years of use.
+
+A family sword. Tam had seen them at the forge, brought in for repair by men who spoke of ancestors and honor and things that meant nothing to an orphan.
+
+Garth didn't speak of those things. Garth barely spoke at all. But when he did, everyone listened.
+
+"We'll camp in two hours," he said. "There's a stream ahead. We should fill the waterskins."
+
+It wasn't a suggestion. With Garth, nothing was a suggestion.
+
+Tam nodded. So did the others. Even Drav, who didn't take orders from anyone, adjusted his pace slightly. Not obviously. Just enough.
+
+Garth fell into step beside them, his eyes scanning the line ahead, the line behind, the horizon. Always watching. Always assessing. Like a hawk that had decided to walk among sparrows.
+
+Tam wondered what Garth saw when he looked at them. The orphan, the brothers, the miner, the cynic, the killer. What did a noble see when he looked at men like that?
+
+Whatever it was, Garth kept it to himself.
+
+⁂
+
+They made camp as the last light faded.
+
+The process was automatic now—sixteen days of repetition had burned it into muscle memory. Drop the *sarcela*. Find the tent. Check the stakes. Gather wood if there was wood, dried dung if there wasn't. Start the fire. Boil the water. Eat whatever was distributed.
+
+Tonight it was a thin stew—more water than substance, with chunks of something that might have been meat or might have been root vegetable. Tam didn't ask. He ate.
+
+The seven of them sat in a loose circle around their small fire, one of thousands that dotted the plain like fallen stars. The smoke rose and mixed with all the other smoke until the sky itself seemed hazy.
+
+Coll was talking. He was always talking.
+
+"—and then the fish, I swear to Sthendur, the fish was this big—" He held his hands apart, an impossible distance. "And Renn, Renn says—"
+
+"It was half that size," Renn said, not looking up from his stew. "And you didn't catch it. It got away because you didn't set the line right."
+
+"I set the line perfectly!"
+
+"You set it like a child."
+
+Tam watched them argue. The words washed over him, familiar now, comfortable in their rhythm.
+
+Drav was cutting something—an apple, somehow, gods knew where he'd gotten an apple—the slices falling into his palm with mechanical precision. Slice. Slice. Slice. He didn't eat them. Just cut and let them fall.
+
+Stenn ate his stew in silence, the bowl looking small in his massive hands. Aldwen picked at his food without interest, muttering something about the quality, about how even prison had better food, about a dozen complaints that no one listened to.
+
+And Garth sat slightly apart, as he always did, his stew untouched, his eyes on the darkness beyond the firelight.
+
+⁂
+
+"Gonna go fuck," Stenn announced.
+
+He said it the way someone might announce they were going to take a piss—a simple fact, a bodily function, nothing more. He stood, brushed the dirt from his trousers, and looked at the others.
+
+"Anyone want to come?"
+
+Coll laughed. "No thanks. Last time I went to those tents, I came back with something that took a week to go away."
+
+"Your problem," Stenn said. "You don't know how to pick."
+
+"And you do?"
+
+"I pick by smell." Stenn tapped his nose. "The ones that smell like lavender are clean. The ones that smell like piss are not."
+
+"That's disgusting," Renn said.
+
+"That's survival."
+
+Drav spoke without looking up from his apple. "Careful not to lose your dick. Those whores are more rotten than the corpses we saw on the road."
+
+Stenn shrugged.
+
+"I'd rather die fucking than die sleeping."
+
+"Pig," said Renn, but there was a half-smile on his face.
+
+Stenn waved to the group and left, disappearing into the darkness beyond the fire, in the direction where the "washerwomen" set up their own camps.
+
+Drav hadn't said anything. He kept cutting the apple. Slice. Slice. Slice. His eyes on the fire.
+
+Tam wondered if Drav also went to the whores. He'd never seen him. He'd never asked. There were things you didn't ask Drav.
+
+⁂
+
+After Stenn left, silence returned for a moment.
+
+They were sitting on the ground, leaning against their *sarcelas*, near the tents that were nothing more than rags held up by fragile sticks. The stars appeared in the sky, one by one, as if someone were lighting candles very far away.
+
+Coll broke the silence.
+
+"What do you all know about Kravethorn?"
+
+No one answered immediately. Coll looked at Garth.
+
+"Have you been there?"
+
+Garth shook his head. Then said:
+
+"They say it's the new Vaelhem Thel."
+
+Aldwen made a sound—something between a laugh and a snort.
+
+"Ha! Then it's fantastic. Full of drunks, whores, and beggars falling over everywhere. Can't wait."
+
+"You're so annoying," said Coll.
+
+"I'm not joking." Aldwen shifted, and for a moment he seemed almost interested. Almost. "I'm really curious to see this new... experiment. I heard Aldaran, Tornael's father, was responsible for the project. Dedicated a good part of the kingdom's funds for his son to finish the work."
+
+*Aldaran.* Tam stored the name. The king's father. The king before the king. Another word that other people used and that he pretended to understand.
+
+"I just hope the houses are warmer," Tam said.
+
+Everyone laughed.
+
+Tam looked up, surprised. He hadn't been trying to make a joke. It was just... a comment from someone who had slept through many winters in the cold houses of the capital, where the wind came through the cracks and ice formed on the inside of the windows. If Kravethorn was the "new Vaelhem Thel," then the houses were probably the same. Cold.
+
+But they were laughing, so Tam didn't correct them. He let them think it was a joke.
+
+It was easier that way.
+
+⁂
+
+Silence returned for a moment. Somewhere in the camp, someone was playing a flute—badly, but playing.
+
+"Well," said Garth, breaking the silence, "for those of you who aren't going to fuck all night like our kind friend made a point of announcing, I recommend you find a way to sleep. The vanguard and the king will leave soon."
+
+"That doesn't seem very fair," Renn replied, frowning. "We always arrive last and always leave first."
+
+"Oh, shut up, kid," Aldwen said, without looking up from the fire. "Go fish. I already explained to you how things work when you thought the king was riding a horse."
+
+Tam looked up.
+
+That information had been shocking to him too, when he heard it the first time. The king didn't ride a horse. The king traveled in a carriage—a huge carriage, they said, pulled by sixteen horses, with glass windows and velvet curtains and a throne inside. Tam had imagined kings like the ones in the stories he sometimes heard at the forge—men on white horses, sword in hand, leading armies. Not men in carriages, hidden behind curtains.
+
+"Kings on horseback," Aldwen snorted, almost to himself. "Pfff."
+
+Renn lowered his head. Coll looked at his brother and put his hand on his shoulder.
+
+"It's okay."
+
+Renn didn't respond. But he didn't remove the hand either.
+
+"Well," Drav said, getting up with a grunt. He put away the knife, threw what was left of the apple into the fire. "I'm going to shit and sleep."
+
+And he went. No ceremony. No goodbye. Disappeared into the darkness beyond the fire, in the opposite direction from where Stenn had gone.
+
+Tam thought it might be a good idea. Shit and sleep. Simple. Practical. But he preferred to leave it for the morning—at night it was harder to see where you stepped.
+
+One by one, the others settled in. Coll and Renn entered the tent first, taking their usual places. Aldwen went next, grumbling something about rocks in his back. Garth went last—he checked the perimeter first, because that's what Garth did, always checking, always alert, always correct.
+
+Tam didn't go in yet.
+
+He lay on his *sarcela*, closer to the fire than the others. The warmth was good. The ground was hard, but he was used to hard ground. At the forge, he slept in a corner near the furnace, where the heat still remained from the day's embers.
+
+He looked up at the sky.
+
+The stars were there. Thousands of them. The same stars that shone over the forge, over the capital, over the sea of Senvarek where the brothers had fished, over the mines of Kravaal where Stenn had worked, over all the places all of them had come from.
+
+Tam wondered what the blacksmith would think of him now.
+
+If he was doing everything right. Eating to work. Working to eat. Staying clean so he wouldn't get sick. The rules were simple. The rules had always been simple.
+
+But the march...
+
+The march wasn't what he had imagined. It wasn't what the generals had said it would be, the day they came to recruit in the capital. They had talked about glory. About conquest. About new lands and riches for those who served. They had talked about food every day, regular pay, honor for those who survived.
+
+No one had talked about shit on the road. About corpses left behind. About water that tasted like piss. About always arriving last and always leaving first. About kings in carriages behind curtains.
+
+*Maybe for the generals it's different*, Tam thought. *Maybe they're used to the hardship of military life. Maybe the glory comes later. Maybe.*
+
+He turned on his side.
+
+The fire was slowly dying. The crickets sang. Somewhere, someone was coughing—the dry cough that didn't stop, that meant another one would be left behind soon.
+
+Tam closed his eyes and tried to sleep.
+
+Fifty-one days to Kravethorn.`,
+        tags: ["manuscript", "volume-iv", "chapter-4", "the-march", "tam-smithson", "the-seven", "day-16", "rear-guard", "legion-24", "778-af"]
+      },
+      "vol4-ch1d": {
+        title: "V — The Temple",
         book: "the-depletion",
         volume: "part-i",
         content: `**V**
+*The Temple*
+
+---
+
+"Lord Aldric!"
+
+The old man did not turn.
+
+"Lord Aldric! Over here!"
+
+Cassien Agrias quickened his pace, sidestepping a group of women conversing on the steps. The marble was slippery—polished by centuries of feet, damp from the cold morning air—and he nearly stumbled, but recovered his balance in time to avoid looking ridiculous.
+
+"It's me," he said, slightly breathless, when he finally reached the man. "Cassien. Cassien Agrias."
+
+Aldric Stennvik stopped. He turned his head slowly, like someone interrupting a more interesting thought.
+
+"Ah." The grey eyes settled on Cassien without hurry. "Yes. Cassien. The merchant."
+
+*The merchant.* Cassien swallowed the correction that rose to his throat. He was not a merchant—he was an administrator of markets, seventeen of them, granted by Aldaran Vael himself to his grandfather. But correcting Aldric Stennvik was not something one did. Not at seventy-two years of age. Not with four kings and three purges survived.
+
+"The ceremony was beautiful, don't you think?" he said, falling into step beside Aldric as they descended the stairs. "The chanting, the incense..."
+
+"The steps," said Aldric.
+
+"Pardon?"
+
+"The steps." Aldric looked down at the marble beneath his feet. "Veluthaar. From the northern quarries. No longer exists. They exhausted them forty years ago to finish this temple." He paused, almost contemplative. "Good work. Excellent work. No one carves stone like this anymore."
+
+Cassien nodded with enthusiasm.
+
+"Yes, that's true. The quality of the old days..."
+
+But Aldric was no longer listening. His eyes had drifted somewhere to the right—to one of the columns, perhaps, or to the geometric patterns carved into the stone. The old man had a habit of looking at things no one else saw. Stones. Joints. Angles. As if the world were made only of structures, and the people who inhabited it were mere accidents.
+
+Behind them, the doors of the Main Temple of Sthendur remained open. The structure rose against the morning sky—the bronze dome gleaming like cold fire, the seven towers casting long shadows across the plaza. There was no larger construction in all of Vaelhem Thel. Forty stories of stone, perhaps fifty, depending on how one counted. The stained glass windows glittered on the facades, telling stories of Sthendur that few bothered to read—the hand that moves the pieces of time, the cycles that repeat, the end that feeds the beginning.
+
+The incense still emerged in slow threads, rising through the gaps between the columns. Cassien knew those gaps had been designed to amplify the chanting—like the pipes of an organ, but made of stone, channeling the voices of the priests until they filled the entire plaza. Engineering in service of faith. Or perhaps in service of fear.
+
+The priests were still singing inside—distant voices in a language Cassien did not understand, that perhaps no one there understood, that perhaps was not even ZANUAX. The message was never spoken. It was always sung. And it was said that the few who understood the words did not like what they heard.
+
+No one asked. It was not important. It sent shivers. That was enough.
+
+⁂
+
+"Lord Luxaren. Lady Velira."
+
+Aldric's voice did not change in tone—the same flatness, the same absence of enthusiasm—but at least he recognized those approaching without having his name shouted at him.
+
+Luxaren Thalorn came down the steps with his wife at his side. Velira in navy blue, as always—the color of House Thalorn, the color she had worn since the wedding like someone wearing a sentence. Luxaren looked irritated. Luxaren always looked irritated, his narrow face contracted in an expression of permanent offense.
+
+"An interminable ceremony," said Luxaren, by way of greeting. "The priests seem ever longer in their vocalizations. Hypocrites. Have you spoken with them? They're always talking about the poor and the hungry, but they don't give up their luxuries." He waved his hand toward the temple behind them, toward the bronze and marble. "Talking about misery is very nice. Even I do it. Sthendur this, Sthendur that. I think they need to read more about who Sthendur actually is. They're getting rather heretical these days."
+
+"It is tradition, my love," said Velira. Her voice was soft, almost inaudible. "Sacred things take time. And they need to deliver Sthendur's message."
+
+Luxaren made a sound that could have been agreement or disdain. Probably disdain.
+
+"Anyway, it doesn't matter." Luxaren turned to Aldric. "But you had asked me at the beginning of the ceremony, and yes, news has arrived. I mean, news from the march. That's what you wanted to know, correct?"
+
+Aldric nodded, still examining a column.
+
+Cassien felt something tighten in his stomach—not fear, exactly, but a sudden alertness, the instinct of someone who had spent a lifetime detecting shifts in the wind before others. News was the lifeblood of commerce. And he had invested much in that march. Too much.
+
+"News?" he asked. "What kind of news?"
+
+"News, of course." Luxaren looked at him. "News of difficulties. Logistical trivialities of war. You know, Cassien, difficulties. Imagine what it's like to move two hundred and eighty-five thousand men through mountains and gorges. An army of that size has never been seen."
+
+"And what difficulties, exactly?"
+
+Luxaren shrugged.
+
+"I heard they lost some horses. Some pack animals." He paused. "Perhaps some men."
+
+Cassien felt the tightness in his stomach intensify.
+
+"Men?"
+
+"Cassien." Luxaren looked at him with exaggerated patience, the patience of someone explaining the obvious to a child. "Two hundred and eighty-five thousand men. If some die during the march—let's say ten per day, fifty, sixty days of travel—how many would that be? Five hundred? Six hundred?" He waved his hand, dismissing the numbers. "It's an acceptable cost. What concerns me, if you want to know, is the cavalry. Horses are expensive. Men enlist every day."
+
+He paused.
+
+"And my ships sailed with the heavy cavalry through the south. We don't have many horses on the northern route. If we lose animals between here and Kravethorn, it would be bad for climbing the mountains afterward." He waved his hand in the air, a gesture dismissing his own words. "Anyway, who am I? Just an administrator of ports."
+
+The tone was false modesty. The kind of phrase one repeats after hearing it from someone more important.
+
+Velira made a sound—air through her nose, almost inaudible.
+
+Luxaren looked at her. A quick, sharp look.
+
+She stopped.
+
+"Yes," said Cassien, turning his attention to Luxaren. His voice came out thinner than he intended. "It must be difficult. Marching that distance. With all that weight. But, as you say, they're prepared. There's no cause for alarm."
+
+Luxaren nodded.
+
+"Better to have them than not."
+
+Aldric said nothing. He continued examining the column.
+
+⁂
+
+They descended the last steps together.
+
+The plaza opened before them, vast and geometric, the marble arranged in patterns that had taken decades to complete. Early in the morning, before the ceremony, the plaza had been full—nobles and commoners side by side, as the temple's tradition demanded. One of the few places in Vaelhem Thel where all were welcome.
+
+Cassien remembered the smell. The incense helped, but did not completely erase it—the odor of pressed bodies, of sweat, of clothes washed too few times. It was said in the universities, among the intellectuals who liked to provoke, that the incense was not for Sthendur. It was so the nobles could stand to be there.
+
+Now the plaza was nearly empty. The commoners had dispersed, returning to their lives, their work, their concerns that did not include dead horses or acceptable costs. Only the nobles remained, in small groups, conversing about things that mattered.
+
+Aldric went ahead, stopping now and then to observe a detail—the joint between two stones, the angle of a staircase, the green patina of bronze on an ancient handrail. Luxaren talked without stopping, something about taxes, about the fleet, about the cost of keeping an army in motion. Velira walked beside her husband in silence, her eyes always elsewhere. Cassien followed slightly behind, looking for the right moment to contribute.
+
+He liked being there. He liked feeling small before the temple—it meant he was in the right place, among the right people, beneath the right structures. His grandfather had never set foot on those steps. His father had only climbed them twice. And he was there every month, descending alongside lords, talking about business and wars as if he were one of them.
+
+"Speaking of supplies," he said, finally finding an opening. "The markets have been working day and night these past months. We've practically emptied the warehouses."
+
+Luxaren looked at him.
+
+"Emptied?"
+
+"Nearly." Cassien felt a warmth in his chest, the pleasure of having information others did not. "The supply carts follow the column, as you know. And before that, we'd already sent enormous quantities to Kravethorn, to stock the warehouses there. Dried grains, salted meat, preserved vegetables—everything that can last months in storage."
+
+Luxaren did not respond, but neither did he interrupt. It was almost encouragement.
+
+"It's a complex process," Cassien continued. "The meat, for example, needs to be treated with salt for weeks before it can be transported. And the salt comes from the salt flats of Vel-Nakh, which had to increase production by—"
+
+"Fascinating," said Luxaren.
+
+The tone was flat. Dead. The tone of someone who says a word only so another person will stop talking.
+
+Velira laughed. Quietly. Almost without sound.
+
+Luxaren looked at her. The same look as before—quick, sharp.
+
+She looked away at the sky.
+
+"And Lord Aldric can confirm," said Cassien, turning to the older man, trying to recover the thread. "It was months of work. From the mines too, isn't that right? The metal for the weapons, the nails, the tools..."
+
+Aldric had stopped beside a dry fountain in the center of the plaza. The stone basin had been empty for years—decades, perhaps. In the center, a bronze statue depicted a fish with its mouth open, prepared to spout water that no longer came.
+
+"Lord Aldric?"
+
+"Hm?" The old man raised his eyes. "Ah, yes. The mines. Of course. We worked hard."
+
+Cassien approached, lowering his voice.
+
+"And the news? These difficulties Lord Luxaren speaks of. Is there cause for concern?"
+
+Aldric looked at him. The eyes were grey, almost transparent. For an instant—less than an instant—something passed through them. Something Cassien could not name.
+
+Then it disappeared.
+
+"No," said Aldric. And he smiled. A small, automatic smile. "I believe everything will turn out fine."
+
+Cassien felt relief spread through his chest.
+
+"Well," he said, smiling too. "That's good. Very good."
+
+Aldric was no longer looking at him. He had returned to examining the fish statue, his fingers tracing the curve of the oxidized bronze.
+
+⁂
+
+"And Lord Setharen?"
+
+The question came from Aldric, unexpectedly. The old man was still looking at the fish, but the voice was clearly directed at Luxaren.
+
+"Have you had news from him?"
+
+Luxaren approached, his hands crossed behind his back.
+
+"We exchanged letters last week. He's still in Kravethorn, as you know. The king sent him two months ago to supervise the port construction."
+
+"The port construction," Aldric repeated.
+
+"Yes. It seems there were delays. Details to resolve." Luxaren shrugged. "Setharen is meticulous. I imagine he's put everything in order."
+
+Cassien felt his heart quicken. Setharen Kravos. The Vice-Counselor. The man who controlled the kingdom's finances, who spoke in the king's ear, who decided who received contracts and who did not. Cassien had never met him personally—only seen him from a distance, at ceremonies like this—but he admired him profoundly. The way he moved. The way he spoke. The way he always seemed to know more than he said.
+
+"He mentioned he would send letters," Luxaren continued. "To all the lords. Soon."
+
+"To all the lords?" Cassien could not hide the enthusiasm in his voice. "Also to—"
+
+Luxaren looked at him. Said nothing. Did not need to.
+
+Cassien swallowed.
+
+"Well," said Aldric, finally moving away from the fountain. "I imagine the only thing left for us is to wait. The army should arrive at Kravethorn within days. If everything goes as planned..."
+
+"If everything goes according to 'the great plan'"—Luxaren made air quotes with his fingers, his tone laden with irony—"they should cross the channel shortly after. A day or two of rest, load the provisions onto the ships, and make the crossing."
+
+"Seems like little time to you," said Aldric.
+
+"Seems like the time we have." Luxaren sighed, a theatrical sigh of someone who carries burdens others do not understand. "But you know I detest these matters. War. Logistics. Numbers. I'd rather be left in peace with my ships and my ports."
+
+Cassien laughed.
+
+Laughed loudly. Laughed alone.
+
+The sound echoed through the empty plaza, bouncing off the stones, and he realized too late that no one had joined him. Aldric was examining something on the ground. Luxaren was looking the opposite direction. Velira...
+
+Velira was looking directly at him.
+
+⁂
+
+"How is Tessala?"
+
+Velira's voice was soft. Gentle, almost. But her eyes did not move from Cassien's.
+
+"Your wife," she added. "I didn't see her at the ceremony."
+
+"Ah." Cassien felt something tighten in his throat. "She's well. You know how women are."
+
+"How are they?"
+
+The question hung in the air. Cassien suddenly felt exposed, as if Velira could see through him.
+
+"They can get... irritated." He tried a smile. "That's why she didn't come today."
+
+Velira said nothing. Waited.
+
+"It's that... you know, times of war." Cassien laughed, a nervous laugh that came out higher than he intended. "I had to make some decisions. I ended up ceding our farm in Vel-Thornath for the army to camp. It's only half a day's ride from here—convenient for them. Tessala went to inspect after they moved on, and... well. It seems things got a bit disarranged."
+
+"Disarranged," Velira repeated. "And the servants? Are they well?"
+
+Cassien hesitated. Just for a second.
+
+"They are. Of course they are."
+
+Velira continued looking at him.
+
+"The girls, I mean..." Cassien swallowed. "You know how it is. Men. Soldiers. Warriors. They spend a long time away from home, and..."
+
+He stopped. Could not finish.
+
+Velira smiled.
+
+A small smile. Closed. That did not reach her eyes.
+
+"No doubt," she said. "Times of war."
+
+"Exactly." Cassien nodded, grasping at the words. "Exactly. We all make sacrifices. That's what I told Tessala. It makes no sense to be sentimental."
+
+Velira did not respond. She had turned to look at the temple again.
+
+⁂
+
+Cassien realized he was trying harder than the others. As always.
+
+He stopped. Let them continue walking—Aldric examining some stone or other, Luxaren talking about something he could no longer hear, Velira silent beside her husband.
+
+He looked back at the temple.
+
+It was enormous. Larger than anything his grandfather could have imagined. The bronze dome blazed in the morning sun, and the seven towers cut against the sky like fingers pointing at something no one could see. The incense still emerged from the open doors in slow threads, rising through the gaps between the columns, rising and twisting with the breeze, until it disappeared into the air as if it had never existed.
+
+Something passed through Cassien's mind. A question he could not formulate. An unnameable unease.
+
+He looked ahead. The others had continued without him. Luxaren was gesturing as he spoke. Aldric was examining something else. Velira walked with her back turned.
+
+No one had noticed he had stopped.
+
+Cassien looked at his own clothes. The green velvet. The golden buttons. The cut that had cost three times what it should because it was the cut the lords were wearing that season.
+
+"It was a pleasure!" he shouted, from a distance. "I have business to attend to at the markets. Good day to all! Send me news!"
+
+Aldric raised a hand without turning. Luxaren waved vaguely. Velira did not move.
+
+Cassien walked away across the plaza, his shoes clicking on the marble.
+
+⁂
+
+On the other hand, he felt well.
+
+He felt light. Aldric had said everything would turn out fine—and Aldric had survived four kings. Luxaren did not seem worried—and Luxaren had access to information others did not. And Setharen Kravos was in Kravethorn, putting things in order, ensuring everything went according to plan.
+
+Soon the war would end. Soon the soldiers would return laden with riches. Soon Tessala would understand that he had made the right choice, that the sacrifices had been worth it, that the farm was just land and land could be recovered. And the girls... well, the girls would marry. Or not. It was not his concern.
+
+Soon.
+
+Cassien smiled to himself as he walked.
+
+Behind him, the incense continued to rise. Rose and disappeared, like prayers, like promises, like everything offered to the gods in the hope that someone is listening.
+
+No one was.
+
+Somewhere to the north, far from there, another kind of smoke was also rising. It rose from fires that were not sacred, from tents that burned, from bodies that no longer moved.
+
+But that smoke smelled of damp wood and burning flesh.
+
+And no one in Vaelhem Thel knew.
+
+Yet.`,
+        tags: ["manuscript", "volume-iv", "chapter-5", "the-temple", "cassien-agrias", "aldric-stennvik", "luxaren-thalorn", "velira-tessalon", "setharen-kravos", "vaelhem-thel", "778-af"]
+      },
+      "vol4-ch2": {
+        title: "VI — The Letter from the North",
+        book: "the-depletion",
+        volume: "part-i",
+        content: `**VI**
 *The Letter from the North*
 
 No wind. No voices. Only my own breathing and the crackle of the small fire they allow me to keep. There is a slit in the wall, high up, too narrow to pass a hand through. Through it comes pale light that tells me nothing except that day still follows night, even here.
@@ -9795,10 +12789,10 @@ When she finished, she sat in silence, holding the parchment that smelled faintl
         tags: ["manuscript", "volume-iv", "chapter-2", "kraveth-vaelmar", "letter", "defeat"]
       },
       "vol4-ch3": {
-        title: "VI — The Hall of Fire",
+        title: "VII — The Hall of Fire",
         book: "the-depletion",
-        volume: "part-i",
-        content: `**VI**
+        volume: "part-ii",
+        content: `**VII**
 *The Hall of Fire*
 
 *Ekkhen Kaelnar. Kaelnar ekkhen-ir.*
@@ -10078,10 +13072,10 @@ Tomorrow, his real education would begin.`,
         tags: ["manuscript", "volume-iv", "chapter-3", "hall-of-fire", "vreth", "krav"]
       },
       "vol4-ch4": {
-        title: "VII — The Shadow and the Light",
+        title: "VIII — The Shadow and the Light",
         book: "the-depletion",
         volume: "part-i",
-        content: `**VII**
+        content: `**VIII**
 *The Shadow and the Light*
 
 I know what is often said.
@@ -10110,55 +13104,65 @@ The girl at the easel set down her brush.
 
 "Why must I spend my days learning to paint while my brother delights himself in battles and victories?"
 
+Thaelor Venmuth smiled gently.
+
+He had heard this question before — not from Aelara, but from other students, other young nobles who believed their destiny lay elsewhere. The answer never changed. Only the students did.
+
 The studio faced north, where the light was constant. Through tall windows, pale winter sun fell across canvases stacked against marble walls — unfinished battles, half-rendered processions, the blank faces of nobles waiting for features. The smell of linseed oil and pigment hung in the cold air, mixed with the faint mineral scent of turpentine and the dusty sweetness of chalk. A brazier burned in the corner, inadequate against the chill, its coals glowing orange beneath a thin layer of ash.
 
-The floor was marble — white, veined with grey — but decades of work had left their marks: a splash of vermillion here, a smear of ochre there, stains that no amount of scrubbing could remove. Canvases leaned against every wall, some covered with cloth, others exposed to the pale light. Brushes stood in jars like strange flowers. Palette knives lay crusted with dried paint. The room smelled of creation and solitude.
+Thaelor had spent sixty years in rooms like this one. Sixty years of standing before canvases, of mixing pigments until his fingertips were stained permanent umber, of teaching students who would forget his lessons the moment they left the studio. His back ached from decades of bending toward the canvas. His eyes, once sharp enough to capture the subtlest gradation of light, had begun to fail him in the evenings. But in moments like this — watching a student struggle with something larger than technique — he remembered why he had given his life to this.
 
-Aelara Vael was twelve years old — three years younger than her brother, three years further from the throne, three years closer to a life of ceremony and canvas. She had her mother's eyes — dark, knowing, too intelligent for the soft prettiness that fashion demanded — and her father's impatience. Her hands were already stained with pigment, blue and umber beneath her fingernails, and she wore her painting smock like armor.
+The floor was marble — white, veined with grey — but decades of work had left their marks: a splash of vermillion here, a smear of ochre there, stains that no amount of scrubbing could remove. Thaelor knew every stain. He had made most of them.
 
-The painting master smiled gently.
+Aelara Vael was twelve years old — three years younger than her brother, three years further from the throne, three years closer to a life of ceremony and canvas. She had her mother's eyes — dark, knowing, too intelligent for the soft prettiness that fashion demanded — and her father's impatience. Thaelor could see it in the way she gripped her brush, in the way her foot tapped against the floor, in the way her gaze kept drifting toward the window as if something more interesting waited outside.
 
-Thaelor Venmuth was old enough to have painted three kings and buried two wives. His hands, stained permanent umber at the fingertips, rested on the edge of her easel. His back ached from sixty years of standing before canvases. His eyes, once sharp enough to capture the subtlest gradation of light, had begun to fail him in the evenings. But in moments like this — watching a student discover something true — he remembered why he had given his life to this.
+Her hands were already stained with pigment, blue and umber beneath her fingernails, and she wore her painting smock like armor. Or perhaps like a prison uniform. Thaelor was not entirely sure which.
 
-"My Princess, have you not yet learned that the brush is more powerful than any sword?"
+"My Princess," he said, "have you not yet learned that the brush is more powerful than any sword?"
 
 He gestured toward the windows, toward the city beyond — the white marble of the towers, the golden domes catching the winter sun, the red stone of the outer walls that had stood for seven hundred years.
 
 "Your brother will conquer glories for the kingdom — but you will paint them. And what you paint will endure far longer than our lives, our battles, our wars."
 
-A pause. The brazier crackled. Somewhere in the palace, distant, a door closed.
+He paused. The brazier crackled. Somewhere in the palace, distant, a door closed.
 
 "Wars are fragments. Art remains."
+
+The words sounded hollow even as he spoke them. He had said them so many times. To so many students. And yet here he stood, sixty years old, painting the same battles his teachers had painted, glorifying the same conquests his grandfather had glorified. What had remained? What had endured? Only the commissions. Only the gold that paid for pigments and canvas and the small house in the south where his parents still waited for his autumn visits.
+
+He pushed the thought away. This was not the time.
 
 ⁂
 
 "Ah… look who joins us."
 
-The voice came from the doorway.
+Thaelor turned toward the doorway, and his face brightened.
 
-Thaelor turned, and his face brightened — the automatic warmth of seeing an old friend, a familiar face in a world that offered fewer of them each year.
+Vaethor Zumax stood at the threshold, hesitating in a way Thaelor had never seen him hesitate before. The old librarian was usually precise in his movements, economical, the kind of man who entered a room as if he had calculated exactly how many steps it would take and refused to waste a single one.
 
-"Master Vaethor Zumax. We were speaking of the power of art."
+Today he seemed uncertain. His thin figure was silhouetted against the corridor's dimmer light, and something in his posture — a slight stoop, perhaps, or the way his hands hung at his sides — made him look older than his eighty-one years.
 
-Vaethor hesitated at the threshold.
+"Master Vaethor Zumax," Thaelor said, forcing warmth into his voice. "We were speaking of the power of art."
 
-He stood framed by the doorway, his thin figure silhouetted against the corridor's dimmer light. He wore his usual blue velvet — faded now, worn at the elbows — and the crystal lens hung on its golden chain around his neck, catching the light from the windows. His brown skin seemed greyer than usual, his thin beard less carefully trimmed. He looked, Thaelor thought, like a man who had not slept.
+Vaethor did not respond immediately.
 
-He was eighty-one years old. He had served Duratheon II and now served Tornael — though Tornael rarely asked for his counsel anymore. He had watched the army march north three months ago with banners that caught the autumn light like fire. He had written a letter that no one would read. He had written many letters, over many years. None of them had been read. The powerful did not read warnings — they read victories.
+He stood framed by the doorway, his usual blue velvet faded now, worn at the elbows in a way Thaelor had never noticed before. The crystal lens hung on its golden chain around his neck, catching the light from the windows. His brown skin seemed greyer than usual, his thin beard less carefully trimmed. The eyes — those sharp, knowing eyes that had always seemed to see through every pretense — moved quickly around the room. To the canvases. To the windows. To the brazier in the corner. Then, finally, to Aelara.
 
-There was discomfort in his expression, though he did not wish the princess to perceive it. His eyes moved quickly around the room — to the canvases, to the windows, to the brazier in the corner — before settling on Aelara with something that might have been tenderness or might have been grief.
+Something in his expression shifted when he looked at the princess. Thaelor could not name it. Tenderness, perhaps. Or grief. Or the particular sadness of an old man looking at a child who did not know what was coming.
 
-He offered an awkward smile and stepped closer.
+Vaethor offered an awkward smile and stepped closer.
 
 "Ah, yes… art. Of course. The eternal construction."
 
-Thaelor noticed the hesitation. Noticed the way Vaethor's hands — usually so steady when handling his precious books — trembled slightly at his sides. Noticed the way the old librarian avoided meeting his eyes directly, as if afraid of what might pass between them.
+The words came out wrong. Too slow. Too careful. As if each one had been weighed and found wanting but spoken anyway because silence would have been worse.
+
+Thaelor watched his old friend cross the room. They had known each other for thirty years — had shared meals and arguments and the quiet camaraderie of men who spent their lives in service to a kingdom that barely noticed them. He had never seen Vaethor like this. Never seen the hands tremble at his sides. Never seen the shoulders curve inward as if protecting something fragile.
 
 Something was wrong.
 
-But Thaelor did not ask. One did not ask such things in front of a princess.
+But one did not ask such things in front of a princess.
 
-"I was teaching the Princess that art always endures," he said instead.
+"I was teaching the Princess that art always endures," Thaelor said instead, keeping his voice light.
 
 Vaethor inclined his head.
 
@@ -10166,27 +13170,33 @@ Vaethor inclined his head.
 
 ⁂
 
-He moved slowly into the room, his footsteps careful on the paint-stained marble.
+Vaethor moved slowly into the room, his footsteps careful on the paint-stained marble.
 
-He stopped beside a canvas depicting the Battle of Thornmarch — Kravorn II triumphant on horseback, enemies scattered beneath him, the sky behind him red with sunset or fire. It was one of Thaelor's earlier works, commissioned forty years ago, technically accomplished but lacking the subtlety of his later paintings. The soldiers in the painting wore the same armor, carried the same shields, formed the same formations that the army now carried north. Forty years, and nothing had changed. Four hundred years, and nothing had changed.
+He stopped beside a canvas depicting the Battle of Thornmarch — Kravorn II triumphant on horseback, enemies scattered beneath him, the sky behind him red with sunset or fire. It was one of Thaelor's earlier works, commissioned forty years ago, technically accomplished but lacking the subtlety of his later paintings. He had always meant to repaint it. Had never found the time.
+
+The soldiers in the painting wore the same armor, carried the same shields, formed the same formations that the army now carried north. Forty years, and nothing had changed. Four hundred years, and nothing had changed.
 
 Vaethor studied it as if seeing it for the first time.
 
-"Did you know that there are accounts of paintings made by the very first peoples? Works whose makers we no longer know, nor when they lived, nor how they vanished."
+"Did you know," he said quietly, "that there are accounts of paintings made by the very first peoples? Works whose makers we no longer know, nor when they lived, nor how they vanished."
 
-Aelara leaned forward on her stool. Her brush lay forgotten on the easel's edge. Vaethor had always told the best stories — stories of ancient texts and forgotten civilizations, of documents older than memory itself. Stories that made the world seem larger and stranger than the palace walls suggested.
+Thaelor saw Aelara lean forward on her stool. Her brush lay forgotten on the easel's edge. Vaethor had always told the best stories — the princess had said as much many times, in the careless way children speak of things they do not know they will lose.
 
 "They painted winged beings. Giants of stone. Mythic creatures that walked among them."
 
-His voice was soft. Almost reverent. His eyes remained on the painting of Kravorn II, but Thaelor sensed he was seeing something else entirely — something beyond the canvas, beyond the room, beyond the present moment.
+Vaethor's voice was soft. Almost reverent. His eyes remained on the painting of Kravorn II, but Thaelor sensed he was seeing something else entirely — something beyond the canvas, beyond the room, beyond the present moment. Something that made the old librarian's hands tremble and his voice catch.
 
-He turned from the battle scene to face her.
+He turned from the battle scene to face the princess.
 
 "We discovered these records only recently — preserved in documents older than memory itself, brought by travelers from distant lands. We know nothing of those peoples. Not their families. Not their children. Not what they ate, or where they slept, or what dreams troubled their nights."
 
 A pause. The brazier crackled. Outside, a bird called — a winter bird, harsh and brief.
 
 "Yet their paintings remain. Art endures."
+
+The words should have comforted. That was their purpose — to reassure the princess, to give meaning to her studies, to convince her that the hours spent mixing pigments were not wasted.
+
+But Thaelor heard something else beneath them. Something that made his stomach tighten.
 
 ⁂
 
@@ -10198,77 +13208,97 @@ The princess stood from her stool, paint-stained hands clasped before her. Her f
 
 Vaethor fell silent.
 
-The question hung in the air between them — simple words that carried the weight of a life not yet lived, of choices not yet made, of a future that none of them could see.
+Thaelor watched the old librarian's face. Watched the question land. Watched something shift behind those dark eyes — a decision being made, a line being crossed.
 
-He looked at Thaelor. Something passed between them — a communication too subtle for words, a shared understanding of what was being asked and what could not be answered honestly. Then Vaethor looked at the floor — the marble floor, white and cold, stained with decades of pigment — and seemed to reach a decision.
+Vaethor looked at him.
 
-He stepped closer to the princess and, with profound gentleness, met her eyes. He was tall enough that he had to bend slightly, old enough that the bending cost him, but he did it anyway, bringing his face level with hers.
+Their eyes met across the cold studio, and Thaelor understood — without words, without explanation — that whatever Vaethor was about to say would not be the safe answer. Would not be the answer a librarian gave to a princess. Would not be the answer that kept careers intact and favor flowing.
+
+Then Vaethor looked at the floor — the marble floor, white and cold, stained with decades of pigment — and seemed to reach a decision.
+
+He stepped closer to the princess and, with profound gentleness, bent to meet her eyes. He was tall enough that he had to bend significantly, old enough that the bending cost him — Thaelor could see the wince he tried to hide — but he did it anyway, bringing his face level with hers.
 
 "My child… you must never live to paint the glory of another — not even your own."
 
-His voice was quiet. The voice of a man speaking truths he had carried for years, truths he had never found the right moment to share.
+Thaelor's breath caught.
 
-"You paint only if you wish to paint. Not to fulfill the desire your father held — that you should become a master of the arts."
+He had not expected this. Had not expected Vaethor — careful, measured Vaethor, who had survived five decades at court by knowing exactly what to say and when to say it — to speak such words to the king's daughter.
+
+"You paint only if you wish to paint," Vaethor continued, his voice quiet but clear. "Not to fulfill the desire your father held — that you should become a master of the arts."
 
 "Master Vae—" Thaelor attempted to interrupt.
 
-He sensed where this was going. Sensed the danger of speaking such things to a princess, in a palace, in times like these. But Vaethor fixed him with a quiet gaze. Not harsh. Simply certain. The look of a man who had decided something and would not be moved.
+He sensed danger. Sensed the weight of what was being said, here, in this studio, to this child who would repeat everything to her mother and her tutors and anyone else who asked. But Vaethor fixed him with a quiet gaze. Not harsh. Simply certain. The look of a man who had decided something and would not be moved.
 
-The painting master lowered his head and stepped back.
+Thaelor lowered his head and stepped back.
 
 ⁂
 
 "Listen to me, my child."
 
-Vaethor drew a chair beside her — a simple wooden chair, paint-stained like everything else in the room — and sat so that he could speak at her eye level. His knees protested. His back ached. He ignored both.
+Vaethor drew a chair beside her — a simple wooden chair, paint-stained like everything else in the room — and sat so that he could speak at her eye level. His knees must have protested. His back must have ached. Thaelor saw none of it in his face.
 
 "First, be the owner of your own story. Your story is more valuable than this palace — more valuable than these statues, these temples, these golden domes that catch the winter light. It must be worth more than all of this."
 
 He gestured vaguely at the walls, at the windows, at the city beyond.
 
-"And if you were to dedicate your life to painting victories, then paint the victories you choose to remember — not those tradition commands you to glorify."
+Thaelor stood by the window, watching. Listening. Trying to understand what he was witnessing. Vaethor had never spoken like this — not in thirty years of friendship, not in all the conversations they had shared over wine and candlelight. Something had changed. Something had broken.
 
-Aelara listened. Her dark eyes — her mother's eyes — were fixed on his face with an intensity that reminded him, painfully, of how young she was. How much she did not know. How much she would learn, if she lived long enough to learn it.
+"And if you were to dedicate your life to painting victories," Vaethor continued, "then paint the victories you choose to remember — not those tradition commands you to glorify."
 
-He paused. Looked at the brazier, its inadequate heat, the frost forming at the edges of the windows where the cold seeped in despite the palace's thick walls.
+His eyes flicked toward Thaelor — just for a moment, just long enough to meet his gaze before returning to Aelara. A glance so brief the princess could not have noticed it. But Thaelor noticed. And something cold settled in his stomach.
+
+Aelara listened. Her dark eyes — her mother's eyes — were fixed on Vaethor's face with an intensity that made Thaelor's chest tight. She was so young. So unaware of what these words meant. So innocent of the world that would soon demand she forget everything the old librarian was teaching her.
+
+Vaethor paused. Looked at the brazier, its inadequate heat, the frost forming at the edges of the windows where the cold seeped in despite the palace's thick walls.
 
 "But I must confess… I am old. And tired."
 
-His voice grew softer.
+His voice grew softer. Thaelor had to strain to hear.
 
 "Life is not made only of victories. In truth, victories and glories are exceptions. They are the moments we choose to remember because we cannot bear to remember the rest."
 
-He leaned closer, lowering his voice so that only she could hear.
+He leaned closer to the princess, lowering his voice.
 
 "Consider, for example, Lady Velathra."
 
 ⁂
 
-Aelara's expression shifted. Lady Velathra. She knew Lady Velathra — the woman who attended her mother, who brought her sweets, who always smiled.
+Thaelor saw Aelara's expression shift. Lady Velathra. The princess knew her — the woman who attended her mother, who brought her sweets, who always smiled.
 
-"She smiles every day, comes faithfully to the palace to assist your mother. Her face is kind. Her manner is gentle. You would think, looking at her, that she had known nothing but happiness."
+"She smiles every day," Vaethor said, "comes faithfully to the palace to assist your mother. Her face is kind. Her manner is gentle. You would think, looking at her, that she had known nothing but happiness."
 
 Vaethor's voice grew quieter still.
 
 "What you do not know is that last winter she lost all three of her children. They fell ill. All of them. Within a fortnight."
 
-Aelara's eyes widened. Her lips parted, but no sound came out.
+Thaelor watched the princess's eyes widen. Watched her lips part. Watched the color drain from her face as the words landed.
 
 "Her husband, Lord Thaevor, was far from home — marching north beside your father. Chasing a dream of Lands Beyond that no one has ever seen. Spices and silk and gold — or so the stories say. No one who went to find out ever returned to confirm it. He marches through snow and stone, dreaming of the family waiting for him, and he does not know that his family no longer exists."
 
-The words fell into the silence of the studio like stones into still water. Thaelor, standing by the window, closed his eyes.
+The words fell into the silence of the studio like stones into still water. Thaelor closed his eyes.
 
-"That loss is not small. It is profound."
+He had not known.
 
-Vaethor looked toward the window — toward the city, the marble, the gold, the beautiful facades that hid so much ugliness.
+The shame of it burned in his chest. He had seen Lady Velathra just last week — in the corridor outside the queen's chambers, carrying linens, smiling that gentle smile. He had nodded to her. Had thought: *what a pleasant woman*. Had walked past without a second glance, already thinking about the commission waiting in his studio, about the pigments he needed to order, about the letter he should write to his parents.
+
+Three children dead. And he had seen only a smile.
+
+Sixty years of painting faces, and he had learned nothing. Sixty years of studying expressions, of capturing the subtle play of light across features, of claiming to see what others missed — and he had walked past a woman whose entire world had collapsed and noticed nothing but pleasantness.
+
+*How many others?* The thought made him ill. *How many others have I looked at without seeing?*
+
+"That loss is not small," Vaethor said. "It is profound."
+
+He looked toward the window — toward the city, the marble, the gold, the beautiful facades that hid so much.
 
 "We proudly paint our cities in pure marble. But we forget that the homes of the humble lack sophisticated hearths. Our winters are not merciless — yet they are cold. And houses built according to rigid aesthetic ideals offer no mercy to those without the means to construct refined fireplaces."
 
-His voice grew harder. Not angry — simply clear.
+His voice grew harder. Not angry — simply clear. The voice of a man who had spent his life reading history and had finally understood what history meant.
 
 "In winter, those homes become damp. Frozen. On the canvas, we paint the beauty of a city — yet that same city kills those unprepared for its inefficiency. We paint golden domes and forget the children who cough through the night because their walls cannot keep out the frost."
 
-He turned back to face her.
+He turned back to face the princess.
 
 "I know people, my child, who have passed their entire lives without knowing a single joy — and still they endure. They attempt to smile. They walk forward. They rise each morning and face a world that has given them nothing, and they do not surrender."
 
@@ -10282,9 +13312,13 @@ A pause. His eyes held hers.
 
 ⁂
 
-Aelara listened in silence.
+Aelara said nothing.
 
-The brazier crackled. The winter light fell through the tall windows, casting long shadows across the marble floor. Somewhere in the distance, a bell tolled — the palace bell, marking the hour, marking time that would not stop.
+Thaelor watched her face — the confusion there, the attempt to process words too large for her twelve years. She was trying to understand. He could see it in the way her brow furrowed, in the way her hands twisted in her lap, in the way her eyes kept returning to Vaethor's face as if searching for something that would make sense of it all.
+
+She did not understand. Not really. Not yet.
+
+But she would remember. Children always remembered the things they did not understand — carried them like seeds that would germinate years later, when experience finally provided the soil.
 
 "Thank you, Master."
 
@@ -10292,13 +13326,13 @@ Her voice was small. Changed. The voice of a child who had learned something she
 
 "It is always a pleasure, my young one."
 
-Vaethor rose. His knees complained. His back ached. He felt, suddenly, every one of his eighty-one years — felt them pressing down on him like stones, like the weight of all the books he had read and all the truths he had learned and all the warnings he had given that no one had heeded.
+Vaethor rose. His knees complained — Thaelor heard them crack — and his back bent further than it had before he sat. He seemed, in that moment, impossibly old. Impossibly tired. As if the conversation had cost him something he could not afford to lose.
 
-He turned toward the painting master.
+He turned toward Thaelor.
 
 "And you, my friend — I admire your devotion to art deeply. I am a sincere admirer of your work."
 
-Thaelor met his eyes. Saw something there that made his stomach tighten.
+Thaelor met his eyes. Saw something there that made his stomach tighten. Fear. Certainty. The terrible knowledge of a man who had seen something he could not unsee.
 
 Vaethor stepped closer, lowering his voice so the princess would not hear. His breath was warm on Thaelor's cheek. His words were barely audible.
 
@@ -10308,21 +13342,31 @@ Thaelor frowned. "Master Vaethor, I—"
 
 "Go to them."
 
-The words were quiet. Urgent. The words of a man who had seen something he could not unsee, who knew something he could not unknow.
-
-Vaethor's eyes held something Thaelor could not read — or perhaps could read but refused to acknowledge. Fear. Certainty. The terrible knowledge of a man who had spent his life studying the patterns of history and had recognized, at last, the pattern he was living inside.
+The words were quiet. Urgent. A command dressed as advice.
 
 "Live a life of peace among those you love. I sense a time is approaching when we will once again need to paint nature itself."
 
-The words hung between them. Paint nature itself. An old phrase, from an old text — the instruction given to artists after the fall of empires, when there were no more victories to commemorate and no more kings to flatter. Paint nature itself. Paint what remains when everything else is gone.
+Thaelor frowned.
 
-Before Thaelor could respond, before he could ask what Vaethor meant, before he could voice the questions that were forming in his mind, Vaethor raised his voice, turning back toward the princess.
+*Nature?* The word made no sense. He was a court painter. He painted kings, battles, processions — the glories of Duratheon. He had not painted a landscape in forty years. Had not painted a tree or a river or a simple field of wheat since he was a student learning his craft. Why would Vaethor—
+
+And then it hit him.
+
+*Paint nature itself.*
+
+He knew that phrase. Every painter knew it — the instruction given to artists after the fall of empires, when there were no more victories to commemorate and no more kings to flatter. When the palaces burned and the patrons died and the only thing left to paint was the world as it existed, stripped of glory and pretense.
+
+Paint nature itself. The phrase artists used when civilization ended.
+
+Thaelor's blood went cold.
+
+He opened his mouth to ask — to demand — to understand what Vaethor knew, what he had seen, what had happened to make him speak such words. But before he could form the question, Vaethor raised his voice, turning back toward the princess.
 
 "Ah — your mother has summoned me, and I nearly forgot. Forgive me. I must take my leave."
 
-His smile was gentle. False. The smile of a man who was lying to protect someone he loved.
+His smile was gentle. False. Thaelor could see the lie in it, could see the effort it cost the old librarian to shape his face into something reassuring.
 
-He moved toward the door, his footsteps slow on the marble, pausing at the threshold. The light from the corridor silhouetted him again — thin, old, tired.
+Vaethor moved toward the door, his footsteps slow on the marble, pausing at the threshold. The light from the corridor silhouetted him again — thin, old, tired. A man who had spent his life among books and had finally learned what books could not teach.
 
 "We shall meet again soon, my dear."
 
@@ -10344,47 +13388,35 @@ He knew.
 
 And he could not move.
 
-⁂
+His parents were in the south. Two days' journey by horse, if the roads were clear. They were old now — older than Vaethor, older than anyone Thaelor knew except the ancient priests who tended the temples. They had been waiting for his visits every autumn for forty years, and every autumn he had promised to stay longer, and every autumn he had left after a week because the commissions would not wait.
 
-Aelara looked at her canvas. Then at the window, where the winter light was beginning to fade. Then at her hands, still stained with pigment, blue and umber beneath her fingernails.
+What if there were no more commissions? What if there were no more patrons? What if the palace burned and the nobility scattered and the golden domes that gleamed in the winter sun were reduced to rubble and ash?
 
-Her mind was racing.
+He could leave. Tonight. Pack his brushes and his pigments and the small fortune he had saved over sixty years of service, and ride south, and spend whatever time remained with the people who had loved him before he learned to paint kings.
 
-Tragedies. She could paint tragedies. Not just victories, not just processions and battles and kings on horseback — but the things that hurt. The day she fell from that stupid horse and scraped her knee so badly she couldn't walk for a week. The afternoon her mother made her eat cabbage stew because she had a cold, and she cried at the table, and no one cared. The morning her favorite cat didn't come home.
+He could leave.
 
-Real things. Painful things. Things that mattered.
-
-Lady Velathra had lost three children. Three children, dead, and still she smiled. Still she brought sweets. Still she came to the palace every day and pretended that everything was fine.
-
-That was tragedy. That was real.
-
-She reached for a blank canvas, already composing the image in her head — the horse, the fall, the blood on marble — when she noticed the silence.
-
-Thaelor had not moved.
+But his feet would not move.
 
 ⁂
-
-He stood in the middle of the studio, exactly where Vaethor had left him.
-
-His hands hung at his sides. His eyes were fixed on nothing — on the closed door, on the empty air, on something that existed only in his mind. His face had gone pale. His lips were slightly parted, moving without sound, as if repeating something to himself.
-
-The silence in the room was heavy. The kind of silence that fills a space when someone has stopped breathing. The kind of silence that precedes something terrible.
 
 "Come, Master!"
 
-Aelara's voice was bright, eager — the voice of a child who had not yet learned to read silences, who did not understand what she was seeing.
+Aelara's voice cut through the silence — bright, eager, utterly unaware.
 
 "Let us paint some tragedy! Did you not hear what Master Vaethor said? Art is not only about glory!"
 
-She set the blank canvas on the easel, already reaching for her brushes. Her movements were quick, excited, the movements of someone who had discovered something new and wanted to explore it immediately.
+Thaelor turned his head. The princess had already set a blank canvas on the easel, was already reaching for her brushes. Her movements were quick, excited, the movements of someone who had discovered something new and wanted to explore it immediately.
 
-"I remember a day when you arrived so furious because someone had made a mess of your painting room. You could not find your brushes anywhere. You were so upset! What about that? We could paint that. Your face was quite red."
+She did not understand.
+
+She had heard Vaethor's words about Lady Velathra, about the children who died in cold houses, about painting what the heart commanded — and she had understood none of it. She had heard tragedy and thought: a dead horse. She had heard truth and thought: a scraped knee.
+
+"I remember a day when you arrived so furious because someone had made a mess of your painting room," she said, already mixing pigments. "You could not find your brushes anywhere. You were so upset! What about that? We could paint that. Your face was quite red."
 
 She laughed. The sound was jarring in the heavy silence — bright and careless, utterly unaware.
 
-Nothing.
-
-Thaelor did not respond. Did not turn. Did not acknowledge that she had spoken.
+Thaelor did not respond. Could not respond. The words were locked somewhere in his chest, trapped beneath the weight of what Vaethor had told him.
 
 "Well then."
 
@@ -10404,25 +13436,27 @@ More strokes. The horse's mane, flowing. Its eye, wide and dark.
 
 "Krav laughed so hard he fell off his own horse. Mother was furious. Father said it would build character. I still have the scar, see?"
 
-She held up her elbow to show no one in particular. The scar was there — pale against her darker skin, raised slightly, a thin line across the joint. She had shown it before, would show it again, wore it like a badge of something she could not name.
+She held up her elbow to show him. The scar was there — pale against her darker skin, raised slightly, a thin line across the joint.
 
 "Right here. You cannot see it well in this light, but it is there. A tragedy. A real one."
 
-She turned to show Thaelor.
+She turned to look at him, expecting approval, expecting guidance, expecting the teacher who had always been there to correct her brushwork and praise her progress.
 
-But the painting master was not looking at her. He was staring at the door through which Vaethor had left. His lips moved slightly, as if repeating something to himself — words that made no sound, a prayer or a curse or simply the echo of what he had been told.
+Thaelor stood in the middle of the studio, exactly where Vaethor had left him.
+
+He could not speak. Could not move. Could only stand there, watching this child paint a dead horse and call it tragedy, while somewhere in the North three hundred thousand men marched toward something no one understood, and somewhere in a library an old man prepared for an ending he had seen in his books, and somewhere in the south two parents waited for a son who might never come home.
 
 His eyes were wet.
 
-Aelara did not notice. She had already turned back to her canvas.
+He did not wipe them.
 
-"Anyway. The horse. Dead. Very tragic. Master Vaethor would be proud."
+"Anyway," Aelara said, already turning back to her canvas. "The horse. Dead. Very tragic. Master Vaethor would be proud."
 
 She continued painting. The horse took shape beneath her brush — lying on its side now, legs folded, eye still open. Around it, she began to add flowers. Red and yellow, bright against the dark form. Life growing from death. Beauty emerging from tragedy.
 
 She hummed as she worked. A court melody, something her music tutor had taught her. Her brush moved quickly, carelessly, the way it always moved.
 
-She did not see Thaelor's tears.
+She did not see his tears.
 
 She did not hear the silence beneath her humming.
 
@@ -10440,20 +13474,27 @@ In the corner of the studio, barely audible, Thaelor whispered to no one:
 
 "Paint nature itself."
 
-And the light continued to fall, and the shadows continued to deepen, and somewhere in the North, beyond the mountains, beyond the passes where armies died, a fire burned that had burned for four hundred years, and a king sat in silence, and a boy wept in a hall of fire, learning to carry weights his people had forgotten how to name, and none of them — not the girl, not the painter, not the librarian who had tried to warn them — none of them could stop what was coming.
+He thought of his parents. Of the small house in the south. Of the road that led there, winding through hills he had not seen in a year.
+
+He thought of Vaethor, walking through the corridors of the palace, carrying knowledge that no one wanted to hear.
+
+He thought of Aelara, humming at her easel, painting flowers around a dead horse, believing she understood tragedy.
+
+And the light continued to fall, and the shadows continued to deepen, and somewhere in the North, beyond the mountains, beyond the passes where armies died, the silence grew — the same silence that had swallowed civilizations before, that would swallow this one too, that did not care whether anyone painted it or not.
 
 The shadow and the light.
 
 The oldest lesson.
 
-The truest one.`,
+The truest one.
+`,
         tags: ["manuscript", "volume-iv", "chapter-4", "shadow-light", "aelara", "vaethor", "thaelor"]
       },
       "vol4-ch5": {
-        title: "VIII — Bread and Tomato",
+        title: "IX — Bread and Tomato",
         book: "the-depletion",
         volume: "part-i",
-        content: `**VIII**
+        content: `**IX**
 *Bread and Tomato*
 
 The house was marble, like all houses in the capital.
@@ -10924,10 +13965,10 @@ In the darkness, they sat together, listening to their children breathe.`,
         tags: ["manuscript", "volume-iv", "chapter-5", "bread-tomato", "common-people", "fall"]
       },
       "vol4-epilogue": {
-        title: "IX — The Vanishing of the TauTek",
+        title: "VIII — The Vanishing of the TauTek",
         book: "the-depletion",
         volume: "part-i",
-        content: `**IX**
+        content: `**VIII**
 *The Vanishing of the TauTek*
 *Epilogue*
 
@@ -11198,7 +14239,7 @@ The rodent stopped eating. It looked at him with small, black eyes.
 
 'I hate you, Father,' Krav said, and the word burned. 'You died. You just… died. And left me with your impossible dream, your enormous army, your generals who looked at me like I was a child playing at being king. Because I was. I am.'
 
-He remembered General Kraveth Vaelmar bowing before him on coronation day. The old soldier's eyes said what his mouth could not: *this boy will get us all killed.*
+He remembered General Vaelmar bowing before him on coronation day. The old soldier's eyes said what his mouth could not: *this boy will get us all killed.*
 
 And he had.
 
@@ -11240,7 +14281,7 @@ The figure behind him made Krav stop breathing.
 
 'General!!!'
 
-Kraveth Vaelmar was alive. Thin, his face marked by the cold and a new scar cutting across his left eyebrow—but alive. He wore Kaeldur clothing, not his armor, and that was strange, wrong, like seeing a lion without its mane. But it was him.
+General Vaelmar was alive. Thin, his face marked by the cold and a new scar cutting across his left eyebrow—but alive. He wore Kaeldur clothing, not his armor, and that was strange, wrong, like seeing a lion without its mane. But it was him.
 
 'But how?' Krav stood, stumbling. 'Where were you? How are you? I thought… Everyone said…'
 
@@ -11625,9 +14666,9 @@ And spring, slowly, impossibly, continued.`,
 
 Os dias passam de forma more gentil when temos amigos por perto.
 
-O jovem Krav sentia isso. Kraveth Vaelmar estava com ele já há alguns dias, dormindo perto dele no anel externo, partilhando o frio e o silence. Krav era organizado — acordava all os dias, arrumava sua cama, esticava as peles, mantinha tudo always arrumado e seco. O General observava com um orgulho que not verbalizava. O garoto tinha disciplina. Tinha coluna. Tinha algo que sobreviveu à catastrophe.
+The young Krav felt this. Kraveth Vaelmar had been with him for several days now, sleeping near him in the outer ring, sharing the cold and the silence. Krav was organized — he woke every day, made his bed, stretched the furs, kept everything always tidy and dry. The General watched with a pride he didn't verbalize. The boy had discipline. Had backbone. Had something that survived the catastrophe.
 
-Krav mal se continha de alegria — ou ao menos demonstrava tanta alegria quanto um rei poderia demonstrar. Era uma child, afinal. Talvez not uma child no sentido de idade, mas no sentido de um menino jovem que always viveu na corte e very pouco viu do mundo. E o que via, via through das lentes do pai.
+Krav could barely contain his joy — or at least showed as much joy as a king could show. He was a child, after all. Perhaps not a child in the sense of age, but in the sense of a young boy who had always lived at court and seen very little of the world. And what he saw, he saw through his father's lens.
 
 Inocente.
 
@@ -11637,73 +14678,73 @@ Ignorance.
 
 ⁂
 
-O General era diferente. Kraveth Vaelmar not teve uma vida easy até a idade adulta.
+The General was different. Kraveth Vaelmar did not have an easy life until adulthood.
 
-Seu pai not era easy, mas also not era militar. Thoren Vaelmar era um homem de classe average dos arredores da capital — fazendeiro, not estudado, mas honrado. Casou still very jovem para tirar a mother do General da casa dos pais dela. Tiveram seis filhos, incluindo Kraveth. O único que seguiu para uma carreira militar.
+His father was not easy, but also was not military. Thoren Vaelmar was an average-class man from the outskirts of the capital — a farmer, not educated, but honorable. He married still very young to take the General's mother from her parents' house. They had six children, including Kraveth. The only one who pursued a military career.
 
-*No era o more inteligente dos irhands*, ele costumava dizer.
+*He wasn't the most intelligent of his siblings*, he used to say.
 
-Os outros conseguiram estudar. Tornaram-se membros da corte through das universidades — as mesmas que Senara Senvarak fundou há cinco centuries, when executou doze mil pessoas e abriu cinco casas de estudo. Os filhos de fazendeiros que ascenderam pelas letras talvez fossem a ideia dela since o beginning. Uma forma de renovar o sangue da corte. Ou talvez only capricho de uma mulher que reinou setenta e oito anos e cujas últimas palavras foram "Ainda not terminei."
+The others managed to study. They became members of the court through the universities — the same ones Senara Senvarak founded five centuries ago, when she executed twelve thousand people and opened five houses of study. The farmers' children who rose through letters were perhaps her idea from the beginning. A way to renew the blood of the court. Or perhaps only the whim of a woman who reigned seventy-eight years and whose last words were "I'm not finished yet."
 
 Mas Kraveth not era das letras. Era das armas.
 
-Trsteelu uma carreira militar brilhante, although without glorys épicas. Antes da campanha ao norte, not houve grandes batalhas no oeste — only conflitos regionais, revoltas menores, tensions de fronteira. Todas prontamente apaziguadas por homens as ele. Soldados que subiam aos poucos na hierarquia, campanha after campanha, cicatriz after cicatriz, até chegarem ao patamar que ele havia reached.
+He built a brilliant military career, though without epic glories. Before the campaign to the north, there were no great battles in the west — only regional conflicts, minor revolts, border tensions. All promptly pacified by men like him. Soldiers who rose slowly through the hierarchy, campaign after campaign, scar after scar, until reaching the level he had reached.
 
-Um dos generais do rei. No o more importante. No o more relevante. Mas um homem com history. Com experience. Com um certo estudo que a vida ensina better que os livros.
+One of the king's generals. Not the most important. Not the most relevant. But a man with history. With experience. With a certain learning that life teaches better than books.
 
-Para a campanha, deixou para behind uma esposa e three filhas.
+For the campaign, he left behind a wife and three daughters.
 
 Velara. Tornela. Sethara. Jakenna.
 
-*Volto before do summer*, prometeu a elas.
+*I'll return before summer*, he promised them.
 
-As coisas not aconwove as ele imaginava. Aconwove as ele temia.
+Things didn't happen as he imagined. They happened as he feared.
 
-Era primavera, e ele estava vivendo com o povo do norte.
+It was spring, and he was living with the people of the north.
 
 ⁂
 
-Um povo so diferente que ele not sabia que era possible.
+A people so different he didn't know it was possible.
 
-No eram scholarlys, mas eram extremamente sages. No eram guerreiros por vocaction, mas eram extremamente capazes. No tinham um rei no sentido que Duratheon entendia, mas respeitavam o leader e os elders com uma deference que not precisava de coroas para existir.
+They were not scholars, but they were extremely wise. They were not warriors by vocation, but they were extremely capable. They didn't have a king in the sense Duratheon understood, but they respected the leader and the elders with a deference that didn't need crowns to exist.
 
-Todos tinham function dentro daqueles imensos halls e tunnels. Mas era difficult colocá-los dentro de um archetype. Suas fornalhas eram diferentes. Seus metais, diferentes. O treinamento, diferente — otimizado para defesa, claramente, mas os soldados treinavam lutas without arma, com spears, espadas e machados. Eram fortes. Altos. Uma alimentaction baseada em gorduras e proteins de animais que mantinham protegidos do frio, ou que vinham de outros lugares do mundo through de rotas comerciais que o General still not compreendia.
+Everyone had a function within those immense halls and tunnels. But it was difficult to place them within an archetype. Their forges were different. Their metals, different. The training, different — optimized for defense, clearly, but the soldiers trained in unarmed combat, with spears, swords, and axes. They were strong. Tall. A diet based on fats and proteins from animals they kept protected from the cold, or that came from other parts of the world through trade routes the General still didn't understand.
 
-Depois de alguns dias, Kraveth já havia se adaptado a uma rotina.
+After a few days, Kraveth had already adapted to a routine.
 
-Acordava cedo. Andava pelos rings. Aproximava-se dos rings more centrais para tentar conversar com o povo — tentar, because not se ensinava dialetos ou outras languages em Duratheon. Eles not imaginavam que existiam languages complexas fora das cidades de marble. A arrogance tinha muitas formas. Essa era uma delas.
+He woke early. Walked through the rings. Approached the more central rings to try to talk with the people — try, because dialects or other languages were not taught in Duratheon. They didn't imagine that complex languages existed outside the marble cities. Arrogance had many forms. This was one of them.
 
-Mas all as mornings, aquele povo levantava com uma disciplina que impressionava até same um militar. Organizavam o hold. Limpavam. Preparavam o café da manhã — rico em protein, as sempre.
+But every morning, those people rose with a discipline that impressed even a military man. They organized the hold. They cleaned. They prepared breakfast — rich in protein, as always.
 
-Com frequency, ele via Maela.
+Frequently, he saw Maela.
 
-A mulher que preparava a comida de Krav all os dias. Com great carinho, apesar de tudo. O General se aproximava, tentava agradecer de alguma forma, sentia-se responsible pelo garoto. Maela olhava para ele com algo que not era exatamente desprezo — not raiva, not hostilidade — mas uma indifference estudada. No dava trust ao General. Also not o tratava mal.
+The woman who prepared Krav's food every day. With great care, despite everything. The General would approach, try to thank her in some way, felt responsible for the boy. Maela looked at him with something that was not exactly contempt — not anger, not hostility — but a studied indifference. She didn't give trust to the General. But she also didn't treat him badly.
 
-Ele sabia por quê. Krav havia matado o marido dela.
+He knew why. Krav had killed her husband.
 
-Que ela cuidasse do menino same assim dizia algo about este povo que os livros de Duratheon jamais poderiam explicar.
+That she cared for the boy even so said something about this people that Duratheon's books could never explain.
 
 ⁂
 
 Krav e o General costumavam sair logo de manhã.
 
-Andavam pelo hold. Admiravam as chamas que iluminavam as paredes até where os olhos podiam ver. No era possible ver where terminava o teto — a darkness engolia a pedra em algum ponto lá em cima, e só as tochas marcavam a escala impossible do lugar.
+They walked through the hold. They admired the flames that illuminated the walls as far as the eye could see. It wasn't possible to see where the ceiling ended — the darkness swallowed the stone somewhere up there, and only the torches marked the impossible scale of the place.
 
 Um dia, perceberam algo extraordinary.
 
-Entre a parede interna e o muro externo do hold, havia um corredor. No very largo, mas without fim em comprimento — provavelmente fazendo um anel completo ao redor de all a estrutura. Dentro desse corredor, uma coluna de fogo acompanhava o caminho. Micro fissuras conectavam o lado de fora ao lado de dentro.
+Between the inner wall and the outer wall of the hold, there was a corridor. Not very wide, but endless in length — probably making a complete ring around the entire structure. Within this corridor, a column of fire followed the path. Micro fissures connected the outside to the inside.
 
-A engenhosidade era tamanha que o General precisou de um momento para compreender.
+The ingenuity was such that the General needed a moment to comprehend.
 
-O vento que vinha do lado de fora — gelado, mortal — era comprimido, passava por essa chamber de calor, e emergia do outro lado as ar quente que aquecia os halls. Um sistema de aquecimento que funcionava vinte e quatro horas por dia, all os dias do ano. Uma equipe de maintenance dedicada only a isso. Barris e barris de uma species de óleo — diferente do que usavam em Duratheon, more denso, more lento para queimar.
+The wind that came from outside — frozen, deadly — was compressed, passed through this heat chamber, and emerged on the other side as warm air that heated the halls. A heating system that worked twenty-four hours a day, every day of the year. A maintenance team dedicated only to this. Barrels upon barrels of a species of oil — different from what they used in Duratheon, denser, slower to burn.
 
 *Muito engenhoso*, pensava o General.
 
-Mas ele olhava para tudo com uma mente strategic. Nada era gratuito. Nem o sistema de aquecimento. Nem o metal que parecia espelho de so puro e ao same tempo so forte. Nem a disposition dos corredores, que strengthria qualquer invasor a lutar em spaces estreitos where numbers not significavam nada.
+But he looked at everything with a strategic mind. Nothing was free. Not the heating system. Not the metal that seemed like a mirror, so pure and at the same time so strong. Not the disposition of the corridors, which would force any invader to fight in narrow spaces where numbers meant nothing.
 
-*Quatrocentos anos*, pensou ele. *Quatrocentos anos para aprender. Para preparar. Para esperar.*
+*Four hundred years*, he thought. *Four hundred years to learn. To prepare. To wait.*
 
-*E we marchamos para cá achando que era uma campanha.*
+*And we marched here thinking it was a campaign.*
 
 ⁂
 
@@ -11711,9 +14752,9 @@ O dia always terminava da mesma forma.
 
 Sentavam ao redor de alguma fogueira — às vezes no hall principal, às vezes em chambers menores where o calor era more concentrado. E relembravam histories.
 
-No beginning, eram histories seguras. Batalhas antigas. Anedotas da corte. Memorys de Vaelhem Thel que pareciam pertencer a outra vida.
+In the beginning, they were safe stories. Ancient battles. Court anecdotes. Memories of Vaelhem Thel that seemed to belong to another life.
 
-Mas à medida que os dias passavam, as histories foram ficando more pesadas.
+But as the days passed, the stories grew heavier.
 
 Mais next.
 
@@ -11721,15 +14762,15 @@ Mais verdadeiras.
 
 ⁂
 
-Uma noite, o General olhou para o fogo por um longo tempo before de falar.
+One night, the General looked at the fire for a long time before speaking.
 
-"Sabe, Krav… Eu estava very confiante em nosso army."
+"You know, Krav... I was very confident in our army."
 
-Krav ergueu os olhos. O General raramente iniciava conversas. Raramente oferecia algo que not fosse solicitado.
+Krav raised his eyes. The General rarely initiated conversations. Rarely offered anything that wasn't requested.
 
-"Eu temia a passagem do inverno," continuou Kraveth. "No os Durtek. Nunca os Durtek." Ele quase riu da ironia. "O plano era simples. We knew de um povo que vivia por aqui. We os we would use as base, we would pillage o necessary, mas era uma passagem. O norte era caminho, not destino. Eu estava confiante."
+"I feared the passage of winter," Kraveth continued. "Not the Durtek. Never the Durtek." He almost laughed at the irony. "The plan was simple. We knew of a people who lived around here. We would use them as a base, we would pillage what was necessary, but it was a passage. The north was a path, not a destination. I was confident."
 
-Fez uma pausa.
+He paused.
 
 "Mas eu temia o frio. Sei que as coisas se complicam no frio. E same assim…"
 
@@ -11739,19 +14780,19 @@ Ele shook a head.
 
 Krav franziu o cenho. "Os ornamentos do porto?"
 
-"Seu pai ficou very chateado com o atraso," disse o General. "Ele queria que tudo would leave as havia imaginado. A frota alinhada. As bandeiras hasteadas. Os arautos nos cais. Uma partida digna de entrar nos livros de history."
+"Your father was very upset about the delay," said the General. "He wanted everything to leave as he had imagined. The fleet aligned. The flags raised. The heralds at the docks. A departure worthy of entering the history books."
 
 "Three meses de atraso," murmurou Krav. Ele se lembrava. Se lembrava das discussions no palace, da fury do pai, dos artisans trabalhando dia e noite enquanto o summer escorria pelos dedos.
 
-"Three meses," confirmou o General. "We left do alto summer para o outono. Tentamos convencê-lo a partir com o porto por acabar. Ele se recusou."
+"Three months," the General confirmed. "We left from high summer into autumn. We tried to convince him to leave with the port unfinished. He refused."
 
-O General imitou a voz do rei morto, com uma precision que fez Krav estremecer:
+The General imitated the voice of the dead king, with a precision that made Krav shudder:
 
 *"A narrativa e as as coisas acontecem é so importante quanto a victory."*
 
-O silence que se seguiu foi pesado.
+The silence that followed was heavy.
 
-"Mas afinal," continuou Kraveth, "trezentos mil homens. Quem not se sentiria confiante? O greater army que Duratheon já reuniu. O greater army que o oeste já viu. Trezentos mil spears marchando para o norte."
+"But after all," Kraveth continued, "three hundred thousand men. Who wouldn't feel confident? The greatest army Duratheon had ever assembled. The greatest army the west had ever seen. Three hundred thousand spears marching north."
 
 Ele suspirou.
 
@@ -11761,47 +14802,47 @@ Ele suspirou.
 
 "Began os problemas before same de partirmos."
 
-O General contava now com a voz de quem precisa contar, de quem carrega peso demais para guardar sozinho.
+The General now spoke with the voice of someone who needs to tell, of someone who carries too much weight to keep alone.
 
-"Primeiro, os alimentos. Trezentos mil bocas comem more do que você pode imaginar. As provisions que we had calculado para a viagem began a ser consumidas na espera. Mandamos batedores para comprar more dos fazendeiros nexts — mas os fazendeiros nexts já haviam vendido tudo. Tivemos que buscar each vez more longe, pagar each vez more caro."
+"First, the food. Three hundred thousand mouths eat more than you can imagine. The provisions we had calculated for the journey began to be consumed in the waiting. We sent scouts to buy more from the nearby farmers — but the nearby farmers had already sold everything. We had to search farther and farther, pay more and more."
 
-Krav ouvia em silence. Essas coisas aconteciam longe da corte. Longe das salas where ele jantava com o pai.
+Krav listened in silence. These things happened far from the court. Far from the halls where he dined with his father.
 
-"Depois, as diseases. Homens acampados em proximidade, dividindo água, dividindo latrinas. A disenteria began na terceira semana. Perdemos dois mil homens before de partir — not para o inimigo, not para o frio. Para a own merda."
+"Then, the diseases. Men camped in proximity, sharing water, sharing latrines. Dysentery began in the third week. We lost two thousand men before departing — not to the enemy, not to the cold. To their own shit."
 
 O General cuspiu no fogo.
 
-"Depois, a disciplina. Soldados entediados are soldados perigosos. Brigas between regimentos. Estupros nas vilas next. Tivemos que enforcar dezessete dos nossos para manter a ordem. Dezessete homens que sobreviveram a treinamento, que juraram servir ao rei, enforcados por we mesmos before de ver um único inimigo."
+"Then, the discipline. Bored soldiers are dangerous soldiers. Fights between regiments. Rapes in nearby villages. We had to hang seventeen of our own to maintain order. Seventeen men who survived training, who swore to serve the king, hanged by ourselves before seeing a single enemy."
 
-Ele olhou para Krav.
+He looked at Krav.
 
-"E then seu pai adoeceu."
+"And then your father fell ill."
 
 ⁂
 
-"Dizem que foi a chuva," disse Krav, quase num sussurro.
+"They say it was the rain," said Krav, almost in a whisper.
 
-"A chuva," repetiu o General. "A ansiedade. A falta de um bom alimento — ele insistia em comer o same que os soldados, você sabe as ele era. O frio do outono. As noites em claro planejando."
+"The rain," the General repeated. "The anxiety. The lack of good food — he insisted on eating the same as the soldiers, you know how he was. The autumn cold. The sleepless nights planning."
 
 Kraveth shook a head.
 
-"Nunca é uma coisa só. Nunca é simples. Os homens que escrevem history gostam de simplicidade — o rei morreu de febre, will say. Mas a verdade é que seu pai morreu de tudo. Do atraso. Da espera. Da obsession. Da own campanha que ele havia sonhado a vida inteira."
+"It's never just one thing. It's never simple. The men who write history like simplicity — the king died of fever, they will say. But the truth is your father died of everything. Of the delay. Of the waiting. Of the obsession. Of the very campaign he had dreamed of his whole life."
 
-O fogo estalou between eles.
+The fire crackled between them.
 
-"Eu tive hopes," admitiu o General. "Quando ele morreu. Tive hopes de que você…"
+"I had hopes," the General admitted. "When he died. I had hopes that you..."
 
 Ele not terminou a frase.
 
 "De que eu cancelasse a campanha," completou Krav.
 
-"Você era jovem. Nobody o culparia. Poderia dizer que precisava consolidar o trono, que voltaria ao norte em alguns anos, que honraria a memory do pai when estivesse pronto."
+"You were young. Nobody would blame you. You could say you needed to consolidate the throne, that you would return north in a few years, that you would honor your father's memory when you were ready."
 
-"Mas eu not fiz isso."
+"But I didn't do that."
 
 "No. Você not fez."
 
-O General olhou para o menino — because era isso que ele still era, apesar de tudo, um menino — e viu algo que not era exatamente arrependimento. Era more complexo que isso. Era o peso de entender, tarde demais, o custo de uma decision.
+The General looked at the boy — because that's what he still was, despite everything, a boy — and saw something that was not exactly regret. It was more complex than that. It was the weight of understanding, too late, the cost of a decision.
 
 "Você é um great rei, Krav. Corajoso. Talvez corajoso demais. Mas not o culpo. Nenhum de we o culpa."
 
@@ -11823,23 +14864,23 @@ O General ficou em silence por um longo momento. O fogo danced em seus olhos.
 
 Ele not terminou. No precisava. Ambos sabiam.
 
-Krav estava lá, sim. Mas Krav era o rei. A better tenda. Os melhores soldados formando um circle ao seu redor. Nunca lhe faltava fogo — havia always homens designados only para manter sua fogueira acesa. Nunca lhe faltava comida — same when as rations diminished, a portion do rei permanecia intacta.
+Krav was there, yes. But Krav was the king. The better tent. The best soldiers forming a circle around him. He never lacked fire — there were always men designated only to keep his bonfire burning. He never lacked food — even when rations diminished, the king's portion remained intact.
 
-Ele se lembrava do frio, sim. Se lembrava da neve. Se lembrava do medo. Mas se lembrava through de paredes de lona e circles de guardas e meals quentes que apareciam without que ele perguntasse de where vinham.
+He remembered the cold, yes. He remembered the snow. He remembered the fear. But he remembered through canvas walls and circles of guards and warm meals that appeared without him asking where they came from.
 
-"Você estava protegido," disse o General, without acusaction. "Como deveria estar. Um army protege seu rei. É para isso que existimos."
+"You were protected," said the General, without accusation. "As you should be. An army protects its king. That's what we exist for."
 
-Mas a palavra *protegido* ficou suspensa no ar as uma confession.
+But the word *protected* hung in the air like a confession.
 
 Protegido.
 
-Enquanto trezentos mil homens morriam ao seu redor, Krav estava protegido.
+While three hundred thousand men died around him, Krav was protected.
 
-"Era bonito, no beginning," disse o General. "Eu sei que parece estranho dizer isso. Mas era. Trezentos mil homens marchando. Você podia ver as spears até where a vista reached — um campo de trigo feito de steel, swaying no ritmo da marcha. O som dos tambores. Os estandartes do rei. A poeira que we raised era tanta que parecia uma tempestade nos seguindo."
+"It was beautiful, in the beginning," said the General. "I know it sounds strange to say that. But it was. Three hundred thousand men marching. You could see the spears as far as the eye could reach — a field of wheat made of steel, swaying to the rhythm of the march. The sound of the drums. The king's banners. The dust we raised was so much it seemed like a storm following us."
 
 Ele quase sorriu.
 
-"Os primeiros dias foram easy. O outono still era gentil. As estradas still eram estradas. Os homens cantavam enquanto marchavam — songs de guerra, songs de amor, songs about voltar para casa cobertos de glory."
+"The first days were easy. Autumn was still gentle. The roads were still roads. The men sang as they marched — songs of war, songs of love, songs about returning home covered in glory."
 
 O sorriso morreu.
 
@@ -11847,69 +14888,69 @@ O sorriso morreu.
 
 ⁂
 
-"No foi de uma vez. Foi aos poucos. Uma manhã more gelada que a anterior. Uma noite que demorava more para acabar. No beginning, os homens reclamavam as homens reclamam — do frio, da comida, da saudade. Complaints normais. Complaints healthy, até."
+"It wasn't all at once. It was gradual. A morning colder than the one before. A night that took longer to end. In the beginning, men complained as men complain — about the cold, about the food, about homesickness. Normal complaints. Even healthy complaints."
 
-O General fez uma pausa.
+The General paused.
 
 "Mas then began a nevar."
 
-Krav se lembrava da neve. Se lembrava de as ela parecia bela, no first dia — branca, limpa, cobrindo o mundo as um manto. Se lembrava de as os homens riam, jogando bolas de neve uns nos outros as children.
+Krav remembered the snow. He remembered how it seemed beautiful, on the first day — white, clean, covering the world like a blanket. He remembered how the men laughed, throwing snowballs at each other like children.
 
-"A neve not para," disse o General. "Essa é a coisa. No sul, a neve é um evento. Ela vem, fica um dia ou dois, derrete. Aqui, a neve é uma estaction. Ela vem e not vai embora."
+"The snow doesn't stop," said the General. "That's the thing. In the south, snow is an event. It comes, stays a day or two, melts. Here, snow is a season. It comes and doesn't go away."
 
-Ele olhou para o teto invisible do hold.
+He looked at the invisible ceiling of the hold.
 
-"Os cavalos foram os primeiros a sofrer. Depois, as carts. As rodas afundavam na neve, quebravam no gelo. Tivemos que abandonar suprimentos para continuar advancing. Comida. Tendas. Remediums. Deixamos para behind o que nos manteria vivos."
+"The horses were the first to suffer. Then, the carts. The wheels sank in the snow, broke in the ice. We had to abandon supplies to keep advancing. Food. Tents. Medicine. We left behind what would keep us alive."
 
-"E os homens?"
+"And the men?"
 
 "Os homens…"
 
-O General fechou os olhos.
+The General closed his eyes.
 
 "Os homens began a dormir each vez more juntos."
 
 ⁂
 
-"No beginning, era por grupos. Cada regimento em seu acampamento, each companhia em suas tendas. Assim as nos treinamentos. Assim as nos manuais."
+"In the beginning, it was by groups. Each regiment in its camp, each company in its tents. Just like in training. Just like in the manuals."
 
-Ele abriu os olhos.
+He opened his eyes.
 
 "Mas o frio not lê manuais."
 
-"Depois de uma semana de neve, as tendas not eram more suficientes. Os homens began a se amontoar. Cinquenta em uma tenda feita para vinte. Cem ao redor de uma fogueira que mal aquecia dez. No havia more regimentos, not havia more companhias. Havia only corpos buscando calor em outros corpos."
+"After a week of snow, the tents were no longer sufficient. The men began to pile up. Fifty in a tent made for twenty. A hundred around a fire that barely warmed ten. There were no more regiments, no more companies. There were only bodies seeking warmth in other bodies."
 
-O General olhou para Krav.
+The General looked at Krav.
 
-"Você sabe o que é dormir embraced a um homem que você never viu antes, sentindo o heart dele batendo contra suas costas, because se you se separarem os dois morrem before do amanhecer?"
+"Do you know what it's like to sleep embraced by a man you've never seen before, feeling his heart beating against your back, because if you separate, both die before dawn?"
 
-Krav not respondeu. No havia resposta.
+Krav didn't answer. There was no answer.
 
 "Cada noite, we slept more juntos," disse o General. "Cada manhã, we woke menos."
 
 ⁂
 
-A frase ficou suspensa no ar between eles.
+The sentence hung in the air between them.
 
 *Cada noite, more juntos. Cada manhã, menos.*
 
-"No beginning, we counted os mortos," continuou o General, sua voz now quase um sussurro. "We gave nomes. We did pequenas ceremonies when possible — uma oraction a Sthendur, uma marca na neve. Depois, not havia more tempo. No havia more energia. Os mortos ficavam where fell, e a neve os cobria, e we marched about eles without saber."
+"In the beginning, we counted the dead," the General continued, his voice now almost a whisper. "We gave names. We held small ceremonies when possible — a prayer to Sthendur, a mark in the snow. Then, there was no more time. There was no more energy. The dead stayed where they fell, and the snow covered them, and we marched over them without knowing."
 
 Ele respirou fundo.
 
-"Trezentos mil homens marcharam para o norte, Krav. Sabe quantos chegaram aos passes?"
+"Three hundred thousand men marched north, Krav. Do you know how many reached the passes?"
 
 Krav shook a head.
 
-"Talvez cento e cinquenta mil. Talvez menos. Perdemos metade do army before de ver um único Kaeldur. Perdemos para o frio. Para a fome. Para o desespero. Para a neve que not parava de cair."
+"Perhaps one hundred and fifty thousand. Perhaps less. We lost half the army before seeing a single Kaeldur. We lost to the cold. To hunger. To despair. To the snow that wouldn't stop falling."
 
-"E os que chegaram…"
+"And those who arrived..."
 
-"Os que chegaram estavam mortos em pé. Estavam mortos, só not sabiam ainda. O frio já estava dentro deles. Dentro de we. Eu sentia meus dedos only às vezes. Eu via homens rindo sozinhos, conversando com esposas que estavam a mil leagues de distance. O frio faz isso. Ele entra na sua head. Ele tira tudo que você é e deixa only o frio."
+"Those who arrived were dead on their feet. They were dead, they just didn't know it yet. The cold was already inside them. Inside us. I could feel my fingers only sometimes. I saw men laughing alone, talking to wives who were a thousand leagues away. The cold does that. It enters your head. It takes everything you are and leaves only the cold."
 
-O General olhou para suas hands.
+The General looked at his hands.
 
-"Quando os Kaeldur finalmente atacaram, foi quase um relief. Pelo menos era algo que we could lutar. Algo que we could entender. Um inimigo de carne e osso, not essa coisa branca e infinita que nos engolia um pouco more a each noite."
+"When the Kaeldur finally attacked, it was almost a relief. At least it was something we could fight. Something we could understand. An enemy of flesh and bone, not this white and infinite thing that swallowed us a little more each night."
 
 ⁂
 
@@ -11917,27 +14958,27 @@ O silence se estendeu.
 
 O fogo estalava.
 
-Krav olhava para o General — para as linhas em seu rosto, para as sombras sob seus olhos, para as hands que haviam segurado espadas e now tremiam levemente.
+Krav looked at the General — at the lines on his face, at the shadows under his eyes, at the hands that had held swords and now trembled slightly.
 
 "General…"
 
-"No precisa dizer nada," interrompeu Kraveth. "No há nada a dizer. Aconteceu. Está feito. Trezentos mil homens marcharam para o norte. Dezoito will return para o sul. Essa é a history. Essa é all a history."
+"You don't need to say anything," Kraveth interrupted. "There is nothing to say. It happened. It's done. Three hundred thousand men marched north. Eighteen will return south. That is the history. That is all the history."
 
-Ele se levantou, lentamente, os ossos protestando.
+He stood up, slowly, his bones protesting.
 
 "Vou dormir. Você deveria fazer o mesmo."
 
 "General."
 
-Kraveth parou, mas not se virou.
+Kraveth stopped, but didn't turn around.
 
-"Eu sinto muito."
+"I'm sorry."
 
-O old soldado ficou parado por um momento. Quando falou, sua voz estava cansada de uma forma que ia beyond do sono.
+The old soldier stood still for a moment. When he spoke, his voice was tired in a way that went beyond sleep.
 
-"Eu also, meu rei. Eu also."
+"I too, my king. I too."
 
-E then ele foi para as sombras, para as peles, para o sono que talvez viesse e talvez not.
+And then he went to the shadows, to the furs, to the sleep that might come and might not.
 
 Krav ficou sozinho junto ao fogo.
 
@@ -11947,7 +14988,7 @@ Pensando em homens dormindo each vez more juntos.
 
 Pensando em homens acordando each vez menos.
 
-Mas o General not havia dormido. Voltou das sombras, silenciosamente, e sentou-se novamente junto ao fogo. Talvez o sono not viesse. Talvez houvesse more a dizer.
+But the General hadn't slept. He returned from the shadows, silently, and sat again by the fire. Perhaps sleep wouldn't come. Perhaps there was more to say.
 
 Ficaram em silence por um longo tempo.
 
@@ -11957,41 +14998,41 @@ Then Krav falou.
 
 O General not respondeu. Apenas esperou.
 
-"Ou ao menos dizem que eu matei," continuou Krav, sua voz estranha, distante. "Mas not sei bem as aconteceu. Foi tudo very confuso."
+"Or at least they say I killed," Krav continued, his voice strange, distant. "But I don't quite know how it happened. It was all very confusing."
 
-Ele olhava para o fogo, mas seus olhos viam outra coisa. Neve. Caos. Gritos.
+He looked at the fire, but his eyes saw something else. Snow. Chaos. Screams.
 
-"Eu segurava o meu escudo. Tinha fallen do meu cavalo — ou meu cavalo havia fallen about si mesmo." Ele quase sorriu, mas not havia humor ali. "Pobre Varek. Deve ter virado comida. Eles comem cavalo aqui."
+"I was holding my shield. I had fallen from my horse — or my horse had fallen on itself." He almost smiled, but there was no humor there. "Poor Varek. He must have become food. They eat horse here."
 
-Fez uma pausa.
+He paused.
 
-"Eu not via nada. No enxergava nada. Apenas ouvia os gritos. O barulho da neve batendo em nossa armadura as pedras batendo na carruagem. E then someone tentou me segurar."
+"I couldn't see anything. I couldn't see anything. I only heard the screams. The sound of snow hitting our armor like stones hitting a carriage. And then someone tried to grab me."
 
-Krav olhou para suas owns hands.
+Krav looked at his own hands.
 
-"Eu agi por instinto. Como o mestre Jorveth me instructed. *No vá contra someone que tenta te puxar*, ele dizia. *Você not tem strength. Aceite ser puxado. No resista. Use a strength do inimigo contra ele. E then segure bem a sua espada e acerte a axila. Onde not se tem protection.*"
+"I acted on instinct. As master Jorveth instructed me. *Don't go against someone trying to pull you*, he said. *You don't have strength. Accept being pulled. Don't resist. Use the enemy's strength against him. And then hold your sword tight and strike the armpit. Where there's no protection.*"
 
 O silence se estendeu.
 
-"E eu fiz. Exatamente as ele me ensinou. E o homem me soltou quase que imediatamente. Perdi minha espada nele. No me lembro very do resto. Outro me pegou e me arrastou…"
+"And I did. Exactly as he taught me. And the man let go of me almost immediately. I lost my sword in him. I don't remember much of the rest. Another grabbed me and dragged me..."
 
 Krav engoliu em seco.
 
-"Nunca tinha matado someone. E eu nem me lembro do rosto dele."
+"I had never killed anyone. And I don't even remember his face."
 
-O General permanecia em silence. No havia consolo para isso. No havia palavras certas.
+The General remained in silence. There was no consolation for this. There were no right words.
 
-"Mas vejo o filho dele all os dias," disse Krav, sua voz quebrando. "A esposa dele. Ela prepara minha comida. Ela… ela cuida de mim."
+"But I see his son every day," said Krav, his voice breaking. "His wife. She prepares my food. She... she takes care of me."
 
-Ele olhou para o General com olhos úmidos.
+He looked at the General with moist eyes.
 
-"Dizem que eles not me odeiam. Mas como? *Como?*"
+"They say they don't hate me. But how? *How?*"
 
 O General not tinha resposta.
 
 Nobody tinha.
 
-O fogo estalou between eles, e a pergunta ficou suspensa no ar, without resposta, without consolo, without sentido — as tantas coisas naquela guerra que never deveria ter acontecido.`,
+The fire crackled between them, and the question hung in the air, without answer, without comfort, without meaning — like so many things in that war that should never have happened.`,
         tags: ["manuscript", "volume-iv", "part-2", "chapter-3", "long-march", "general", "krav"]
       },
       "vol4-p2-ch4": {
@@ -12236,7 +15277,7 @@ The memorandum had arrived three months ago—sent the day after the fleet depar
 
 Now they understood.
 
-'You sent the summons before the campaign even began,' Lord Velaren Keth had said when they first gathered, weeks ago. 'Before the first battle. Before the first death. How could you have known?'
+'You sent the summons before the campaign even began,' Lord Kethmar had said when they first gathered, weeks ago. 'Before the first battle. Before the first death. How could you have known?'
 
 'Arithmetic,' Setharen had replied. 'The campaign required three hundred thousand men to cross mountains that had never been crossed. It required supply lines stretching across terrain that produces no food. It required victory against a people who have defended those passes for four centuries without a single defeat.' He had shrugged. 'I did not know the campaign would fail. I knew it could not succeed. The distinction is academic.'
 
@@ -12284,7 +15325,7 @@ No one spoke. They had known this, of course. But hearing it stated so plainly, 
 
 He paused.
 
-'We intercepted a letter three weeks ago. It was written by General Kraveth Vaelmar, addressed to the queen. The messenger who carried it froze to death in the southern passes—we found the body and the correspondence.'
+'We intercepted a letter three weeks ago. It was written by General Vaelmar, addressed to the queen. The messenger who carried it froze to death in the southern passes—we found the body and the correspondence.'
 
 He produced a folded paper from his coat—not the original, clearly a copy.
 
@@ -12310,19 +15351,19 @@ He let the silence do its work.
 
 'A hard price,' Setharen said. 'But dry wood burns whether we wish it or not.'
 
-Lord Velaren Keth shifted in his chair. Seventy-one years old. He had seen four kings rise and three fall. His voice, when it came, was careful.
+Lord Kethmar shifted in his chair. Seventy-one years old. He had seen four kings rise and three fall. His voice, when it came, was careful.
 
 'Dry wood burns,' he repeated. 'But someone must strike the spark.'
 
 Setharen met his eyes. Said nothing.
 
-'And someone,' Velaren continued, 'must ensure the buckets are empty when the neighbors come running.'
+'And someone,' Kethmar continued, 'must ensure the buckets are empty when the neighbors come running.'
 
 The silence stretched.
 
-'I am not a man who starts fires, Lord Velaren.' Setharen's hands remained folded, still. 'I am a man who understands weather. Who notices when timber has not been treated. Who observes that certain wells have gone dry.' He tilted his head slightly. 'When a house is destined to burn, wisdom lies not in prevention—but in position.'
+'I am not a man who starts fires, Lord Kethmar.' Setharen's hands remained folded, still. 'I am a man who understands weather. Who notices when timber has not been treated. Who observes that certain wells have gone dry.' He tilted his head slightly. 'When a house is destined to burn, wisdom lies not in prevention—but in position.'
 
-'Position,' Velaren said flatly.
+'Position,' Kethmar said flatly.
 
 'The men in this room are not in the capital. The men in this room did not march north. The men in this room received a memorandum three months ago suggesting that the harbor cities might benefit from extended visits.'
 
@@ -12372,13 +15413,13 @@ A thin smile crossed his face.
 
 'Now they will be our salvation. The Thornask markets will provide labor. The banking houses of Thul-Varen will provide credit—at interest, of course, but manageable interest. The Vethurim will provide security. Everything Tornael dismissed as beneath his attention will now rebuild what his attention destroyed.'
 
-'They will own us,' Lord Velaren said quietly.
+'They will own us,' Lord Kethmar said quietly.
 
 'They will invest in us,' Setharen corrected. 'There is a difference. Ownership implies permanence. Investment implies expectation of return. We will borrow, we will labor, we will repay. In twenty years, we will owe them nothing. In thirty, they may owe us.'
 
 He tapped the eastern region.
 
-'Tornael wanted to conquer Lands Beyond through blood and glory. We will reach them through commerce and patience. The same destination, Lord Velaren. Different arithmetic.'
+'Tornael wanted to conquer Lands Beyond through blood and glory. We will reach them through commerce and patience. The same destination, Lord Kethmar. Different arithmetic.'
 
 ⁂
 
@@ -12402,7 +15443,7 @@ Setharen spread his hands.
 
 'King Tornael spent thirty-eight years preparing for the conquest of all Sethael. He succeeded only in conquering Duratheon itself—consuming it from within, until nothing remained but the shape. The Northern Campaign was merely the final extraction. The last blood from a body that had been dying for a generation.'
 
-'And now?' Lord Tharek Senvar asked. He was sixty-four, a man of commerce rather than politics, more comfortable with ledgers than debates. 'You have described the disease. What is the cure?'
+'And now?' Lord Kallistos Kallistos asked. He was sixty-four, a man of commerce rather than politics, more comfortable with ledgers than debates. 'You have described the disease. What is the cure?'
 
 'Reorganization.' Setharen let the word settle. 'Complete, systematic, and irreversible.'
 
@@ -12418,7 +15459,7 @@ Several men shifted uncomfortably. The Vethurim were known, even feared—nomadi
 
 'They are exceptional soldiers,' Setharen continued. 'Disciplined. Experienced in chaos. Unattached to our traditions, our histories, our sentiments. They will do what they are paid to do, without hesitation, without moral complexity.'
 
-'Mercenaries,' Lord Velaren said. 'You propose to fill our streets with foreign mercenaries.'
+'Mercenaries,' Lord Kethmar said. 'You propose to fill our streets with foreign mercenaries.'
 
 'I propose to fill our streets with order.' Setharen's voice did not change. 'The alternative is to leave them filled with chaos. The riots in Vaelhem Thel were not unique. When word spreads—and it will spread—that the crown has fallen, that the army is gone, that no authority remains… what do you imagine will happen in the provinces? In the cities? In the estates you gentlemen have temporarily abandoned?'
 
@@ -12426,7 +15467,7 @@ The silence answered for them.
 
 'The Vethurim will provide security during the transition. Not permanently—permanent occupation would be expensive and unnecessary. But for the next three to five years, until new structures are established, we will need men who can impose order without being troubled by local sympathies.'
 
-'And the cost?' Tharek Senvar asked. 'The treasury is empty, as you have so thoroughly explained. How do we pay mercenaries with nothing?'
+'And the cost?' Tharek Kallistos asked. 'The treasury is empty, as you have so thoroughly explained. How do we pay mercenaries with nothing?'
 
 'We pay them with Vaelhem Thel.'
 
@@ -12462,7 +15503,7 @@ He stepped back from the map.
 
 'We will dismantle Vaelhem Thel. Block by block. Beam by beam. Every statue melted down, every column transported, every tile catalogued and sold. The work will take five years for the primary extraction, another five for the secondary materials. By the end, Vaelhem Thel will be a quarry. Within a generation, it will be a field.'
 
-Lord Velaren spoke slowly. 'You are proposing to erase the capital of Duratheon.'
+Lord Kethmar spoke slowly. 'You are proposing to erase the capital of Duratheon.'
 
 'I am proposing to convert a symbol into resources.' Setharen's expression did not change. 'Symbols do not feed people. Marble does not grow crops. The capital has been consuming the kingdom for a century. It is time for the kingdom to consume the capital.'
 
@@ -12476,7 +15517,7 @@ Another uncomfortable shift around the table. The Thornask markets, on the easte
 
 'The dangerous work—the high scaffolding, the deep excavations, the handling of toxic materials—will require workers who have no choice. Thornask can provide five thousand within six months. More if needed.'
 
-'Slaves,' Velaren said flatly.
+'Slaves,' Kethmar said flatly.
 
 'Workers whose contracts have been purchased.' Setharen's voice remained perfectly level. 'The legal distinction exists for those who require it.'
 
@@ -12492,9 +15533,9 @@ Another uncomfortable shift around the table. The Thornask markets, on the easte
 
 'The Vethurim themselves. When they are not maintaining order, they will provide skilled labor. They are experienced in large-scale construction—and deconstruction. Their camps in Vethurak are built and dismantled seasonally. They understand the logistics of moving cities.'
 
-Lord Tharek Senvar was making notes on a small pad. 'The numbers,' he said. 'You have calculated all of this.'
+Lord Kallistos Kallistos was making notes on a small pad. 'The numbers,' he said. 'You have calculated all of this.'
 
-'I have done little else for three years, Lord Tharek.' Setharen permitted himself a thin smile. 'Would you like to review the projections?'
+'I have done little else for three years, Lord Kallistos.' Setharen permitted himself a thin smile. 'Would you like to review the projections?'
 
 'Later. For now—continue.'
 
@@ -12514,7 +15555,7 @@ He pointed to each section in turn.
 
 'The Center.' His finger rested on Vaelhem Thel and its surrounding provinces. 'This territory bears the heaviest burden. It will manage the dismantling of the capital, the redistribution of resources, and the coordination between North and South. It will be the administrative core—not a consuming center, but a facilitating one.'
 
-'Three territories,' Lord Velaren said. 'Three governments. Three sets of laws, taxes, armies.'
+'Three territories,' Lord Kethmar said. 'Three governments. Three sets of laws, taxes, armies.'
 
 'Three functional regions instead of one failing kingdom.' Setharen nodded. 'Yes. Precisely.'
 
@@ -12522,13 +15563,13 @@ He pointed to each section in turn.
 
 Setharen looked around the table. 'The men in this room represent the three regions. Lords of the North. Lords of the South. Lords of the Center. Each group will select its own governance. Councils, single rulers, rotating leadership—I do not presume to dictate. What matters is that each territory is governed by men who understand its specific needs and resources.'
 
-'Men such as ourselves,' Velaren said dryly.
+'Men such as ourselves,' Kethmar said dryly.
 
 'Men who chose position over sentiment. Men who studied the weather.' Setharen's expression did not change. 'Yes.'
 
 ⁂
 
-'The division of resources,' Tharek Senvar said, his pen still moving. 'You mentioned the capital's wealth. How is it distributed?'
+'The division of resources,' Tharek Kallistos said, his pen still moving. 'You mentioned the capital's wealth. How is it distributed?'
 
 'Proportionally to burden.' Setharen produced another document from his folder. 'The Center will retain fifty percent of the capital's extracted resources. This is the largest share, but the Center bears the largest responsibility—managing the extraction itself, housing the displaced population, coordinating the Vethurim, handling the administrative complexity of dissolution.'
 
@@ -12554,13 +15595,13 @@ Setharen looked around the table. 'The men in this room represent the three regi
 
 'The king is dead. The crown is dissolved. There is no one left to blame except geography and weather.' Setharen tilted his head. 'We will build memorials. We will name squares after the fallen. We will give the widows small pensions—very small, but enough to seem generous. Grief, properly managed, becomes gratitude. The key is to seem compassionate while spending very little.'
 
-'You speak of their deaths as a problem to be managed,' Lord Velaren said.
+Kethmar spoke. 'You speak of their deaths as a problem to be managed,' Lord Kethmar said.
 
 'Because it is. Three hundred thousand dead men are a tragedy. Three hundred thousand grieving families are a political force. We cannot undo the deaths. We can only shape the grief.' Setharen's voice carried no apology. 'Would you prefer I pretend otherwise?'
 
 ⁂
 
-'But the legitimacy,' Lord Velaren pressed. 'If the boy lives… order built on usurpation is inherently unstable. People crave their symbols. They grew up reading Verathen's The Exiled Prince, Senthavel's Return of the Rightful King. The young hero, cast into darkness, who rises to reclaim what was stolen. It is the oldest story we have.'
+'But the legitimacy,' Lord Kethmar pressed. 'If the boy lives… order built on usurpation is inherently unstable. People crave their symbols. They grew up reading Verathen's The Exiled Prince, Senthavel's Return of the Rightful King. The young hero, cast into darkness, who rises to reclaim what was stolen. It is the oldest story we have.'
 
 Setharen adjusted his cuffs, his expression mild. Not annoyed, merely patient.
 
@@ -12570,7 +15611,7 @@ He looked around the table.
 
 'Gentlemen, we are not living in a romance. There is no prophesied return. No destined victory. No wise mentor waiting to guide the boy toward his glorious fate. There is only arithmetic.'
 
-'The stories persist because they reflect something true,' Velaren insisted. 'The people want—'
+'The stories persist because they reflect something true,' Kethmar insisted. 'The people want—'
 
 'The people want to eat,' Setharen cut him off. 'They want their children to survive winter. They want to sleep without fearing that soldiers will drag them from their beds. Verathen and Senthavel wrote beautiful fantasies for comfortable nobles who had never missed a meal. The mob that burned the capital did not cry out for a lost prince. They cried out for bread. They did not demand a hero. They demanded blood.'
 
@@ -12582,9 +15623,9 @@ He paused.
 
 'They neglected to mention the six hundred and seventy thousand corpses. The villages burned. The children sold to pay for his campaigns. Poetry is selective.'
 
-'That was four centuries ago,' Velaren said. 'The people today—'
+'That was four centuries ago,' Kethmar said. 'The people today—'
 
-'The people today killed their queen in a garden.' Setharen's voice did not rise. 'They tore down the statues of kings they once worshipped. They burned the temples where they once prayed. That world is gone, Lord Velaren. It died in the riots. The age of sacred kings is over.'
+'The people today killed their queen in a garden.' Setharen's voice did not rise. 'They tore down the statues of kings they once worshipped. They burned the temples where they once prayed. That world is gone, Lord Kethmar. It died in the riots. The age of sacred kings is over.'
 
 ⁂
 
@@ -12596,9 +15637,9 @@ He paused.
 
 Setharen's voice softened, almost gentle.
 
-'I hope he lives. I have no quarrel with the child. I demand order, Lord Velaren, not blood. If the boy is breathing somewhere in the north, he is simply a citizen now. A young man with a life ahead of him. Perhaps the Kaeldur will teach him a trade. Perhaps he will forget he was ever a king. These are not bad fates.'
+'I hope he lives. I have no quarrel with the child. I demand order, Lord Kethmar, not blood. If the boy is breathing somewhere in the north, he is simply a citizen now. A young man with a life ahead of him. Perhaps the Kaeldur will teach him a trade. Perhaps he will forget he was ever a king. These are not bad fates.'
 
-'A king in exile,' Velaren corrected. 'The romances always begin with exile.'
+'A king in exile,' Kethmar corrected. 'The romances always begin with exile.'
 
 Setharen smiled thinly. 'The romances are written by men who have never seen exile. Real exile is not a crucible that forges heroes. It is a slow erasure. The boy will grow older. His accent will fade. His memories will blur. In ten years, he will be a man who once was something, and no longer is. In twenty, he will be a story his own children do not quite believe.'
 
@@ -12636,7 +15677,7 @@ The silence stretched.
 
 'I did not order that,' Setharen said quietly. 'I did not wish it. But I will not pretend I did not anticipate it. When houses burn, the flames do not discriminate between the guilty and the innocent. They simply burn.'
 
-He looked at Velaren.
+He looked at Kethmar.
 
 'That is what the people think of the Vael bloodline now. Not sacred. Not chosen. Not touched by Sthendur. Just another family that took too much for too long. The romances of Verathen and Senthavel are not read anymore—the books were burned in the riots. For warmth, I assume. Paper burns well.'
 
@@ -12654,7 +15695,7 @@ He straightened, adjusting his papers.
 
 His eyes were cold.
 
-'That is not a romance, Lord Velaren. That is arithmetic.'
+'That is not a romance, Lord Kethmar. That is arithmetic.'
 
 He looked around the table.
 
@@ -12668,7 +15709,7 @@ Setharen did not finish the sentence. He did not need to.
 
 ⁂
 
-'The general concerns me more than the boy,' Lord Velaren admitted after a long pause. 'Kraveth Vaelmar is not a child. He commanded armies. He has allies. If he returns—'
+'The general concerns me more than the boy,' Lord Kethmar admitted after a long pause. 'Kraveth Vaelmar is not a child. He commanded armies. He has allies. If he returns—'
 
 'If he returns, he returns to nothing.' Setharen did not seem concerned. 'His army is dead. His allies are in this room or in the ground. He is an old man who failed—that is how history will remember him. The general who led three hundred thousand men to die in the snow.'
 
@@ -12688,7 +15729,7 @@ He shrugged.
 
 ⁂
 
-'There is the matter of history,' Tharek Senvar noted. 'The archives. The chronicles. If we are to build something new, we cannot have scholars digging through records that contradict our version of events.'
+'There is the matter of history,' Tharek Kallistos noted. 'The archives. The chronicles. If we are to build something new, we cannot have scholars digging through records that contradict our version of events.'
 
 'The Greater Library burned with the rest of the palace quarter,' Setharen said. 'A great loss to scholarship, I am told. Master Vaethor Zumax died trying to save the oldest manuscripts. Very heroic. The mob found him in the stacks and hanged him from the rafters with his own belt. A tragedy.'
 
@@ -12698,13 +15739,13 @@ Something flickered in Velaren's eyes. 'Did he?'
 
 'And now he is dead.'
 
-'And now he is dead. Along with everything he knew, everything he suspected, everything he might have written.' Setharen straightened his papers. 'History is not what happened, Lord Velaren. History is what is written down. And we will be very careful about what is written down.'
+'And now he is dead. Along with everything he knew, everything he suspected, everything he might have written.' Setharen straightened his papers. 'History is not what happened, Lord Kethmar. History is what is written down. And we will be very careful about what is written down.'
 
 He paused.
 
 'The chronicles of Verathen and Senthavel will be remembered as the relics of a more naive age. Beautiful stories, but stories nonetheless. The new histories will be more… pragmatic. They will explain how Duratheon exhausted itself through royal ambition. How the people, driven to desperation, rose up against a system that had failed them. How wise men—men of commerce and reason—rebuilt from the ashes.'
 
-'Men such as ourselves,' Velaren said dryly.
+'Men such as ourselves,' Kethmar said dryly.
 
 'History favors those who write it.' Setharen smiled thinly. 'We will write it well.'
 
@@ -12726,15 +15767,15 @@ He looked around the table.
 
 ⁂
 
-'You speak of all this so easily,' Lord Velaren said, studying Setharen's face. 'The queen. The princess. The dismantling of everything. Do you have no family of your own? No one who makes you hesitate?'
+'You speak of all this so easily,' Lord Kethmar said, studying Setharen's face. 'The queen. The princess. The dismantling of everything. Do you have no family of your own? No one who makes you hesitate?'
 
 Setharen considered the question as one might consider an interesting insect.
 
 'I had a wife. She died in childbirth, along with the child. Thirty-one years ago.' His voice carried no emotion. 'I had parents. They died as parents do. I had a brother who was killed in one of Tornael's earlier campaigns—a border skirmish, forgotten within a month.'
 
-He looked at Velaren.
+He looked at Kethmar.
 
-'I am what remains when sentiment has been stripped away, Lord Velaren. I do not say this with pride or self-pity. It is simply what I am. I have no hostages to fortune. No one can threaten what I love, because I love nothing that can be threatened.'
+'I am what remains when sentiment has been stripped away, Lord Kethmar. I do not say this with pride or self-pity. It is simply what I am. I have no hostages to fortune. No one can threaten what I love, because I love nothing that can be threatened.'
 
 The room absorbed this.
 
@@ -12748,11 +15789,11 @@ The room absorbed this.
 
 'Duratheon meant something,' Velaren said quietly. 'It meant endurance. Continuity. Something that would last.'
 
-'And it did not last.' Setharen's voice was soft. 'Names lie, Lord Velaren. That is their function. They promise what they cannot deliver. I prefer silence to false promises.'
+'And it did not last.' Setharen's voice was soft. 'Names lie, Lord Kethmar. That is their function. They promise what they cannot deliver. I prefer silence to false promises.'
 
 ⁂
 
-'The timeline,' Tharek Senvar said, returning to practicality. 'Specific intervals.'
+'The timeline,' Tharek Kallistos said, returning to practicality. 'Specific intervals.'
 
 'Year one: stabilization. The Vethurim arrive within two months. By the end of the first year, order is restored in all major population centers. The dismantling of the capital begins. The first shipments of materials flow outward.'
 
@@ -12823,7 +15864,7 @@ And no one would ever be able to prove he had done anything at all.
 // STORAGE KEY
 // ═══════════════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = 'sethael-wiki-v53';
+const STORAGE_KEY = 'sethael-wiki-v57';
 
 // ═══════════════════════════════════════════════════════════════════════
 // MODERNIST DESIGN SYSTEM — Vignelli / Müller-Brockmann / Rams
@@ -12861,16 +15902,16 @@ const type = {
 // Color Palette — Minimal: Off-white + Grey
 const palette = {
   light: {
-    bg: '#F5F5F5',         // Off-white
-    text: '#1E1E1E',       // Cinza escuro
-    muted: '#888888',      // Cinza medium
-    border: '#D6D6D6',     // Cinza claro
+    bg: '#F3F0EB',         // Off-white sujo/warm
+    text: '#1C1917',       // Marrom muito escuro
+    muted: '#78716C',      // Marrom médio
+    border: '#D6D3D1',     // Bege claro
   },
   dark: {
-    bg: '#171717',         // Quase preto
-    text: '#E8E8E8',       // Off-white
-    muted: '#777777',      // Cinza medium
-    border: '#2A2A2A',     // Cinza escuro
+    bg: '#1A1816',         // Marrom muito escuro
+    text: '#E2DED8',       // Off-white sujo/warm
+    muted: '#78716C',      // Marrom médio
+    border: '#292524',     // Marrom escuro
   }
 };
 
@@ -12931,9 +15972,11 @@ const RESPONSIVE_STYLES = `
        LAYOUT DIMENSIONS
        ═══════════════════════════════════════════════════════════════════ */
     
-    /* Sidebar */
-    --sidebar-width: clamp(200px, 18vw, 260px);
-    --sidebar-collapsed: 48px;
+    /* Header */
+    --header-height: 56px;
+    
+    /* Menu */
+    --menu-width: 320px;
     
     /* Content max-width */
     --content-max: min(90vw, 1400px);
@@ -12963,7 +16006,6 @@ const RESPONSIVE_STYLES = `
     :root {
       --label-col: 0px;
       --space-page: 1rem;
-      --sidebar-width: 100vw;
     }
   }
   
@@ -13005,6 +16047,7 @@ const RESPONSIVE_STYLES = `
   body {
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
   }
   
   * {
@@ -13398,22 +16441,22 @@ const InteractiveTimeline = ({ theme }) => {
 
   const c = theme === 'dark' 
     ? { 
-        bg: '#0a0a0a', 
-        text: '#e8e8e8', 
-        muted: '#555', 
-        border: '#1a1a1a', 
-        accent: '#fff',
-        ruler: '#333',
-        tick: '#444'
+        bg: '#1A1816', 
+        text: '#E2DED8', 
+        muted: '#78716C', 
+        border: '#292524', 
+        accent: '#E2DED8',
+        ruler: '#292524',
+        tick: '#3D3835'
       }
     : { 
-        bg: '#fafafa', 
-        text: '#1a1a1a', 
-        muted: '#999', 
-        border: '#e0e0e0', 
-        accent: '#000',
-        ruler: '#ddd',
-        tick: '#ccc'
+        bg: '#F3F0EB', 
+        text: '#1C1917', 
+        muted: '#78716C', 
+        border: '#D6D3D1', 
+        accent: '#1C1917',
+        ruler: '#D6D3D1',
+        tick: '#A8A29E'
       };
 
   // Era data with colors and events
@@ -13540,41 +16583,41 @@ const InteractiveTimeline = ({ theme }) => {
         display: 'flex',
         flexDirection: 'column',
         fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-        background: c.bg,
+        background: 'transparent',
         overflow: 'hidden'
       }}
     >
       {/* Header */}
       <div style={{
-        padding: '32px 40px 24px',
+        padding: 'var(--space-page)',
         borderBottom: `1px solid ${c.border}`
       }}>
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start'
+          display: 'grid',
+          gridTemplateColumns: 'var(--label-col) 1fr auto',
+          gap: 'var(--gap-md)',
+          alignItems: 'start'
         }}>
+          <span style={{
+            fontSize: 'var(--type-small)',
+            color: c.muted,
+            paddingTop: '0.35em'
+          }}>
+            Chronology
+          </span>
           <div>
-            <div style={{
-              fontSize: '10px',
-              letterSpacing: '0.2em',
-              color: c.muted,
-              textTransform: 'uppercase',
-              marginBottom: '8px'
-            }}>
-              Chronology
-            </div>
             <h1 style={{
-              fontSize: '32px',
-              fontWeight: 300,
+              fontSize: 'var(--type-h1)',
+              fontWeight: 400,
               color: c.text,
               margin: 0,
-              letterSpacing: '-0.02em'
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2
             }}>
               Timeline of Sethael
             </h1>
             <div style={{
-              fontSize: '13px',
+              fontSize: 'var(--type-body)',
               color: c.muted,
               marginTop: '8px'
             }}>
@@ -13585,23 +16628,25 @@ const InteractiveTimeline = ({ theme }) => {
           {/* View mode toggle */}
           <div style={{
             display: 'flex',
-            gap: '8px',
-            marginTop: '8px'
+            gap: '0',
+            border: `1px solid ${c.border}`
           }}>
-            {['overview', 'detail'].map(mode => (
+            {['overview', 'detail'].map((mode, idx) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 style={{
-                  padding: '6px 12px',
-                  fontSize: '11px',
-                  letterSpacing: '0.05em',
+                  padding: '8px 16px',
+                  fontSize: '10px',
+                  letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  background: viewMode === mode ? c.text : 'transparent',
-                  color: viewMode === mode ? c.bg : c.muted,
-                  border: `1px solid ${viewMode === mode ? c.text : c.border}`,
+                  background: viewMode === mode ? c.border : 'transparent',
+                  color: viewMode === mode ? c.text : c.muted,
+                  border: 'none',
+                  borderLeft: idx > 0 ? `1px solid ${c.border}` : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
                 }}
               >
                 {mode}
@@ -13613,7 +16658,7 @@ const InteractiveTimeline = ({ theme }) => {
 
       {/* Main Ruler */}
       <div style={{
-        padding: '40px 40px 24px',
+        padding: 'var(--space-section) var(--space-page) var(--space-element)',
         borderBottom: `1px solid ${c.border}`
       }}>
         {/* The Ruler */}
@@ -13771,9 +16816,9 @@ const InteractiveTimeline = ({ theme }) => {
                   {/* Era numeral */}
                   <div style={{
                     fontSize: '24px',
-                    fontWeight: 200,
+                    fontWeight: 300,
                     color: isActive ? era.color : c.muted,
-                    fontFamily: 'Georgia, serif',
+                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
                     transition: 'color 0.3s ease'
                   }}>
                     {era.numeral}
@@ -13782,7 +16827,7 @@ const InteractiveTimeline = ({ theme }) => {
                   {/* Era info */}
                   <div>
                     <div style={{
-                      fontSize: '15px',
+                      fontSize: 'var(--type-nav)',
                       fontWeight: 500,
                       color: c.text,
                       marginBottom: '2px'
@@ -13790,7 +16835,7 @@ const InteractiveTimeline = ({ theme }) => {
                       {era.name}
                     </div>
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: 'var(--type-small)',
                       color: c.muted
                     }}>
                       {era.subtitle}
@@ -13845,21 +16890,21 @@ const InteractiveTimeline = ({ theme }) => {
                     fontSize: '16px',
                     fontWeight: 300,
                     color: era.color,
-                    fontFamily: 'Georgia, serif',
+                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
                     flexShrink: 0
                   }}>
                     {era.numeral}
                   </div>
                   <div>
                     <div style={{
-                      fontSize: '18px',
+                      fontSize: 'var(--type-h2)',
                       fontWeight: 500,
                       color: c.text
                     }}>
                       {era.name}
                     </div>
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: 'var(--type-small)',
                       color: c.muted
                     }}>
                       {era.subtitle} · {era.period}
@@ -14593,9 +17638,8 @@ export default function SethaelWiki() {
   const [readingMode, setReadingMode] = useState(false);
   const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [homeExpandedCat, setHomeExpandedCat] = useState(null);
-  const [bookMoreExpanded, setBookMoreExpanded] = useState(false);
 
   const c = palette[theme];
 
@@ -14836,8 +17880,9 @@ export default function SethaelWiki() {
       backgroundColor: c.bg,
       fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
       color: c.text,
+      fontSize: 'var(--type-body)',
       display: 'flex',
-      fontSize: 'var(--type-body)'
+      position: 'relative'
     }}>
       {/* Toast */}
       {message && (
@@ -14857,68 +17902,80 @@ export default function SethaelWiki() {
         </div>
       )}
 
-      {/* Sidebar */}
+      {/* Floating Hamburger Menu Button */}
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        style={{
+          position: 'fixed',
+          top: '24px',
+          left: 'var(--space-page)',
+          zIndex: 1001,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '8px',
+          marginLeft: '-8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}
+        title={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+      >
+        <span style={{
+          display: 'block',
+          width: '18px',
+          height: '1.5px',
+          backgroundColor: c.muted,
+          transition: 'all 0.3s ease',
+          transform: menuOpen ? 'rotate(45deg) translateY(5.5px)' : 'none'
+        }} />
+        <span style={{
+          display: 'block',
+          width: '18px',
+          height: '1.5px',
+          backgroundColor: c.muted,
+          transition: 'all 0.3s ease',
+          opacity: menuOpen ? 0 : 1
+        }} />
+        <span style={{
+          display: 'block',
+          width: '18px',
+          height: '1.5px',
+          backgroundColor: c.muted,
+          transition: 'all 0.3s ease',
+          transform: menuOpen ? 'rotate(-45deg) translateY(-5.5px)' : 'none'
+        }} />
+      </button>
+
+      {/* Sidebar Menu */}
       <aside style={{
-        width: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
+        width: menuOpen ? 'var(--menu-width)' : '0px',
+        minWidth: menuOpen ? 'var(--menu-width)' : '0px',
         height: '100vh',
-        position: 'fixed',
-        left: 0,
+        position: 'sticky',
         top: 0,
         backgroundColor: c.bg,
-        borderRight: `1px solid ${c.border}`,
+        borderRight: menuOpen ? `1px solid ${c.border}` : 'none',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        flexShrink: 0,
+        zIndex: 1000
       }}>
-        {/* Header with collapse toggle */}
+        {/* Menu Content */}
         <div style={{ 
-          padding: sidebarCollapsed ? 'var(--space-section) var(--space-element)' : 'var(--space-section) var(--space-element)', 
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: sidebarCollapsed ? 'center' : 'space-between'
+          flex: 1, 
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          width: 'var(--menu-width)',
+          boxSizing: 'border-box',
+          opacity: menuOpen ? 1 : 0,
+          transition: 'opacity 0.2s ease'
         }}>
-          {!sidebarCollapsed && (
-            <button
-              onClick={goHome}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                padding: 0
-              }}
-            >
-              <p style={{ fontSize: 'var(--type-nav)', fontWeight: 500, color: c.text }}>
-                Sethael
-              </p>
-              <p style={{ fontSize: 'var(--type-caption)', color: c.muted, marginTop: '2px' }}>
-                Wiki / Encyclopedia
-              </p>
-            </button>
-          )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: c.muted,
-              fontSize: '16px',
-              lineHeight: 1
-            }}
-            title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
-          >
-            {sidebarCollapsed ? '→' : '←'}
-          </button>
-        </div>
-
-        {/* Content - hidden when collapsed */}
-        {!sidebarCollapsed && (
-          <>
+          <div style={{ padding: '60px 20px 16px 20px' }}>
             {/* Search */}
-            <div style={{ padding: '16px 20px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <input
                 type="text"
                 placeholder="Search..."
@@ -14929,290 +17986,376 @@ export default function SethaelWiki() {
                   padding: '10px 0',
                   backgroundColor: 'transparent',
                   border: 'none',
+                  borderBottom: `1px solid ${c.border}`,
                   color: c.text,
-                  fontSize: '14px',
+                  fontSize: '13px',
                   outline: 'none',
-                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
 
-            {/* Navigation — Typography only */}
-            <nav 
-              className={`sethael-scroll sethael-scroll-${theme}`}
-              style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '8px 0'
-            }}>
-          {searchQuery ? (
-            // Search results
-            <div style={{ padding: '0 24px' }}>
-              <p style={{ 
-                fontSize: '10px', 
-                letterSpacing: '0.1em',
-                color: c.muted,
-                marginBottom: '16px'
-              }}>
-                {searchResults.length} RESULTS
-              </p>
-              {searchResults.map(({ catKey, entryKey, entry }) => (
-                <button
-                  key={`${catKey}-${entryKey}`}
-                  onClick={() => selectEntry(catKey, entryKey)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 0',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    color: c.text,
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  {entry.title}
-                </button>
-              ))}
-            </div>
-          ) : (
-            // Category list with indices
-            Object.entries(wikiData).map(([catKey, category], catIdx) => (
-              <div key={catKey} style={{ marginBottom: '4px' }}>
-                {/* Category header */}
-                <button
-                  onClick={() => setExpandedCategories(prev => ({ ...prev, [catKey]: !prev[catKey] }))}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    width: '100%',
-                    padding: '8px 20px',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  <span style={{
-                    fontSize: '10px',
-                    color: (selectedCategory === catKey || expandedCategories[catKey]) ? c.text : c.muted,
-                    letterSpacing: '0.05em',
-                    width: '18px',
-                    flexShrink: 0
-                  }}>
-                    {formatIndex(catIdx + 1)}
-                  </span>
-                  <span style={{
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    letterSpacing: '0.08em',
-                    color: (selectedCategory === catKey || expandedCategories[catKey]) ? c.text : c.muted,
-                    textTransform: 'uppercase',
-                    flex: 1
-                  }}>
-                    {category.title}
-                  </span>
-                  <span style={{ 
+            {/* Navigation */}
+            <nav>
+              {searchQuery ? (
+                // Search results - grouped by category
+                <div>
+                  <p style={{ 
                     fontSize: '10px', 
-                    color: (selectedCategory === catKey || expandedCategories[catKey]) ? c.text : c.muted,
-                    transform: expandedCategories[catKey] ? 'rotate(90deg)' : 'none',
-                    transition: 'transform 0.15s'
+                    letterSpacing: '0.1em',
+                    color: c.muted,
+                    marginBottom: '12px',
+                    textTransform: 'uppercase'
                   }}>
-                    →
-                  </span>
-                </button>
-
-                {/* Entries */}
-                {expandedCategories[catKey] && (
-                  <div style={{ paddingLeft: '50px' }}>
-                    {category.groups ? (
-                      // With groups
-                      <>
-                        {/* Ungrouped entries */}
-                        {Object.entries(category.entries)
-                          .filter(([_, entry]) => !entry.group)
-                          .map(([entryKey, entry]) => (
-                            <button
-                              key={entryKey}
-                              onClick={() => selectEntry(catKey, entryKey)}
-                              style={{
-                                display: 'block',
-                                width: '100%',
-                                textAlign: 'left',
-                                background: 'none',
-                                border: 'none',
-                                padding: '6px 24px 6px 0',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                color: selectedEntry === entryKey ? c.text : c.muted,
-                                fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                              }}
-                            >
-                              {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
-                            </button>
-                          ))}
-
-                        {/* Groups */}
-                        {category.groups.map(group => (
-                          <div key={group.key}>
-                            <button
-                              onClick={() => setExpandedGroups(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                width: '100%',
-                                padding: '8px 20px 8px 0',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                              }}
-                            >
-                              <span style={{
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                color: expandedGroups[group.key] ? c.text : c.muted
-                              }}>
-                                {group.title}
-                              </span>
-                              <span style={{ 
-                                fontSize: '10px', 
-                                color: c.muted,
-                                transform: expandedGroups[group.key] ? 'rotate(90deg)' : 'none',
-                                transition: 'transform 0.1s'
-                              }}>
-                                →
-                              </span>
-                            </button>
-
-                            {expandedGroups[group.key] && (
-                              <div style={{ 
-                                paddingLeft: '16px',
-                                borderLeft: `1px solid ${c.border}`,
-                                marginLeft: '0'
-                              }}>
-                                {Object.entries(category.entries)
-                                  .filter(([_, entry]) => entry.group === group.key)
-                                  .map(([entryKey, entry]) => (
-                                    <button
-                                      key={entryKey}
-                                      onClick={() => selectEntry(catKey, entryKey)}
-                                      style={{
-                                        display: 'block',
-                                        width: '100%',
-                                        textAlign: 'left',
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: '6px 20px 6px 8px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        color: selectedEntry === entryKey ? c.text : c.muted,
-                                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                                      }}
-                                    >
-                                      {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
-                                    </button>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
+                    {searchResults.length} results
+                  </p>
+                  {(() => {
+                    // Group results by category
+                    const grouped = searchResults.reduce((acc, result) => {
+                      if (!acc[result.catKey]) acc[result.catKey] = [];
+                      acc[result.catKey].push(result);
+                      return acc;
+                    }, {});
+                    
+                    return Object.entries(grouped).map(([catKey, results]) => (
+                      <div key={catKey} style={{ marginBottom: '16px' }}>
+                        <p style={{
+                          fontSize: '10px',
+                          letterSpacing: '0.05em',
+                          color: c.muted,
+                          textTransform: 'uppercase',
+                          marginBottom: '8px',
+                          paddingBottom: '4px',
+                          borderBottom: `1px solid ${c.border}`
+                        }}>
+                          {wikiData[catKey]?.title}
+                        </p>
+                        {results.map(({ entryKey, entry }) => (
+                          <button
+                            key={`${catKey}-${entryKey}`}
+                            onClick={() => {
+                              selectEntry(catKey, entryKey);
+                              setSearchQuery('');
+                            }}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              textAlign: 'left',
+                              background: 'none',
+                              border: 'none',
+                              padding: '6px 0',
+                              cursor: 'pointer',
+                              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                              fontSize: '13px',
+                              color: c.text,
+                              transition: 'color 0.15s ease'
+                            }}
+                          >
+                            {entry.title}
+                          </button>
                         ))}
-                      </>
-                    ) : catKey === 'livros' && category.structure ? (
-                      // Books structure
-                      <>
-                        {Object.entries(category.entries)
-                          .filter(([_, entry]) => !entry.book)
-                          .map(([entryKey, entry]) => (
-                            <button
-                              key={entryKey}
-                              onClick={() => selectEntry(catKey, entryKey)}
-                              style={{
-                                display: 'block',
-                                width: '100%',
-                                textAlign: 'left',
-                                background: 'none',
-                                border: 'none',
-                                padding: '8px 20px 8px 0',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                color: selectedEntry === entryKey ? c.text : c.text,
-                                fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                              }}
-                            >
-                              {entry.title}
-                            </button>
-                          ))}
-
-                        {category.structure.map(book => (
-                          <div key={book.key}>
-                            <button
-                              onClick={() => setExpandedGroups(prev => ({ ...prev, [book.key]: !prev[book.key] }))}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                width: '100%',
-                                padding: '8px 20px 8px 0',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                              }}
-                            >
-                              <span style={{ fontSize: '12px', fontWeight: 500, color: expandedGroups[book.key] ? c.text : c.muted }}>
-                                {book.title}
-                              </span>
-                              <span style={{ 
-                                fontSize: '10px', 
-                                color: c.muted,
-                                transform: expandedGroups[book.key] ? 'rotate(90deg)' : 'none'
-                              }}>→</span>
-                            </button>
-
-                            {expandedGroups[book.key] && book.volumes.map(volume => (
-                              <div key={volume.key} style={{ paddingLeft: '16px' }}>
-                                <button
-                                  onClick={() => setExpandedGroups(prev => ({ 
-                                    ...prev, 
-                                    [`${book.key}-${volume.key}`]: !prev[`${book.key}-${volume.key}`] 
-                                  }))}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    width: '100%',
-                                    padding: '6px 20px 6px 8px',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                                  }}
-                                >
-                                  <span style={{ fontSize: '11px', color: expandedGroups[`${book.key}-${volume.key}`] ? c.text : c.muted }}>{volume.title}</span>
-                                  <span style={{ 
-                                    fontSize: '10px', 
-                                    color: c.muted,
-                                    transform: expandedGroups[`${book.key}-${volume.key}`] ? 'rotate(90deg)' : 'none'
-                                  }}>→</span>
-                                </button>
-
-                                {expandedGroups[`${book.key}-${volume.key}`] && (
-                                  <div style={{ 
-                                    paddingLeft: '16px',
-                                    borderLeft: `1px solid ${c.border}` 
-                                  }}>
-                                    {Object.entries(category.entries)
-                                      .filter(([_, entry]) => entry.book === book.key && entry.volume === volume.key)
-                                      .map(([entryKey, entry]) => (
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                // Categories
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Categories - Books first */}
+                  {(() => {
+                    const entries = Object.entries(wikiData);
+                    const booksIndex = entries.findIndex(([key]) => key === 'livros');
+                    if (booksIndex > 0) {
+                      const [books] = entries.splice(booksIndex, 1);
+                      entries.unshift(books);
+                    }
+                    return entries;
+                  })().map(([catKey, category]) => (
+                    <div key={catKey}>
+                      {/* Category Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          width: '100%'
+                        }}
+                      >
+                        {/* Category name - only navigates to landing page */}
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(catKey);
+                            setSelectedEntry(null);
+                          }}
+                          style={{ 
+                            background: 'none',
+                            border: 'none',
+                            padding: '8px 0',
+                            cursor: 'pointer',
+                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                            fontSize: '13px', 
+                            color: selectedCategory === catKey && !selectedEntry ? c.text : (expandedCategories[catKey] ? c.text : c.muted),
+                            fontWeight: selectedCategory === catKey && !selectedEntry ? 500 : (expandedCategories[catKey] ? 500 : 400),
+                            textAlign: 'left',
+                            flex: 1
+                          }}
+                        >
+                          {category.title}
+                        </button>
+                        {/* Arrow - only expands/collapses submenu */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Toggle this category, close others
+                            if (expandedCategories[catKey]) {
+                              setExpandedCategories({});
+                            } else {
+                              setExpandedCategories({ [catKey]: true });
+                            }
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            marginRight: '-12px'
+                          }}
+                        >
+                          <span style={{ 
+                            color: c.muted,
+                            fontSize: '10px',
+                            transition: 'transform 0.2s ease',
+                            display: 'inline-block',
+                            transform: expandedCategories[catKey] ? 'rotate(90deg)' : 'rotate(0deg)'
+                          }}>
+                            →
+                          </span>
+                        </button>
+                      </div>
+                      
+                      {/* Category Content */}
+                      {expandedCategories[catKey] && (
+                        <div style={{ paddingTop: '8px', paddingLeft: '8px' }}>
+                          
+                          {/* SPECIAL: Books category */}
+                          {catKey === 'livros' && category.structure ? (
+                            <div>
+                              {category.structure.map((book, bookIdx) => {
+                                const bookExpandKey = `livros-${book.key}`;
+                                
+                                return (
+                                  <React.Fragment key={book.key}>
+                                    {/* Divider before secondary items */}
+                                    {book.secondary && (
+                                      <div style={{ 
+                                        borderTop: `1px solid ${c.border}`,
+                                        margin: '12px 0 8px 0',
+                                        paddingTop: '8px'
+                                      }}>
+                                        <span style={{
+                                          fontSize: '9px',
+                                          color: c.muted,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: '0.1em'
+                                        }}>
+                                          Prequel
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div style={{ marginBottom: '8px' }}>
+                                      <button
+                                        onClick={() => setExpandedCategories(prev => ({ 
+                                          ...prev, 
+                                          [bookExpandKey]: !prev[bookExpandKey] 
+                                        }))}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          width: '100%',
+                                          background: 'none',
+                                          border: 'none',
+                                          padding: '4px 0',
+                                          cursor: 'pointer',
+                                          fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                          textAlign: 'left'
+                                        }}
+                                      >
+                                        <span style={{ 
+                                          color: c.muted,
+                                          fontSize: '8px',
+                                          transition: 'transform 0.2s ease',
+                                          transform: expandedCategories[bookExpandKey] ? 'rotate(90deg)' : 'rotate(0deg)'
+                                        }}>
+                                          ▶
+                                        </span>
+                                        <span style={{ 
+                                          fontSize: book.secondary ? '11px' : '12px', 
+                                          color: expandedCategories[bookExpandKey] ? c.text : c.muted,
+                                          fontWeight: book.secondary ? 400 : 400
+                                        }}>
+                                          {book.title}
+                                        </span>
+                                      </button>
+                                      
+                                      {expandedCategories[bookExpandKey] && book.volumes && (
+                                        <div style={{ 
+                                          paddingLeft: '14px',
+                                          borderLeft: `1px solid ${c.border}`,
+                                          marginLeft: '3px'
+                                        }}>
+                                          {book.volumes.map(volume => {
+                                            const volumeExpandKey = `livros-${book.key}-${volume.key}`;
+                                            const volumeEntries = Object.entries(category.entries)
+                                              .filter(([_, entry]) => entry.book === book.key && entry.volume === volume.key);
+                                            
+                                            if (volumeEntries.length === 0) return null;
+                                          
+                                          return (
+                                            <div key={volume.key} style={{ marginBottom: '4px' }}>
+                                              <button
+                                                onClick={() => setExpandedCategories(prev => ({ 
+                                                  ...prev, 
+                                                  [volumeExpandKey]: !prev[volumeExpandKey] 
+                                                }))}
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '6px',
+                                                  width: '100%',
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  padding: '3px 0',
+                                                  cursor: 'pointer',
+                                                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                                  textAlign: 'left'
+                                                }}
+                                              >
+                                                <span style={{ 
+                                                  color: c.muted,
+                                                  fontSize: '6px',
+                                                  transition: 'transform 0.2s ease',
+                                                  transform: expandedCategories[volumeExpandKey] ? 'rotate(90deg)' : 'rotate(0deg)'
+                                                }}>
+                                                  ▶
+                                                </span>
+                                                <span style={{ 
+                                                  fontSize: '11px', 
+                                                  color: c.muted
+                                                }}>
+                                                  {volume.title}
+                                                </span>
+                                                <span style={{ 
+                                                  fontSize: '10px', 
+                                                  color: c.muted,
+                                                  opacity: 0.5
+                                                }}>
+                                                  ({volumeEntries.length})
+                                                </span>
+                                              </button>
+                                              
+                                              {expandedCategories[volumeExpandKey] && (
+                                                <div style={{ 
+                                                  paddingLeft: '12px',
+                                                  borderLeft: `1px solid ${c.border}`,
+                                                  marginLeft: '2px'
+                                                }}>
+                                                  {volumeEntries.map(([entryKey, entry]) => (
+                                                    <button
+                                                      key={entryKey}
+                                                      onClick={() => selectEntry(catKey, entryKey)}
+                                                      style={{
+                                                        display: 'block',
+                                                        width: '100%',
+                                                        textAlign: 'left',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '3px 0',
+                                                        cursor: 'pointer',
+                                                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                                        color: selectedEntry === entryKey ? c.text : c.muted,
+                                                        fontSize: '11px',
+                                                        transition: 'color 0.15s ease'
+                                                      }}
+                                                    >
+                                                      {entry.title}
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          ) : category.groups && category.groups.length > 0 ? (
+                            // Has groups
+                            category.groups.map(group => {
+                              const groupEntries = Object.entries(category.entries)
+                                .filter(([_, entry]) => entry.group === group.key);
+                              
+                              if (groupEntries.length === 0) return null;
+                              
+                              const groupExpandKey = `${catKey}-${group.key}`;
+                              
+                              return (
+                                <div key={group.key} style={{ marginBottom: '4px' }}>
+                                  <button
+                                    onClick={() => setExpandedCategories(prev => ({ 
+                                      ...prev, 
+                                      [groupExpandKey]: !prev[groupExpandKey] 
+                                    }))}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      width: '100%',
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: '3px 0',
+                                      cursor: 'pointer',
+                                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                      textAlign: 'left'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      color: c.muted,
+                                      fontSize: '8px',
+                                      transition: 'transform 0.2s ease',
+                                      transform: expandedCategories[groupExpandKey] ? 'rotate(90deg)' : 'rotate(0deg)'
+                                    }}>
+                                      ▶
+                                    </span>
+                                    <span style={{ 
+                                      fontSize: '10px', 
+                                      color: c.muted,
+                                      letterSpacing: '0.05em',
+                                      textTransform: 'uppercase'
+                                    }}>
+                                      {group.title}
+                                    </span>
+                                    <span style={{ 
+                                      fontSize: '10px', 
+                                      color: c.muted,
+                                      opacity: 0.5
+                                    }}>
+                                      ({groupEntries.length})
+                                    </span>
+                                  </button>
+                                  
+                                  {expandedCategories[groupExpandKey] && (
+                                    <div style={{ 
+                                      paddingLeft: '14px',
+                                      borderLeft: `1px solid ${c.border}`,
+                                      marginLeft: '3px'
+                                    }}>
+                                      {groupEntries.map(([entryKey, entry]) => (
                                         <button
                                           key={entryKey}
                                           onClick={() => selectEntry(catKey, entryKey)}
@@ -15222,166 +18365,143 @@ export default function SethaelWiki() {
                                             textAlign: 'left',
                                             background: 'none',
                                             border: 'none',
-                                            padding: '6px 20px 6px 12px',
+                                            padding: '3px 0',
                                             cursor: 'pointer',
+                                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                            color: selectedEntry === entryKey && selectedCategory === catKey ? c.text : c.muted,
                                             fontSize: '11px',
-                                            color: selectedEntry === entryKey ? c.text : c.muted,
-                                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                                            transition: 'color 0.15s ease'
                                           }}
                                         >
                                           {entry.title}
                                         </button>
                                       ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      // Simple list
-                      Object.entries(category.entries).map(([entryKey, entry]) => (
-                        <button
-                          key={entryKey}
-                          onClick={() => selectEntry(catKey, entryKey)}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            textAlign: 'left',
-                            background: 'none',
-                            border: 'none',
-                            padding: '8px 20px 8px 0',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            color: selectedEntry === entryKey ? c.text : c.text,
-                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                          }}
-                        >
-                          {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            // No groups - flat list
+                            <div style={{ 
+                              paddingLeft: '8px',
+                              borderLeft: `1px solid ${c.border}`
+                            }}>
+                              {Object.entries(category.entries).map(([entryKey, entry]) => (
+                                <button
+                                  key={entryKey}
+                                  onClick={() => selectEntry(catKey, entryKey)}
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '3px 0',
+                                    cursor: 'pointer',
+                                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                                    color: selectedEntry === entryKey && selectedCategory === catKey ? c.text : c.muted,
+                                    fontSize: '11px',
+                                    transition: 'color 0.15s ease'
+                                  }}
+                                >
+                                  {entry.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </nav>
-          </>
-        )}
-
-        {/* Footer controls - always visible */}
-        <div style={{
-          padding: sidebarCollapsed ? '16px 12px' : '16px 20px',
-          textAlign: sidebarCollapsed ? 'center' : 'left'
-        }}>
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '11px',
-              letterSpacing: '0.1em',
-              color: c.muted,
-              fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-            }}
-          >
-            {sidebarCollapsed ? (theme === 'dark' ? '☀' : '☾') : (theme === 'dark' ? 'Light' : 'Dark')}
-          </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main style={{
-        marginLeft: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
-        flex: 1,
-        minHeight: '100vh',
-        transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-      }}>
+      {/* Main Content Area */}
+      <div 
+        onClick={() => menuOpen && setMenuOpen(false)}
+        style={{
+          flex: 1,
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          position: 'relative'
+        }}
+      >
+        {/* Top Bar */}
+        <header style={{
+          display: 'grid',
+          gridTemplateColumns: 'var(--label-col) 1fr',
+          gap: 'var(--gap-md)',
+          alignItems: 'center',
+          padding: '24px var(--space-page)',
+          flexShrink: 0
+        }}>
+          {/* Empty label column */}
+          <div />
+          
+          {/* Title - aligned with content column */}
+          <div style={{ 
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goHome();
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              <span style={{ 
+                fontSize: 'var(--type-small)', 
+                fontWeight: 400, 
+                color: c.muted,
+                letterSpacing: '0.08em'
+              }}>
+                The Silence of Sethael
+              </span>
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main style={{
+          flex: 1,
+          overflow: 'auto'
+        }}>
         {currentEntry ? (
           // Entry view — Swiss Modernist grid
           <div>
-            {/* Navigation bar — Sticky */}
-            <div style={{ 
-              position: 'sticky',
-              top: 0,
-              zIndex: 100,
-              padding: 'var(--space-element) var(--space-page)',
-              borderBottom: `1px solid ${c.border}`,
-              display: 'grid',
-              gridTemplateColumns: 'var(--label-col) 1fr auto',
-              gap: 'var(--gap-md)',
-              alignItems: 'center',
-              background: theme === 'dark' ? 'rgba(10, 10, 10, 0.85)' : 'rgba(250, 250, 250, 0.85)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)'
-            }}>
-              <button
-                onClick={goHome}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--type-small)',
-                  color: c.muted,
-                  padding: 0,
-                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-                  textAlign: 'left',
-                  lineHeight: 'var(--row-height)',
-                  height: 'var(--row-height)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                ← Home
-              </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
-                  {wikiData[selectedCategory]?.title}
-                </span>
-                <span style={{ color: c.muted, fontSize: 'var(--type-small)' }}>/</span>
-                <span style={{ fontSize: 'var(--type-small)', color: c.text }}>
-                  {currentEntry.title}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 'var(--gap-md)' }}>
-                <button
-                  onClick={() => setReadingMode(true)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    letterSpacing: '0.05em',
-                    color: c.muted,
-                    padding: 0,
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  READ
-                </button>
-                <button
-                  onClick={() => setEditModal({ open: true, entry: currentEntry, key: selectedEntry, isNew: false })}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    letterSpacing: '0.05em',
-                    color: c.muted,
-                    padding: 0,
-                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
-                  }}
-                >
-                  EDIT
-                </button>
-              </div>
-            </div>
-
             {/* Title section */}
             <div style={{ padding: 'var(--space-page) var(--space-page) var(--space-section) var(--space-page)' }}>
+              {/* Breadcrumb */}
+              <div style={{ marginBottom: 'var(--space-element)' }}>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'var(--type-small)',
+                    color: c.muted,
+                    padding: 0,
+                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                  }}
+                >
+                  ← {wikiData[selectedCategory]?.title}
+                </button>
+              </div>
+              
               <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr auto', gap: 'var(--gap-md)', alignItems: 'start' }}>
                 <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
                   {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}.{formatIndex(Object.keys(wikiData[selectedCategory]?.entries || {}).indexOf(selectedEntry) + 1)}
@@ -15397,91 +18517,25 @@ export default function SethaelWiki() {
                   {currentEntry.title}
                 </h1>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {(() => {
-                    const entries = Object.keys(wikiData[selectedCategory]?.entries || {});
-                    const currentIdx = entries.indexOf(selectedEntry);
-                    const prevEntry = currentIdx > 0 ? entries[currentIdx - 1] : null;
-                    const nextEntry = currentIdx < entries.length - 1 ? entries[currentIdx + 1] : null;
-                    return (
-                      <>
-                        {/* Prev arrow - metro style */}
-                        <button
-                          onClick={() => prevEntry && selectEntry(selectedCategory, prevEntry)}
-                          disabled={!prevEntry}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            cursor: prevEntry ? 'pointer' : 'default',
-                            opacity: prevEntry ? 1 : 0.3,
-                            transition: 'opacity 0.2s ease'
-                          }}
-                        >
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '28px',
-                            height: '28px',
-                            border: `1.5px solid ${c.muted}`,
-                            borderRadius: '50%',
-                            transition: 'all 0.2s ease'
-                          }}>
-                            <svg 
-                              width="12" 
-                              height="12" 
-                              viewBox="0 0 24 24" 
-                              fill="none" 
-                              stroke={c.muted}
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                          </span>
-                        </button>
-                        
-                        {/* Next arrow - metro style */}
-                        <button
-                          onClick={() => nextEntry && selectEntry(selectedCategory, nextEntry)}
-                          disabled={!nextEntry}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            cursor: nextEntry ? 'pointer' : 'default',
-                            opacity: nextEntry ? 1 : 0.3,
-                            transition: 'opacity 0.2s ease'
-                          }}
-                        >
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '28px',
-                            height: '28px',
-                            border: `1.5px solid ${c.muted}`,
-                            borderRadius: '50%',
-                            transition: 'all 0.2s ease'
-                          }}>
-                            <svg 
-                              width="12" 
-                              height="12" 
-                              viewBox="0 0 24 24" 
-                              fill="none" 
-                              stroke={c.muted}
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                          </span>
-                        </button>
-                      </>
-                    );
-                  })()}
+                  {/* READ button - only for book chapters */}
+                  {selectedCategory === 'livros' && (
+                    <button
+                      onClick={() => setReadingMode(true)}
+                      style={{
+                        background: 'none',
+                        border: `1px solid ${c.border}`,
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        letterSpacing: '0.1em',
+                        color: c.muted,
+                        padding: '8px 16px',
+                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      READ
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -15579,10 +18633,28 @@ export default function SethaelWiki() {
               </div>
             </div>
           </div>
-        ) : (
-          // Home view — Swiss Modernist grid
+        ) : selectedCategory && wikiData[selectedCategory]?.landing ? (
+          // Category Landing Page — Swiss Modernist
           <div className="sethael-stagger">
-            {/* Hero statement */}
+            {/* Breadcrumb */}
+            <div style={{ padding: 'var(--space-page) var(--space-page) 0 var(--space-page)' }}>
+              <button
+                onClick={goHome}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 'var(--type-small)',
+                  color: c.muted,
+                  padding: 0,
+                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                }}
+              >
+                ← Home
+              </button>
+            </div>
+
+            {/* Hero */}
             <div style={{ padding: 'var(--space-page)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
                 <span style={{ 
@@ -15590,32 +18662,351 @@ export default function SethaelWiki() {
                   color: c.muted, 
                   lineHeight: 'var(--row-height)', 
                   paddingTop: '0.35em' 
-                }}>Home</span>
-                <h1 style={{
-                  fontSize: 'var(--type-h1)',
-                  fontWeight: 400,
-                  color: c.text,
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.02em',
-                  maxWidth: 'var(--prose-max)'
                 }}>
-                  Sethael ↳ Encyclopedia of a world governed by depletion — 57,000 years of fictional history, civilizations, languages, and chronicles.
-                </h1>
+                  {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}
+                </span>
+                <div>
+                  <h1 style={{
+                    fontSize: 'var(--type-display)',
+                    fontWeight: 300,
+                    color: c.text,
+                    lineHeight: 1.05,
+                    letterSpacing: '-0.03em',
+                    marginBottom: 'var(--space-element)'
+                  }}>
+                    {wikiData[selectedCategory].title}
+                  </h1>
+                  <p style={{
+                    fontSize: 'var(--type-small)',
+                    color: c.muted,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>
+                    {wikiData[selectedCategory].landing.subtitle}
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Bleeding line */}
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
-            {/* The Work — Featured Book */}
+            {/* Description */}
             <div style={{ padding: 'var(--space-page)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
                 <span style={{ 
                   fontSize: 'var(--type-small)', 
-                  color: c.muted, 
-                  lineHeight: 'var(--row-height)', 
-                  paddingTop: '0.6em' 
-                }}>Book I</span>
+                  color: c.muted
+                }}>About</span>
+                <p style={{
+                  fontSize: 'var(--type-h2)',
+                  fontWeight: 400,
+                  color: c.text,
+                  lineHeight: 1.4,
+                  letterSpacing: '-0.01em',
+                  maxWidth: 'var(--prose-max)'
+                }}>
+                  {wikiData[selectedCategory].landing.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Bleeding line */}
+            <div style={{ borderBottom: `1px solid ${c.border}` }} />
+
+            {/* Stats */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>Data</span>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(3, 1fr)', 
+                  gap: 'var(--gap-lg)' 
+                }}>
+                  {wikiData[selectedCategory].landing.stats.map((stat, idx) => (
+                    <div key={idx}>
+                      <div style={{
+                        fontSize: 'var(--type-display)',
+                        fontWeight: 300,
+                        color: c.text,
+                        lineHeight: 1,
+                        letterSpacing: '-0.03em',
+                        marginBottom: '8px',
+                        fontVariantNumeric: 'tabular-nums'
+                      }}>
+                        <AnimatedNumber value={stat.value} duration={1200 + idx * 200} />
+                      </div>
+                      <div style={{
+                        fontSize: 'var(--type-small)',
+                        color: c.muted
+                      }}>
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bleeding line */}
+            <div style={{ borderBottom: `1px solid ${c.border}` }} />
+
+            {/* Entries List - Special handling for Books */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>{selectedCategory === 'livros' ? 'Chapters' : 'Entries'}</span>
+                <div>
+                  {/* Books category - organized by structure */}
+                  {selectedCategory === 'livros' && wikiData[selectedCategory].structure ? (
+                    <div>
+                      {wikiData[selectedCategory].structure.map((book, bookIdx) => (
+                        <div key={book.key}>
+                          {/* Book header */}
+                          <div style={{
+                            padding: bookIdx === 0 ? '0 0 12px 0' : '24px 0 12px 0',
+                            borderBottom: `1px solid ${c.border}`
+                          }}>
+                            <span style={{
+                              fontSize: 'var(--type-h2)',
+                              fontWeight: 400,
+                              color: c.text,
+                              letterSpacing: '-0.01em'
+                            }}>
+                              {book.title}
+                            </span>
+                          </div>
+                          
+                          {/* Volumes */}
+                          {book.volumes.map(volume => {
+                            const volumeEntries = Object.entries(wikiData[selectedCategory].entries)
+                              .filter(([_, entry]) => entry.book === book.key && entry.volume === volume.key);
+                            
+                            if (volumeEntries.length === 0) return null;
+                            
+                            return (
+                              <div key={volume.key} style={{ marginTop: '16px' }}>
+                                {/* Volume header */}
+                                <div style={{
+                                  padding: '8px 0',
+                                  marginBottom: '4px'
+                                }}>
+                                  <span style={{
+                                    fontSize: '10px',
+                                    color: c.muted,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.1em'
+                                  }}>
+                                    {volume.title}
+                                  </span>
+                                </div>
+                                
+                                {/* Chapters */}
+                                {volumeEntries.map(([entryKey, entry], idx) => (
+                                  <button
+                                    key={entryKey}
+                                    onClick={() => selectEntry(selectedCategory, entryKey)}
+                                    style={{
+                                      display: 'block',
+                                      width: '100%',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderBottom: `1px solid ${c.border}`,
+                                      padding: '12px 0',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                                    }}
+                                  >
+                                    <span style={{
+                                      fontSize: 'var(--type-nav)',
+                                      color: c.text
+                                    }}>
+                                      {entry.title}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  ) : wikiData[selectedCategory].groups && wikiData[selectedCategory].groups.length > 0 ? (
+                    /* Categories with groups */
+                    <div>
+                      {wikiData[selectedCategory].groups.map((group, groupIdx) => {
+                        const groupEntries = Object.entries(wikiData[selectedCategory].entries)
+                          .filter(([_, entry]) => entry.group === group.key);
+                        
+                        if (groupEntries.length === 0) return null;
+                        
+                        return (
+                          <div key={group.key}>
+                            {/* Group header */}
+                            <div style={{
+                              padding: groupIdx === 0 ? '0 0 8px 0' : '24px 0 8px 0',
+                              borderBottom: `1px solid ${c.border}`
+                            }}>
+                              <span style={{
+                                fontSize: '10px',
+                                color: c.muted,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em'
+                              }}>
+                                {group.title}
+                              </span>
+                            </div>
+                            
+                            {/* Entries */}
+                            {groupEntries.map(([entryKey, entry]) => (
+                              <button
+                                key={entryKey}
+                                onClick={() => selectEntry(selectedCategory, entryKey)}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  background: 'none',
+                                  border: 'none',
+                                  borderBottom: `1px solid ${c.border}`,
+                                  padding: '12px 0',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                                }}
+                              >
+                                <span style={{
+                                  fontSize: 'var(--type-nav)',
+                                  color: c.text
+                                }}>
+                                  {entry.title}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Flat list for categories without groups */
+                    <div>
+                      {Object.entries(wikiData[selectedCategory].entries).map(([entryKey, entry], idx) => (
+                        <button
+                          key={entryKey}
+                          onClick={() => selectEntry(selectedCategory, entryKey)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            background: 'none',
+                            border: 'none',
+                            borderBottom: `1px solid ${c.border}`,
+                            padding: '12px 0',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: '16px'
+                          }}>
+                            <span style={{
+                              fontSize: 'var(--type-small)',
+                              color: c.muted,
+                              minWidth: '24px'
+                            }}>
+                              {formatIndex(idx + 1)}
+                            </span>
+                            <span style={{
+                              fontSize: 'var(--type-nav)',
+                              color: c.text
+                            }}>
+                              {entry.title}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Home view — New structure
+          <div className="sethael-stagger">
+            
+            {/* ═══════════════════════════════════════════════════════════════
+                1. PREMISE — What is this
+               ═══════════════════════════════════════════════════════════════ */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>About</span>
+                <div style={{ maxWidth: 'var(--prose-max)' }}>
+                  <p style={{
+                    fontSize: 'var(--type-h2)',
+                    fontWeight: 400,
+                    color: c.text,
+                    lineHeight: 1.5,
+                    marginBottom: 'var(--space-element)'
+                  }}>
+                    The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
+                  </p>
+                  <p style={{
+                    fontSize: 'var(--type-body)',
+                    color: c.muted,
+                    lineHeight: 1.7
+                  }}>
+                    A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                2. THE AXIOM — Central philosophy (hero style)
+               ═══════════════════════════════════════════════════════════════ */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>The Axiom</span>
+                <div style={{ maxWidth: 'var(--prose-max)' }}>
+                  <p style={{
+                    fontSize: 'clamp(32px, 5vw, 56px)',
+                    fontWeight: 300,
+                    color: c.text,
+                    lineHeight: 1.15,
+                    letterSpacing: '-0.02em'
+                  }}>
+                    Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bleeding line */}
+            <div style={{ borderBottom: `1px solid ${c.border}` }} />
+
+            {/* ═══════════════════════════════════════════════════════════════
+                3. BEGIN READING — NYC Subway wayfinding style
+               ═══════════════════════════════════════════════════════════════ */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-small)', 
+                  color: c.muted
+                }}>Begin</span>
                 <div>
                   <button
                     onClick={() => {
@@ -15627,115 +19018,48 @@ export default function SethaelWiki() {
                       border: 'none',
                       padding: 0,
                       cursor: 'pointer',
-                      textAlign: 'left',
-                      display: 'block'
-                    }}
-                  >
-                    <h2 style={{ 
-                      fontSize: 'var(--type-display)', 
-                      fontWeight: 300, 
-                      color: c.text,
-                      lineHeight: 1.05,
-                      letterSpacing: '-0.03em',
-                      marginBottom: 'var(--space-element)',
-                      transition: 'opacity 0.2s ease',
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 'clamp(12px, 2vw, 24px)'
+                      gap: 'clamp(12px, 2vw, 20px)',
+                      transition: 'opacity 0.2s ease'
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
                     onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                    >
-                      {/* Metro-style wayfinding arrow */}
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 'clamp(32px, 4vw, 48px)',
-                        height: 'clamp(32px, 4vw, 48px)',
-                        border: `2px solid ${c.text}`,
-                        borderRadius: '50%',
-                        flexShrink: 0,
-                        transition: 'all 0.2s ease'
-                      }}>
-                        <svg 
-                          width="clamp(14px, 1.5vw, 20px)" 
-                          height="clamp(14px, 1.5vw, 20px)" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke={c.text}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                      </span>
-                      <span>The Depletion</span>
-                    </h2>
-                  </button>
-                  
-                  {/* More button */}
-                  <div style={{ marginLeft: 'clamp(44px, 6vw, 72px)' }}>
-                    <button
-                      onClick={() => setBookMoreExpanded(!bookMoreExpanded)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        fontSize: 'var(--type-small)',
-                        color: c.muted,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-                        transition: 'color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = c.text}
-                      onMouseLeave={(e) => e.currentTarget.style.color = c.muted}
-                    >
-                      <span style={{
-                        display: 'inline-block',
-                        transition: 'transform 0.2s ease',
-                        transform: bookMoreExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
-                      }}>→</span>
-                      <span>{bookMoreExpanded ? 'Less' : 'More'}</span>
-                    </button>
-                    
-                    {/* Expandable content */}
-                    <div style={{
-                      maxHeight: bookMoreExpanded ? '400px' : '0px',
-                      overflow: 'hidden',
-                      transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                      marginTop: bookMoreExpanded ? 'var(--space-element)' : '0'
+                  >
+                    {/* Circle arrow - NYC subway wayfinding */}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 'clamp(40px, 5vw, 56px)',
+                      height: 'clamp(40px, 5vw, 56px)',
+                      border: `2px solid ${c.text}`,
+                      borderRadius: '50%',
+                      flexShrink: 0
                     }}>
-                      <div style={{ 
-                        paddingTop: 'var(--space-element)',
-                        borderTop: `1px solid ${c.border}`,
-                        maxWidth: 'var(--prose-max)'
-                      }}>
-                        <p style={{ 
-                          fontSize: 'var(--type-body)', 
-                          color: c.muted, 
-                          lineHeight: 1.7,
-                          marginBottom: 'var(--space-element)'
-                        }}>
-                          778 AF. The Kingdom of Duratheon stands at the edge of collapse. King Tornael dies of pneumonia 
-                          while waiting for ships that will never sail. His son, Krav XIX, inherits a broken campaign 
-                          and a treasury emptied by dreams of conquest.
-                        </p>
-                        <p style={{ 
-                          fontSize: 'var(--type-body)', 
-                          color: c.muted, 
-                          lineHeight: 1.7
-                        }}>
-                          Five parts follow the kingdom's final days — from the guest who arrives bearing false hope, 
-                          through the long march toward inevitable defeat, to the dry wood that awaits only a spark.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                      <svg 
+                        width="clamp(16px, 2vw, 22px)" 
+                        height="clamp(16px, 2vw, 22px)" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke={c.text}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </span>
+                    <span style={{
+                      fontSize: 'var(--type-h1)',
+                      fontWeight: 400,
+                      color: c.text,
+                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                      letterSpacing: '-0.02em'
+                    }}>
+                      Read Chapter I
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -15743,95 +19067,10 @@ export default function SethaelWiki() {
             {/* Bleeding line */}
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
-            {/* Info grid — responsive columns */}
-            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'var(--label-col) repeat(auto-fit, minmax(140px, 1fr))', 
-                gap: 'var(--gap-md)',
-                alignItems: 'start'
-              }}>
-                <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted, 
-                  lineHeight: 'var(--row-height)',
-                  height: 'var(--row-height)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>Info</span>
-                <div>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>The Silence of Sethael</p>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>Epic Tragedy / Literary Fantasy</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>{Object.keys(wikiData).length} Categories</p>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>{Object.values(wikiData).reduce((acc, cat) => acc + Object.keys(cat.entries).length, 0)} Entries</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.text, marginBottom: '4px', lineHeight: 'var(--row-height)' }}>57,000 Years</p>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted }}>5 Languages</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bleeding line */}
-            <div style={{ borderBottom: `1px solid ${c.border}` }} />
-
-            {/* Axiom grid */}
-            <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted, 
-                  lineHeight: 'var(--row-height)',
-                  height: 'var(--row-height)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>The Axiom</span>
-                <div>
-                  <p style={{ 
-                    fontSize: 'var(--type-h2)', 
-                    fontStyle: 'italic', 
-                    color: c.text, 
-                    lineHeight: 1.5,
-                    marginBottom: '12px'
-                  }}>
-                    "Telenōm trē frükhǖ tï baërël, trüm fräkbaër tï baërël ot telenül zïkh nakhbaër."
-                  </p>
-                  <p style={{ fontSize: 'var(--type-nav)', color: c.muted, lineHeight: 1.6 }}>
-                    Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bleeding line */}
-            <div style={{ borderBottom: `1px solid ${c.border}` }} />
-
-            {/* Home header */}
-            <div style={{ padding: 'var(--space-section) var(--space-page) var(--space-element) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
-                <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted, 
-                  lineHeight: 'var(--row-height)',
-                  height: 'var(--row-height)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>Home</span>
-                <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted, 
-                  lineHeight: 'var(--row-height)',
-                  height: 'var(--row-height)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>Categories — {Object.keys(wikiData).length} ⌐</span>
-              </div>
-            </div>
-            
-            {/* Category list */}
-            <div style={{ borderTop: `1px solid ${c.border}` }}>
+            {/* ═══════════════════════════════════════════════════════════════
+                4. EXPLORE — Categories (compact)
+               ═══════════════════════════════════════════════════════════════ */}
+            <div>
               {Object.entries(wikiData).map(([catKey, category], idx) => (
                 <CategoryRow
                   key={catKey}
@@ -15849,123 +19088,70 @@ export default function SethaelWiki() {
               ))}
             </div>
 
-            {/* Dynamic Timeline */}
-            <HomeTimeline 
-              theme={theme} 
-              onEraSelect={(cat, entry) => {
-                setExpandedCategories(prev => ({ ...prev, [cat]: true }));
-                selectEntry(cat, entry);
-              }}
-            />
-
-            {/* Prologue - Final section */}
-            <div style={{ borderTop: `1px solid ${c.border}` }}>
-              {/* Big type section */}
-              <div style={{ padding: 'var(--space-page)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                  <span style={{ 
-                    fontSize: 'var(--type-small)', 
-                    color: c.muted, 
-                    lineHeight: 'var(--row-height)', 
-                    paddingTop: '0.6em' 
-                  }}>Prologue</span>
-                  <div>
-                    <button
-                      onClick={() => {
-                        setExpandedCategories(prev => ({ ...prev, livros: true }));
-                        selectEntry('livros', 'wgl-vi-ci');
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        display: 'block'
-                      }}
-                    >
-                      <h2 style={{ 
-                        fontSize: 'var(--type-display)', 
-                        fontWeight: 300, 
-                        color: c.text,
-                        lineHeight: 1.05,
-                        letterSpacing: '-0.03em',
-                        marginBottom: 'var(--space-element)',
-                        transition: 'opacity 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.target.style.opacity = '0.6'}
-                      onMouseLeave={(e) => e.target.style.opacity = '1'}
-                      >
-                        When Gods Labored
-                      </h2>
-                    </button>
-                    <p style={{ 
-                      fontSize: 'var(--type-body)', 
-                      color: c.muted, 
-                      lineHeight: 1.7,
-                      maxWidth: 'var(--prose-max)'
+            {/* ═══════════════════════════════════════════════════════════════
+                5. CLOSING QUOTE
+               ═══════════════════════════════════════════════════════════════ */}
+            <div style={{ padding: 'var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                <div />
+                <div style={{ maxWidth: 'var(--prose-max)' }}>
+                  <blockquote style={{
+                    margin: 0,
+                    padding: 0
+                  }}>
+                    <p style={{
+                      fontSize: 'var(--type-h2)',
+                      fontStyle: 'italic',
+                      color: c.text,
+                      lineHeight: 1.5,
+                      marginBottom: '12px'
                     }}>
-                      From the Outside's eternity through the Seeder's sacrifice, the IULDAR's stewardship, 
-                      the TauTek's profanation, and into the Great Silence that erased a million years of memory.
+                      "The question is never whether we fall. The question is what remains when we do."
                     </p>
-
-                    {/* Status */}
-                    <div style={{ 
-                      fontSize: 'var(--type-caption)',
+                    <cite style={{
+                      fontSize: 'var(--type-small)',
                       color: c.muted,
-                      letterSpacing: '0.1em',
-                      textTransform: 'uppercase',
-                      opacity: 0.5,
-                      marginTop: 'var(--space-section)'
+                      fontStyle: 'normal'
                     }}>
-                      Work in progress
-                    </div>
-                  </div>
+                      — Vaethor Zumax, Letter to the King
+                    </cite>
+                  </blockquote>
                 </div>
               </div>
+            </div>
 
-              {/* Footer line with year */}
-              <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+            {/* ═══════════════════════════════════════════════════════════════
+                6. FOOTER
+               ═══════════════════════════════════════════════════════════════ */}
+            <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                <span style={{ 
+                  fontSize: 'var(--type-caption)', 
+                  color: c.muted, 
+                  opacity: 0.5
+                }}>©</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
                   <span style={{ 
                     fontSize: 'var(--type-caption)', 
                     color: c.muted, 
-                    opacity: 0.5, 
-                    lineHeight: 'var(--row-height)',
-                    height: 'var(--row-height)',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>©</span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
-                    <span style={{ 
-                      fontSize: 'var(--type-caption)', 
-                      color: c.muted, 
-                      opacity: 0.5, 
-                      lineHeight: 'var(--row-height)',
-                      height: 'var(--row-height)',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
-                      The Silence of Sethael
-                    </span>
-                    <span style={{ 
-                      fontSize: 'var(--type-caption)', 
-                      color: c.muted, 
-                      opacity: 0.5, 
-                      lineHeight: 'var(--row-height)',
-                      height: 'var(--row-height)',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
-                      2024 — ∞
-                    </span>
-                  </div>
+                    opacity: 0.5
+                  }}>
+                    A work in progress. Literary fantasy.
+                  </span>
+                  <span style={{ 
+                    fontSize: 'var(--type-caption)', 
+                    color: c.muted, 
+                    opacity: 0.5
+                  }}>
+                    MMXXV
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         )}
       </main>
+      </div>
 
       {/* Edit Modal */}
       <EditModal
