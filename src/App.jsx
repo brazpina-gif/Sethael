@@ -15920,87 +15920,81 @@ const RESPONSIVE_STYLES = `
   :root {
     /* ═══════════════════════════════════════════════════════════════════════
        FLUID RESPONSIVE SYSTEM — Continuous Scaling
-       No discrete breakpoints for sizing — everything interpolates smoothly
-       Formula: clamp(min, preferred, max)
-       Reference viewport: 320px (mobile) → 1920px (desktop)
+       Reference: 320px (mobile) → 1440px (laptop) → 1920px (desktop)
+       Optimized for 14" laptops (~1366-1440px)
        ═══════════════════════════════════════════════════════════════════════ */
     
     /* ─────────────────────────────────────────────────────────────────────
-       FLUID TYPE SCALE — Continuous interpolation
+       FLUID TYPE SCALE — Calibrated for readability
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Display — 32px @ 320vw → 128px @ 1920vw */
-    --type-display: clamp(2rem, 1rem + 5vw, 8rem);
+    /* Display — 28px @ 320 → 72px @ 1920 */
+    --type-display: clamp(1.75rem, 1.25rem + 2.5vw, 4.5rem);
     
-    /* H1 — 24px @ 320vw → 64px @ 1920vw */
-    --type-h1: clamp(1.5rem, 0.75rem + 3.5vw, 4rem);
+    /* H1 — 22px @ 320 → 48px @ 1920 */
+    --type-h1: clamp(1.375rem, 1rem + 1.75vw, 3rem);
     
-    /* H2 — 18px @ 320vw → 40px @ 1920vw */
-    --type-h2: clamp(1.125rem, 0.625rem + 2vw, 2.5rem);
+    /* H2 — 17px @ 320 → 28px @ 1920 */
+    --type-h2: clamp(1.0625rem, 0.875rem + 0.9vw, 1.75rem);
     
-    /* H3 — 12px @ 320vw → 18px @ 1920vw */
-    --type-h3: clamp(0.75rem, 0.625rem + 0.5vw, 1.125rem);
+    /* H3 — 12px @ 320 → 16px @ 1920 */
+    --type-h3: clamp(0.75rem, 0.675rem + 0.35vw, 1rem);
     
-    /* Body — 16px @ 320vw → 20px @ 1920vw */
-    --type-body: clamp(1rem, 0.9rem + 0.25vw, 1.25rem);
+    /* Body — 15px @ 320 → 18px @ 1920 */
+    --type-body: clamp(0.9375rem, 0.875rem + 0.2vw, 1.125rem);
     
-    /* Small — 14px @ 320vw → 16px @ 1920vw */
-    --type-small: clamp(0.875rem, 0.825rem + 0.15vw, 1rem);
+    /* Small — 13px @ 320 → 15px @ 1920 */
+    --type-small: clamp(0.8125rem, 0.775rem + 0.15vw, 0.9375rem);
     
-    /* Caption — 11px @ 320vw → 13px @ 1920vw */
+    /* Caption — 11px @ 320 → 13px @ 1920 */
     --type-caption: clamp(0.6875rem, 0.65rem + 0.1vw, 0.8125rem);
     
-    /* Nav — 14px @ 320vw → 17px @ 1920vw */
-    --type-nav: clamp(0.875rem, 0.8rem + 0.2vw, 1.0625rem);
+    /* Nav — 13px @ 320 → 15px @ 1920 */
+    --type-nav: clamp(0.8125rem, 0.775rem + 0.15vw, 0.9375rem);
     
     /* ─────────────────────────────────────────────────────────────────────
        FLUID SPACING — Tight Swiss poster margins
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Page padding — 16px @ 320vw → 48px @ 1920vw */
-    --space-page: clamp(1rem, 0.5rem + 2vw, 3rem);
+    /* Page padding — 16px @ 320 → 40px @ 1920 */
+    --space-page: clamp(1rem, 0.75rem + 1.25vw, 2.5rem);
     
-    /* Section spacing — 16px @ 320vw → 32px @ 1920vw */
-    --space-section: clamp(1rem, 0.5rem + 1.5vw, 2rem);
+    /* Section spacing */
+    --space-section: clamp(1rem, 0.625rem + 1vw, 1.75rem);
     
-    /* Element spacing — 8px @ 320vw → 16px @ 1920vw */
-    --space-element: clamp(0.5rem, 0.25rem + 0.75vw, 1rem);
+    /* Element spacing */
+    --space-element: clamp(0.5rem, 0.375rem + 0.5vw, 0.875rem);
     
     /* ─────────────────────────────────────────────────────────────────────
        FLUID GAPS
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Large gap */
-    --gap-lg: clamp(1rem, 0.5rem + 1.5vw, 2rem);
-    
-    /* Medium gap */
-    --gap-md: clamp(0.75rem, 0.5rem + 0.75vw, 1.25rem);
-    
-    /* Small gap */
-    --gap-sm: clamp(0.375rem, 0.25rem + 0.4vw, 0.75rem);
+    --gap-lg: clamp(1rem, 0.625rem + 1vw, 1.75rem);
+    --gap-md: clamp(0.75rem, 0.5rem + 0.6vw, 1.125rem);
+    --gap-sm: clamp(0.375rem, 0.25rem + 0.3vw, 0.625rem);
     
     /* ─────────────────────────────────────────────────────────────────────
        FLUID LAYOUT
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Label column — fluidly scales, 0 on mobile */
-    --label-col: clamp(0px, -80px + 18vw, 200px);
+    /* Label column — starts appearing after ~500px viewport */
+    --label-col: clamp(0px, -50px + 12vw, 160px);
     
-    /* Prose max width */
-    --prose-max: clamp(280px, 50vw + 150px, 700px);
+    /* Prose max width — wider to use more screen */
+    --prose-max: clamp(300px, 65vw, 800px);
     
     /* Content max width */
-    --content-max: min(94vw, 1600px);
+    --content-max: min(96vw, 1400px);
     
     /* Row height */
-    --row-height: clamp(20px, 18px + 0.3vw, 28px);
+    --row-height: clamp(20px, 18px + 0.2vw, 24px);
     
     /* ─────────────────────────────────────────────────────────────────────
        FIXED DIMENSIONS
        ───────────────────────────────────────────────────────────────────── */
     
-    --header-height: 56px;
-    --menu-width: clamp(280px, 240px + 5vw, 360px);
+    --header-height: 48px;
+    --menu-width: clamp(260px, 220px + 3vw, 320px);
     --touch-target: 44px;
     --touch-target-comfortable: 48px;
     
