@@ -15919,76 +15919,177 @@ const palette = {
 const RESPONSIVE_STYLES = `
   :root {
     /* ═══════════════════════════════════════════════════════════════════
-       FLUID TYPE SCALE — clamp(min, preferred, max)
-       Based on viewport width, scales smoothly between breakpoints
+       DEVICE SCALE SYSTEM
+       Mobile: < 640px | Tablet: 641-1024px | Desktop: 1025-1399px | Large: 1400px+
        ═══════════════════════════════════════════════════════════════════ */
+    
+    /* ─────────────────────────────────────────────────────────────────────
+       FLUID TYPE SCALE — Mobile-first, scales up
+       ───────────────────────────────────────────────────────────────────── */
     
     /* Display — Hero headlines */
-    --type-display: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+    --type-display: clamp(2rem, 8vw, 6rem);
     
     /* H1 — Page titles */
-    --type-h1: clamp(1.75rem, 3vw + 0.5rem, 2.75rem);
+    --type-h1: clamp(1.5rem, 5vw, 3.5rem);
     
     /* H2 — Section titles */
-    --type-h2: clamp(1.25rem, 2vw + 0.25rem, 1.75rem);
+    --type-h2: clamp(1.125rem, 3vw, 2.25rem);
     
     /* H3 — Subsection titles */
-    --type-h3: clamp(0.75rem, 0.5vw + 0.5rem, 1rem);
+    --type-h3: clamp(0.75rem, 1vw, 1rem);
     
     /* Body — Main content */
-    --type-body: clamp(0.9375rem, 0.5vw + 0.75rem, 1.125rem);
+    --type-body: clamp(1rem, 1.5vw, 1.25rem);
     
     /* Small — Secondary text */
-    --type-small: clamp(0.8125rem, 0.25vw + 0.7rem, 0.9375rem);
+    --type-small: clamp(0.8125rem, 1vw, 1rem);
     
     /* Caption — Labels, metadata */
-    --type-caption: clamp(0.625rem, 0.25vw + 0.5rem, 0.75rem);
+    --type-caption: clamp(0.6875rem, 0.8vw, 0.8125rem);
     
     /* Nav — Navigation items */
-    --type-nav: clamp(0.75rem, 0.5vw + 0.5rem, 0.875rem);
+    --type-nav: clamp(0.875rem, 1.2vw, 1.0625rem);
     
-    /* ═══════════════════════════════════════════════════════════════════
-       GRID ALIGNMENT — Strict vertical rhythm
-       ═══════════════════════════════════════════════════════════════════ */
+    /* ─────────────────────────────────────────────────────────────────────
+       TOUCH & INTERACTION
+       ───────────────────────────────────────────────────────────────────── */
+    
+    /* Minimum touch target (Apple HIG: 44pt, Material: 48dp) */
+    --touch-target: 44px;
+    --touch-target-comfortable: 48px;
     
     /* Standard row height for grid alignment */
-    --row-height: 20px;
+    --row-height: 24px;
     
-    /* ═══════════════════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────────────────────────
        FLUID SPACING SCALE
-       ═══════════════════════════════════════════════════════════════════ */
+       ───────────────────────────────────────────────────────────────────── */
     
     /* Padding — Main content areas */
-    --space-page: clamp(1.5rem, 4vw, 4rem);
-    --space-section: clamp(1rem, 2vw, 2rem);
-    --space-element: clamp(0.5rem, 1vw, 1rem);
+    --space-page: clamp(1rem, 5vw, 6rem);
+    --space-section: clamp(1.25rem, 3vw, 3rem);
+    --space-element: clamp(0.75rem, 1.5vw, 1.5rem);
     
     /* Gap — Grid and flex gaps */
-    --gap-lg: clamp(1.5rem, 3vw, 3rem);
-    --gap-md: clamp(1rem, 2vw, 1.5rem);
-    --gap-sm: clamp(0.5rem, 1vw, 1rem);
+    --gap-lg: clamp(1.5rem, 4vw, 4rem);
+    --gap-md: clamp(1rem, 3vw, 2.5rem);
+    --gap-sm: clamp(0.5rem, 1.5vw, 1.25rem);
     
-    /* ═══════════════════════════════════════════════════════════════════
+    /* ─────────────────────────────────────────────────────────────────────
        LAYOUT DIMENSIONS
-       ═══════════════════════════════════════════════════════════════════ */
+       ───────────────────────────────────────────────────────────────────── */
     
     /* Header */
     --header-height: 56px;
     
     /* Menu */
-    --menu-width: 320px;
+    --menu-width: 280px;
     
     /* Content max-width */
-    --content-max: min(90vw, 1400px);
-    --prose-max: min(75ch, 90vw);
+    --content-max: min(92vw, 1600px);
+    --prose-max: min(65ch, 90vw);
     
-    /* Grid label column */
-    --label-col: clamp(100px, 12vw, 180px);
+    /* Grid label column — collapses on mobile */
+    --label-col: clamp(0px, 14vw, 220px);
+    
+    /* Safe areas for notch devices */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    
+    /* Bottom nav height for mobile */
+    --bottom-nav-height: 0px;
   }
   
-  /* ═══════════════════════════════════════════════════════════════════
-     GRID LABEL UTILITY — Ensures consistent alignment
-     ═══════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════════
+     MOBILE — < 640px
+     Full-width, stacked layout, bottom navigation, gesture-friendly
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    :root {
+      --label-col: 0px;
+      --space-page: 1.25rem;
+      --space-section: 1.5rem;
+      --gap-md: 1rem;
+      --menu-width: 100vw;
+      --bottom-nav-height: calc(56px + var(--safe-bottom));
+      --prose-max: 100%;
+      
+      /* Slightly larger touch-friendly type */
+      --type-body: 1rem;
+      --type-small: 0.875rem;
+      --type-nav: 0.9375rem;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     TABLET — 641px - 1024px
+     Compact sidebar, balanced proportions
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    :root {
+      --label-col: clamp(80px, 12vw, 140px);
+      --menu-width: 300px;
+      --space-page: clamp(1.5rem, 4vw, 2.5rem);
+      --prose-max: min(60ch, 85vw);
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     DESKTOP — 1025px - 1399px
+     Full layout with comfortable spacing
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1025px) and (max-width: 1399px) {
+    :root {
+      --label-col: clamp(120px, 14vw, 180px);
+      --menu-width: 320px;
+      --space-page: clamp(2rem, 5vw, 4rem);
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     LARGE — 1400px+
+     Generous spacing, larger type
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1400px) {
+    :root {
+      --type-display: clamp(5rem, 7vw, 7rem);
+      --type-h1: clamp(3rem, 4vw, 4rem);
+      --type-h2: clamp(1.75rem, 2.5vw, 2.5rem);
+      --type-body: 1.1875rem;
+      --space-page: clamp(4rem, 6vw, 8rem);
+      --label-col: clamp(160px, 15vw, 240px);
+      --menu-width: 360px;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     EXTRA LARGE — 1800px+
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 1800px) {
+    :root {
+      --type-display: clamp(6rem, 8vw, 8rem);
+      --type-h1: 4rem;
+      --type-h2: 2.5rem;
+      --space-page: clamp(6rem, 8vw, 10rem);
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     ULTRA-WIDE — 2400px+
+     ═══════════════════════════════════════════════════════════════════════ */
+  @media (min-width: 2400px) {
+    :root {
+      --type-display: 9rem;
+      --space-page: 12rem;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════
+     GRID LABEL UTILITY
+     ═══════════════════════════════════════════════════════════════════════ */
   .grid-label {
     font-size: var(--type-small);
     line-height: var(--row-height);
@@ -15997,39 +16098,10 @@ const RESPONSIVE_STYLES = `
     height: var(--row-height);
   }
   
-  /* ═══════════════════════════════════════════════════════════════════
-     BREAKPOINT OVERRIDES — Fine-tuning per viewport
-     ═══════════════════════════════════════════════════════════════════ */
-  
-  /* Mobile — Compact mode */
+  /* Hide labels on mobile */
   @media (max-width: 640px) {
-    :root {
-      --label-col: 0px;
-      --space-page: 1rem;
-    }
-  }
-  
-  /* Tablet */
-  @media (min-width: 641px) and (max-width: 1024px) {
-    :root {
-      --label-col: clamp(80px, 10vw, 120px);
-    }
-  }
-  
-  /* Large screens — More generous spacing */
-  @media (min-width: 1600px) {
-    :root {
-      --type-display: 5rem;
-      --type-h1: 3rem;
-      --type-body: 1.1875rem;
-      --space-page: 5rem;
-    }
-  }
-  
-  /* Ultra-wide — Cap growth */
-  @media (min-width: 2000px) {
-    :root {
-      --space-page: 6rem;
+    .grid-label-hide-mobile {
+      display: none;
     }
   }
   
@@ -16042,16 +16114,224 @@ const RESPONSIVE_STYLES = `
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* Prevent iOS text size adjustment */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
   }
   
   body {
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    /* Safe area padding for notch devices */
+    padding-top: var(--safe-top);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
   }
   
   * {
     box-sizing: border-box;
+    /* Disable tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve touch scrolling */
+  .scroll-container {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE-SPECIFIC UTILITIES
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  /* Touch-friendly buttons */
+  @media (max-width: 640px) {
+    button, a, [role="button"] {
+      min-height: var(--touch-target);
+      min-width: var(--touch-target);
+    }
+    
+    /* Larger hit areas for small interactive elements */
+    .touch-target-expand {
+      position: relative;
+    }
+    .touch-target-expand::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      bottom: -8px;
+      left: -8px;
+    }
+  }
+  
+  /* Hide on mobile */
+  @media (max-width: 640px) {
+    .hide-mobile { display: none !important; }
+  }
+  
+  /* Hide on tablet+ */
+  @media (min-width: 641px) {
+    .hide-tablet-up { display: none !important; }
+  }
+  
+  /* Hide on desktop+ */
+  @media (min-width: 1025px) {
+    .hide-desktop-up { display: none !important; }
+  }
+  
+  /* Show only on mobile */
+  @media (min-width: 641px) {
+    .show-mobile-only { display: none !important; }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE MENU OVERLAY
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  @media (max-width: 640px) {
+    .mobile-menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index: 998;
+    }
+    
+    .mobile-menu-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .mobile-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 85vw;
+      max-width: 360px;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 999;
+      padding-bottom: var(--bottom-nav-height);
+    }
+    
+    .mobile-menu.open {
+      transform: translateX(0);
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE BOTTOM NAVIGATION
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  .mobile-bottom-nav {
+    display: none;
+  }
+  
+  @media (max-width: 640px) {
+    .mobile-bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--bottom-nav-height);
+      padding-bottom: var(--safe-bottom);
+      z-index: 1000;
+      justify-content: space-around;
+      align-items: center;
+      border-top-width: 1px;
+      border-top-style: solid;
+    }
+    
+    .mobile-bottom-nav button {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 100%;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      transition: opacity 0.15s ease;
+    }
+    
+    .mobile-bottom-nav button:active {
+      opacity: 0.6;
+    }
+    
+    .mobile-bottom-nav-label {
+      font-size: 10px;
+      letter-spacing: 0.02em;
+    }
+    
+    /* Add bottom padding to main content */
+    .main-content-mobile-padded {
+      padding-bottom: var(--bottom-nav-height) !important;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE HEADER
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  @media (max-width: 640px) {
+    .mobile-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE CARD STYLE — For entry cards on mobile
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  @media (max-width: 640px) {
+    .mobile-card {
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .mobile-list-item {
+      padding: 16px 0;
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: var(--touch-target-comfortable);
+    }
+    
+    .mobile-list-item:active {
+      opacity: 0.7;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════
+     SWIPE INDICATOR
+     ═══════════════════════════════════════════════════════════════════ */
+  
+  @media (max-width: 640px) {
+    .swipe-indicator {
+      width: 36px;
+      height: 4px;
+      border-radius: 2px;
+      margin: 8px auto 16px;
+    }
   }
   
   /* ═══════════════════════════════════════════════════════════════════
@@ -16061,6 +16341,16 @@ const RESPONSIVE_STYLES = `
   @keyframes sethael-fade-in {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes sethael-slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes sethael-slide-in-right {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
   }
   
   .sethael-animate-in {
@@ -16077,6 +16367,65 @@ const RESPONSIVE_STYLES = `
   .sethael-stagger > *:nth-child(3) { animation-delay: 0.15s; }
   .sethael-stagger > *:nth-child(4) { animation-delay: 0.2s; }
   .sethael-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+  .sethael-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+  .sethael-stagger > *:nth-child(7) { animation-delay: 0.35s; }
+  
+  /* Mobile-specific animations — faster for better responsiveness */
+  @media (max-width: 640px) {
+    .sethael-stagger > * {
+      animation-duration: 0.3s;
+    }
+    .sethael-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+    .sethael-stagger > *:nth-child(2) { animation-delay: 0.04s; }
+    .sethael-stagger > *:nth-child(3) { animation-delay: 0.06s; }
+    .sethael-stagger > *:nth-child(4) { animation-delay: 0.08s; }
+    .sethael-stagger > *:nth-child(5) { animation-delay: 0.1s; }
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  /* Hide labels on mobile */
+  @media (max-width: 640px) {
+    .grid-label-hide-mobile {
+      display: none;
+    }
+    
+    /* Mobile-only label that shows above content */
+    .mobile-label {
+      display: block;
+      margin-bottom: 8px;
+    }
+  }
+  
+  @media (min-width: 641px) {
+    .mobile-label {
+      display: none;
+    }
+  }
+  
+  /* Grid that collapses to single column on mobile */
+  .responsive-grid {
+    display: grid;
+    grid-template-columns: var(--label-col) 1fr;
+    gap: var(--gap-md);
+    align-items: start;
+  }
+  
+  @media (max-width: 640px) {
+    .responsive-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .responsive-grid > .grid-label {
+      display: none;
+    }
+  }
 `;
 
 // Home formatter (01, 02, 03...)
@@ -17640,6 +17989,36 @@ export default function SethaelWiki() {
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeExpandedCat, setHomeExpandedCat] = useState(null);
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // RESPONSIVE DEVICE DETECTION
+  // ═══════════════════════════════════════════════════════════════════════
+  const [deviceType, setDeviceType] = useState('desktop');
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  
+  useEffect(() => {
+    const updateDeviceType = () => {
+      const width = window.innerWidth;
+      setWindowWidth(width);
+      if (width <= 640) {
+        setDeviceType('mobile');
+      } else if (width <= 1024) {
+        setDeviceType('tablet');
+      } else if (width <= 1399) {
+        setDeviceType('desktop');
+      } else {
+        setDeviceType('large');
+      }
+    };
+    
+    updateDeviceType();
+    window.addEventListener('resize', updateDeviceType);
+    return () => window.removeEventListener('resize', updateDeviceType);
+  }, []);
+  
+  const isMobile = deviceType === 'mobile';
+  const isTablet = deviceType === 'tablet';
+  const isDesktop = deviceType === 'desktop' || deviceType === 'large';
 
   const c = palette[theme];
 
@@ -17948,32 +18327,75 @@ export default function SethaelWiki() {
       </button>
 
       {/* Sidebar Menu */}
-      <aside style={{
-        width: menuOpen ? 'var(--menu-width)' : '0px',
-        minWidth: menuOpen ? 'var(--menu-width)' : '0px',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        backgroundColor: c.bg,
-        borderRight: menuOpen ? `1px solid ${c.border}` : 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-        flexShrink: 0,
-        zIndex: 1000
-      }}>
-        {/* Menu Content */}
-        <div style={{ 
-          flex: 1, 
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          width: 'var(--menu-width)',
-          boxSizing: 'border-box',
-          opacity: menuOpen ? 1 : 0,
-          transition: 'opacity 0.2s ease'
+      <aside 
+        className={isMobile ? `mobile-menu ${menuOpen ? 'open' : ''}` : ''}
+        style={{
+          width: isMobile ? undefined : (menuOpen ? 'var(--menu-width)' : '0px'),
+          minWidth: isMobile ? undefined : (menuOpen ? 'var(--menu-width)' : '0px'),
+          height: '100vh',
+          position: isMobile ? 'fixed' : 'sticky',
+          top: 0,
+          left: isMobile ? 0 : undefined,
+          backgroundColor: c.bg,
+          borderRight: isMobile ? 'none' : (menuOpen ? `1px solid ${c.border}` : 'none'),
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: isMobile ? undefined : 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          flexShrink: 0,
+          zIndex: 1000
         }}>
-          <div style={{ padding: '60px 20px 16px 20px' }}>
+        {/* Mobile Menu Header */}
+        {isMobile && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: `1px solid ${c.border}`
+          }}>
+            <span style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: c.text,
+              letterSpacing: '0.05em'
+            }}>
+              Menu
+            </span>
+            <button
+              onClick={() => setMenuOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.muted} strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        {/* Menu Content */}
+        <div 
+          className="scroll-container"
+          style={{ 
+            flex: 1, 
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            width: isMobile ? '100%' : 'var(--menu-width)',
+            boxSizing: 'border-box',
+            opacity: isMobile ? 1 : (menuOpen ? 1 : 0),
+            transition: isMobile ? undefined : 'opacity 0.2s ease',
+            paddingBottom: isMobile ? 'var(--bottom-nav-height)' : 0
+          }}>
+          <div style={{ padding: isMobile ? '16px 20px' : '60px 20px 16px 20px' }}>
             {/* Search */}
             <div style={{ marginBottom: '20px' }}>
               <input
@@ -17983,12 +18405,12 @@ export default function SethaelWiki() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '10px 0',
+                  padding: isMobile ? '14px 0' : '10px 0',
                   backgroundColor: 'transparent',
                   border: 'none',
                   borderBottom: `1px solid ${c.border}`,
                   color: c.text,
-                  fontSize: '13px',
+                  fontSize: isMobile ? '16px' : '13px', // Prevents iOS zoom
                   outline: 'none',
                   fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
                   boxSizing: 'border-box'
@@ -18434,18 +18856,23 @@ export default function SethaelWiki() {
         }}
       >
         {/* Top Bar */}
-        <header style={{
-          display: 'grid',
-          gridTemplateColumns: 'var(--label-col) 1fr',
-          gap: 'var(--gap-md)',
-          alignItems: 'center',
-          padding: '24px var(--space-page)',
-          flexShrink: 0
-        }}>
-          {/* Empty label column */}
-          <div />
+        <header 
+          className={isMobile ? 'mobile-header' : ''}
+          style={{
+            display: isMobile ? 'flex' : 'grid',
+            gridTemplateColumns: isMobile ? undefined : 'var(--label-col) 1fr',
+            gap: 'var(--gap-md)',
+            alignItems: 'center',
+            justifyContent: isMobile ? 'center' : undefined,
+            padding: isMobile ? '16px var(--space-page)' : '24px var(--space-page)',
+            flexShrink: 0,
+            background: isMobile ? `${c.bg}ee` : 'transparent',
+            borderBottom: isMobile ? `1px solid ${c.border}` : 'none'
+          }}>
+          {/* Empty label column - hidden on mobile */}
+          {!isMobile && <div />}
           
-          {/* Title - aligned with content column */}
+          {/* Title - centered on mobile, aligned with content on desktop */}
           <div style={{ 
             display: 'flex',
             alignItems: 'center'
@@ -18475,10 +18902,13 @@ export default function SethaelWiki() {
         </header>
 
         {/* Main Content */}
-        <main style={{
-          flex: 1,
-          overflow: 'auto'
-        }}>
+        <main 
+          className={isMobile ? 'scroll-container main-content-mobile-padded' : 'scroll-container'}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            paddingBottom: isMobile ? 'var(--bottom-nav-height)' : 0
+          }}>
         {currentEntry ? (
           // Entry view — Swiss Modernist grid
           <div>
@@ -18983,7 +19413,7 @@ export default function SethaelWiki() {
                 }}>The Axiom</span>
                 <div style={{ maxWidth: 'var(--prose-max)' }}>
                   <p style={{
-                    fontSize: 'clamp(32px, 5vw, 56px)',
+                    fontSize: 'clamp(2rem, 5vw + 1rem, 5rem)',
                     fontWeight: 300,
                     color: c.text,
                     lineHeight: 1.15,
@@ -19152,6 +19582,92 @@ export default function SethaelWiki() {
         )}
       </main>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MOBILE BOTTOM NAVIGATION
+         ═══════════════════════════════════════════════════════════════════ */}
+      {isMobile && (
+        <nav 
+          className="mobile-bottom-nav"
+          style={{
+            background: c.bg,
+            borderTopColor: c.border
+          }}
+        >
+          {/* Home */}
+          <button
+            onClick={goHome}
+            style={{ opacity: !selectedEntry ? 1 : 0.5 }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth="1.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span className="mobile-bottom-nav-label" style={{ color: c.muted }}>Home</span>
+          </button>
+          
+          {/* Browse/Categories */}
+          <button
+            onClick={() => setMenuOpen(true)}
+            style={{ opacity: menuOpen ? 1 : 0.5 }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth="1.5">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span className="mobile-bottom-nav-label" style={{ color: c.muted }}>Browse</span>
+          </button>
+          
+          {/* Search */}
+          <button
+            onClick={() => {
+              setMenuOpen(true);
+              setTimeout(() => {
+                const searchInput = document.querySelector('input[placeholder="Search..."]');
+                if (searchInput) searchInput.focus();
+              }, 100);
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth="1.5">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <span className="mobile-bottom-nav-label" style={{ color: c.muted }}>Search</span>
+          </button>
+          
+          {/* Theme Toggle */}
+          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            {theme === 'dark' ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth="1.5">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.text} strokeWidth="1.5">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+            )}
+            <span className="mobile-bottom-nav-label" style={{ color: c.muted }}>Theme</span>
+          </button>
+        </nav>
+      )}
+
+      {/* Mobile Menu Overlay */}
+      {isMobile && (
+        <div 
+          className={`mobile-menu-overlay ${menuOpen ? 'active' : ''}`}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
       {/* Edit Modal */}
       <EditModal
