@@ -15966,15 +15966,15 @@ const RESPONSIVE_STYLES = `
        FLUID SPACING SCALE
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Padding — Main content areas */
-    --space-page: clamp(1rem, 5vw, 6rem);
-    --space-section: clamp(1.25rem, 3vw, 3rem);
-    --space-element: clamp(0.75rem, 1.5vw, 1.5rem);
+    /* Padding — Main content areas - TIGHT Swiss poster style */
+    --space-page: clamp(1rem, 3vw, 2.5rem);
+    --space-section: clamp(1rem, 2vw, 2rem);
+    --space-element: clamp(0.5rem, 1vw, 1rem);
     
     /* Gap — Grid and flex gaps */
-    --gap-lg: clamp(1.5rem, 4vw, 4rem);
-    --gap-md: clamp(1rem, 3vw, 2.5rem);
-    --gap-sm: clamp(0.5rem, 1.5vw, 1.25rem);
+    --gap-lg: clamp(1rem, 2vw, 2rem);
+    --gap-md: clamp(0.75rem, 1.5vw, 1.25rem);
+    --gap-sm: clamp(0.375rem, 1vw, 0.75rem);
     
     /* ─────────────────────────────────────────────────────────────────────
        LAYOUT DIMENSIONS
@@ -16051,7 +16051,7 @@ const RESPONSIVE_STYLES = `
   
   /* ═══════════════════════════════════════════════════════════════════════
      LARGE — 1400px+
-     Generous spacing, larger type
+     Generous type, but TIGHT margins
      ═══════════════════════════════════════════════════════════════════════ */
   @media (min-width: 1400px) {
     :root {
@@ -16059,8 +16059,8 @@ const RESPONSIVE_STYLES = `
       --type-h1: clamp(3rem, 4vw, 4rem);
       --type-h2: clamp(1.75rem, 2.5vw, 2.5rem);
       --type-body: 1.1875rem;
-      --space-page: clamp(4rem, 6vw, 8rem);
-      --label-col: clamp(160px, 15vw, 240px);
+      --space-page: clamp(2rem, 3vw, 3rem);
+      --label-col: clamp(140px, 12vw, 200px);
       --menu-width: 360px;
     }
   }
@@ -16073,7 +16073,7 @@ const RESPONSIVE_STYLES = `
       --type-display: clamp(6rem, 8vw, 8rem);
       --type-h1: 4rem;
       --type-h2: 2.5rem;
-      --space-page: clamp(6rem, 8vw, 10rem);
+      --space-page: clamp(2.5rem, 3vw, 4rem);
     }
   }
   
@@ -16083,7 +16083,7 @@ const RESPONSIVE_STYLES = `
   @media (min-width: 2400px) {
     :root {
       --type-display: 9rem;
-      --space-page: 12rem;
+      --space-page: 4rem;
     }
   }
   
