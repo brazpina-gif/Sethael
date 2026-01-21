@@ -19306,7 +19306,7 @@ export default function SethaelWiki() {
           <div className="sethael-stagger">
             
             {/* ═══════════════════════════════════════════════════════════════
-                1. PREMISE — Label aligned to top
+                1. PREMISE — Indented to create visual tension with Axiom
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
@@ -19321,17 +19321,27 @@ export default function SethaelWiki() {
                     fontWeight: 400,
                     color: c.text,
                     lineHeight: 1.4,
-                    marginBottom: 'var(--space-element)'
+                    marginBottom: 'var(--space-element)',
+                    marginLeft: isMobile ? 0 : '40%'
                   }}>
                     The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
                   </p>
                   <p style={{
                     fontSize: 'var(--type-body)',
                     color: c.muted,
-                    lineHeight: 1.7
+                    lineHeight: 1.7,
+                    marginLeft: isMobile ? 0 : '40%'
                   }}>
                     A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
                   </p>
+                  {/* Guiding line */}
+                  {!isMobile && (
+                    <div style={{
+                      marginTop: 'var(--space-element)',
+                      width: '40%',
+                      borderBottom: `1px solid ${c.border}`
+                    }} />
+                  )}
                 </div>
               </div>
             </div>
@@ -19450,14 +19460,15 @@ export default function SethaelWiki() {
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                5. CLOSING QUOTE
+                5. CLOSING QUOTE — Vertical, narrow column
                ═══════════════════════════════════════════════════════════════ */}
-            <div style={{ padding: 'var(--space-page)' }}>
+            <div style={{ padding: 'var(--space-page)', paddingTop: 'var(--space-section)', paddingBottom: 'var(--space-section)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
                 {!isMobile && <div />}
                 <blockquote style={{
                   margin: 0,
-                  padding: 0
+                  padding: 0,
+                  maxWidth: isMobile ? '100%' : '280px'
                 }}>
                   <p style={{
                     fontSize: 'var(--type-h2)',
