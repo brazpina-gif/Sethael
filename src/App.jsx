@@ -15918,177 +15918,115 @@ const palette = {
 // Responsive CSS Custom Properties
 const RESPONSIVE_STYLES = `
   :root {
-    /* ═══════════════════════════════════════════════════════════════════
-       DEVICE SCALE SYSTEM
-       Mobile: < 640px | Tablet: 641-1024px | Desktop: 1025-1399px | Large: 1400px+
-       ═══════════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════════════════
+       FLUID RESPONSIVE SYSTEM — Continuous Scaling
+       No discrete breakpoints for sizing — everything interpolates smoothly
+       Formula: clamp(min, preferred, max)
+       Reference viewport: 320px (mobile) → 1920px (desktop)
+       ═══════════════════════════════════════════════════════════════════════ */
     
     /* ─────────────────────────────────────────────────────────────────────
-       FLUID TYPE SCALE — Mobile-first, scales up
+       FLUID TYPE SCALE — Continuous interpolation
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Display — Hero headlines */
-    --type-display: clamp(2rem, 8vw, 6rem);
+    /* Display — 32px @ 320vw → 128px @ 1920vw */
+    --type-display: clamp(2rem, 1rem + 5vw, 8rem);
     
-    /* H1 — Page titles */
-    --type-h1: clamp(1.5rem, 5vw, 3.5rem);
+    /* H1 — 24px @ 320vw → 64px @ 1920vw */
+    --type-h1: clamp(1.5rem, 0.75rem + 3.5vw, 4rem);
     
-    /* H2 — Section titles */
-    --type-h2: clamp(1.125rem, 3vw, 2.25rem);
+    /* H2 — 18px @ 320vw → 40px @ 1920vw */
+    --type-h2: clamp(1.125rem, 0.625rem + 2vw, 2.5rem);
     
-    /* H3 — Subsection titles */
-    --type-h3: clamp(0.75rem, 1vw, 1rem);
+    /* H3 — 12px @ 320vw → 18px @ 1920vw */
+    --type-h3: clamp(0.75rem, 0.625rem + 0.5vw, 1.125rem);
     
-    /* Body — Main content */
-    --type-body: clamp(1rem, 1.5vw, 1.25rem);
+    /* Body — 16px @ 320vw → 20px @ 1920vw */
+    --type-body: clamp(1rem, 0.9rem + 0.25vw, 1.25rem);
     
-    /* Small — Secondary text */
-    --type-small: clamp(0.8125rem, 1vw, 1rem);
+    /* Small — 14px @ 320vw → 16px @ 1920vw */
+    --type-small: clamp(0.875rem, 0.825rem + 0.15vw, 1rem);
     
-    /* Caption — Labels, metadata */
-    --type-caption: clamp(0.6875rem, 0.8vw, 0.8125rem);
+    /* Caption — 11px @ 320vw → 13px @ 1920vw */
+    --type-caption: clamp(0.6875rem, 0.65rem + 0.1vw, 0.8125rem);
     
-    /* Nav — Navigation items */
-    --type-nav: clamp(0.875rem, 1.2vw, 1.0625rem);
+    /* Nav — 14px @ 320vw → 17px @ 1920vw */
+    --type-nav: clamp(0.875rem, 0.8rem + 0.2vw, 1.0625rem);
     
     /* ─────────────────────────────────────────────────────────────────────
-       TOUCH & INTERACTION
+       FLUID SPACING — Tight Swiss poster margins
        ───────────────────────────────────────────────────────────────────── */
     
-    /* Minimum touch target (Apple HIG: 44pt, Material: 48dp) */
+    /* Page padding — 16px @ 320vw → 48px @ 1920vw */
+    --space-page: clamp(1rem, 0.5rem + 2vw, 3rem);
+    
+    /* Section spacing — 16px @ 320vw → 32px @ 1920vw */
+    --space-section: clamp(1rem, 0.5rem + 1.5vw, 2rem);
+    
+    /* Element spacing — 8px @ 320vw → 16px @ 1920vw */
+    --space-element: clamp(0.5rem, 0.25rem + 0.75vw, 1rem);
+    
+    /* ─────────────────────────────────────────────────────────────────────
+       FLUID GAPS
+       ───────────────────────────────────────────────────────────────────── */
+    
+    /* Large gap */
+    --gap-lg: clamp(1rem, 0.5rem + 1.5vw, 2rem);
+    
+    /* Medium gap */
+    --gap-md: clamp(0.75rem, 0.5rem + 0.75vw, 1.25rem);
+    
+    /* Small gap */
+    --gap-sm: clamp(0.375rem, 0.25rem + 0.4vw, 0.75rem);
+    
+    /* ─────────────────────────────────────────────────────────────────────
+       FLUID LAYOUT
+       ───────────────────────────────────────────────────────────────────── */
+    
+    /* Label column — fluidly scales, 0 on mobile */
+    --label-col: clamp(0px, -80px + 18vw, 200px);
+    
+    /* Prose max width */
+    --prose-max: clamp(280px, 50vw + 150px, 700px);
+    
+    /* Content max width */
+    --content-max: min(94vw, 1600px);
+    
+    /* Row height */
+    --row-height: clamp(20px, 18px + 0.3vw, 28px);
+    
+    /* ─────────────────────────────────────────────────────────────────────
+       FIXED DIMENSIONS
+       ───────────────────────────────────────────────────────────────────── */
+    
+    --header-height: 56px;
+    --menu-width: clamp(280px, 240px + 5vw, 360px);
     --touch-target: 44px;
     --touch-target-comfortable: 48px;
     
-    /* Standard row height for grid alignment */
-    --row-height: 24px;
-    
-    /* ─────────────────────────────────────────────────────────────────────
-       FLUID SPACING SCALE
-       ───────────────────────────────────────────────────────────────────── */
-    
-    /* Padding — Main content areas - TIGHT Swiss poster style */
-    --space-page: clamp(1rem, 3vw, 2.5rem);
-    --space-section: clamp(1rem, 2vw, 2rem);
-    --space-element: clamp(0.5rem, 1vw, 1rem);
-    
-    /* Gap — Grid and flex gaps */
-    --gap-lg: clamp(1rem, 2vw, 2rem);
-    --gap-md: clamp(0.75rem, 1.5vw, 1.25rem);
-    --gap-sm: clamp(0.375rem, 1vw, 0.75rem);
-    
-    /* ─────────────────────────────────────────────────────────────────────
-       LAYOUT DIMENSIONS
-       ───────────────────────────────────────────────────────────────────── */
-    
-    /* Header */
-    --header-height: 56px;
-    
-    /* Menu */
-    --menu-width: 280px;
-    
-    /* Content max-width */
-    --content-max: min(92vw, 1600px);
-    --prose-max: min(65ch, 90vw);
-    
-    /* Grid label column — collapses on mobile */
-    --label-col: clamp(0px, 14vw, 220px);
-    
-    /* Safe areas for notch devices */
+    /* Safe areas */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     
-    /* Bottom nav height for mobile */
+    /* Bottom nav — mobile only */
     --bottom-nav-height: 0px;
   }
   
   /* ═══════════════════════════════════════════════════════════════════════
-     MOBILE — < 640px
-     Full-width, stacked layout, bottom navigation, gesture-friendly
+     STRUCTURAL BREAKPOINT — Mobile only (for layout changes, not sizing)
      ═══════════════════════════════════════════════════════════════════════ */
   @media (max-width: 640px) {
     :root {
       --label-col: 0px;
-      --space-page: 1.25rem;
-      --space-section: 1.5rem;
-      --gap-md: 1rem;
-      --menu-width: 100vw;
       --bottom-nav-height: calc(56px + var(--safe-bottom));
-      --prose-max: 100%;
-      
-      /* Slightly larger touch-friendly type */
-      --type-body: 1rem;
-      --type-small: 0.875rem;
-      --type-nav: 0.9375rem;
+      --menu-width: 85vw;
     }
   }
   
   /* ═══════════════════════════════════════════════════════════════════════
-     TABLET — 641px - 1024px
-     Compact sidebar, balanced proportions
-     ═══════════════════════════════════════════════════════════════════════ */
-  @media (min-width: 641px) and (max-width: 1024px) {
-    :root {
-      --label-col: clamp(80px, 12vw, 140px);
-      --menu-width: 300px;
-      --space-page: clamp(1.5rem, 4vw, 2.5rem);
-      --prose-max: min(60ch, 85vw);
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════════════════
-     DESKTOP — 1025px - 1399px
-     Full layout with comfortable spacing
-     ═══════════════════════════════════════════════════════════════════════ */
-  @media (min-width: 1025px) and (max-width: 1399px) {
-    :root {
-      --label-col: clamp(120px, 14vw, 180px);
-      --menu-width: 320px;
-      --space-page: clamp(2rem, 5vw, 4rem);
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════════════════
-     LARGE — 1400px+
-     Generous type, but TIGHT margins
-     ═══════════════════════════════════════════════════════════════════════ */
-  @media (min-width: 1400px) {
-    :root {
-      --type-display: clamp(5rem, 7vw, 7rem);
-      --type-h1: clamp(3rem, 4vw, 4rem);
-      --type-h2: clamp(1.75rem, 2.5vw, 2.5rem);
-      --type-body: 1.1875rem;
-      --space-page: clamp(2rem, 3vw, 3rem);
-      --label-col: clamp(140px, 12vw, 200px);
-      --menu-width: 360px;
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════════════════
-     EXTRA LARGE — 1800px+
-     ═══════════════════════════════════════════════════════════════════════ */
-  @media (min-width: 1800px) {
-    :root {
-      --type-display: clamp(6rem, 8vw, 8rem);
-      --type-h1: 4rem;
-      --type-h2: 2.5rem;
-      --space-page: clamp(2.5rem, 3vw, 4rem);
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════════════════
-     ULTRA-WIDE — 2400px+
-     ═══════════════════════════════════════════════════════════════════════ */
-  @media (min-width: 2400px) {
-    :root {
-      --type-display: 9rem;
-      --space-page: 4rem;
-    }
-  }
-  
-  /* ═══════════════════════════════════════════════════════════════════════
-     GRID LABEL UTILITY
+     GRID UTILITIES
      ═══════════════════════════════════════════════════════════════════════ */
   .grid-label {
     font-size: var(--type-small);
@@ -16455,7 +16393,7 @@ const HoverLink = ({ children, onClick, style = {}, muted = false, theme }) => {
 };
 
 // Category Row Component — Doug Alves style (Responsive)
-const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, onToggle }) => {
+const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, onToggle, isMobile }) => {
   const [hovered, setHovered] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const c = palette[theme];
@@ -16492,8 +16430,8 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
         <div style={{
           padding: 'var(--space-element) var(--space-page)',
           display: 'grid',
-          gridTemplateColumns: 'var(--label-col) 1fr auto',
-          gap: 'var(--gap-md)',
+          gridTemplateColumns: isMobile ? 'auto 1fr auto' : 'var(--label-col) 1fr auto',
+          gap: isMobile ? '12px' : 'var(--gap-md)',
           alignItems: 'center'
         }}>
           <span style={{ 
@@ -19376,11 +19314,11 @@ export default function SethaelWiki() {
                 1. PREMISE — What is this
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>About</span>
+                }}>About</span>}
                 <div style={{ maxWidth: 'var(--prose-max)' }}>
                   <p style={{
                     fontSize: 'var(--type-h2)',
@@ -19406,11 +19344,11 @@ export default function SethaelWiki() {
                 2. THE AXIOM — Central philosophy (hero style)
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>The Axiom</span>
+                }}>The Axiom</span>}
                 <div style={{ maxWidth: 'var(--prose-max)' }}>
                   <p style={{
                     fontSize: 'clamp(2rem, 5vw + 1rem, 5rem)',
@@ -19432,11 +19370,11 @@ export default function SethaelWiki() {
                 3. BEGIN READING — NYC Subway wayfinding style
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>Begin</span>
+                }}>Begin</span>}
                 <div>
                   <button
                     onClick={() => {
@@ -19514,6 +19452,7 @@ export default function SethaelWiki() {
                     setExpandedCategories(prev => ({ ...prev, [cat]: true }));
                     selectEntry(cat, entry);
                   }}
+                  isMobile={isMobile}
                 />
               ))}
             </div>
@@ -19522,8 +19461,8 @@ export default function SethaelWiki() {
                 5. CLOSING QUOTE
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <div />
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <div />}
                 <div style={{ maxWidth: 'var(--prose-max)' }}>
                   <blockquote style={{
                     margin: 0,
@@ -19554,19 +19493,19 @@ export default function SethaelWiki() {
                 6. FOOTER
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-caption)', 
                   color: c.muted, 
                   opacity: 0.5
-                }}>©</span>
+                }}>©</span>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
                   <span style={{ 
                     fontSize: 'var(--type-caption)', 
                     color: c.muted, 
                     opacity: 0.5
                   }}>
-                    A work in progress. Literary fantasy.
+                    {isMobile ? '©' : ''} A work in progress. Literary fantasy.
                   </span>
                   <span style={{ 
                     fontSize: 'var(--type-caption)', 
