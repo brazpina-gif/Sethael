@@ -16423,18 +16423,15 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
       >
         <div style={{
           padding: 'var(--space-element) var(--space-page)',
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'auto 1fr auto' : 'var(--label-col) 1fr auto',
-          gap: isMobile ? '12px' : 'var(--gap-md)',
-          alignItems: 'center'
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '12px' : '16px'
         }}>
           <span style={{ 
-            fontSize: 'var(--type-small)', 
+            fontSize: 'var(--type-caption)', 
             color: c.muted,
-            lineHeight: 'var(--row-height)',
-            height: 'var(--row-height)',
-            display: 'flex',
-            alignItems: 'center'
+            minWidth: isMobile ? '20px' : '28px',
+            fontVariantNumeric: 'tabular-nums'
           }}>
             {formatIndex(index)}
           </span>
@@ -16444,22 +16441,14 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             borderBottom: hovered ? `1px solid ${c.text}` : '1px solid transparent',
             paddingBottom: '2px',
             transition: 'border-color 0.2s ease',
-            justifySelf: 'start',
-            lineHeight: 'var(--row-height)',
-            height: 'var(--row-height)',
-            display: 'flex',
-            alignItems: 'center'
+            flex: 1
           }}>
             {category.title}
           </span>
           <span style={{ 
             fontSize: 'var(--type-small)', 
             color: hovered ? c.text : c.muted,
-            transition: 'color 0.2s ease',
-            lineHeight: 'var(--row-height)',
-            height: 'var(--row-height)',
-            display: 'flex',
-            alignItems: 'center'
+            transition: 'color 0.2s ease'
           }}>
             {entries.length} entries {expanded ? '↑' : '↓'}
           </span>
@@ -16476,8 +16465,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
         <div style={{ padding: 'var(--space-element) var(--space-page) var(--space-section) var(--space-page)' }}>
           {/* Show groups if category has them */}
           {category.groups ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
-              <div />
+            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
@@ -16594,8 +16582,7 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             </div>
           ) : catKey === 'livros' && category.structure ? (
             /* Books - show structure only */
-            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
-              <div />
+            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -16646,60 +16633,57 @@ const CategoryRow = ({ category, catKey, index, onEntrySelect, theme, expanded, 
             </div>
           ) : (
             /* No groups - show flat list in columns */
-            <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
-              <div />
-              <div>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                  gap: '4px var(--gap-md)'
-                }}>
-                  {entries.slice(0, showAll ? entries.length : 12).map(([entryKey, entry]) => (
-                    <button
-                      key={entryKey}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEntrySelect(catKey, entryKey);
-                      }}
-                      style={{
-                        display: 'block',
-                        background: 'none',
-                        border: 'none',
-                        padding: '4px 0',
-                        fontSize: 'var(--type-small)',
-                        color: c.text,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
-                    </button>
-                  ))}
-                </div>
-                {entries.length > 12 && (
+            <div style={{ paddingLeft: isMobile ? '32px' : '44px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '4px var(--gap-md)'
+              }}>
+                {entries.slice(0, showAll ? entries.length : 12).map(([entryKey, entry]) => (
                   <button
+                    key={entryKey}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowAll(!showAll);
+                      onEntrySelect(catKey, entryKey);
                     }}
-                    style={{ 
-                      fontSize: 'var(--type-caption)', 
-                      color: c.muted, 
-                      padding: '12px 0 0 0',
+                    style={{
+                      display: 'block',
                       background: 'none',
                       border: 'none',
+                      padding: '4px 0',
+                      fontSize: 'var(--type-small)',
+                      color: c.text,
                       cursor: 'pointer',
-                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                      textAlign: 'left',
+                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
-                    {showAll ? '← Less' : `+${entries.length - 12} →`}
+                    {entry.title.replace(/^(KAELDUR|KAELDREK|DURATHEON|VAELORN|VETHURACK|ORVAINÊ|High ZANUAX|HIGH ZANUAX|ZANUAX|Late TAELUN|TAELUN Tardio|TAELUN)\s*—\s*/, '')}
                   </button>
-                )}
+                ))}
               </div>
+              {entries.length > 12 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAll(!showAll);
+                  }}
+                  style={{ 
+                    fontSize: 'var(--type-caption)', 
+                    color: c.muted, 
+                    padding: '12px 0 0 0',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif'
+                  }}
+                >
+                  {showAll ? '← Less' : `+${entries.length - 12} →`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -18864,21 +18848,26 @@ export default function SethaelWiki() {
                 </button>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr auto', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr auto', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>
                   {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}.{formatIndex(Object.keys(wikiData[selectedCategory]?.entries || {}).indexOf(selectedEntry) + 1)}
-                </span>
-                <h1 style={{
-                  fontSize: 'var(--type-h1)',
-                  fontWeight: 400,
-                  color: c.text,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.15,
-                  maxWidth: 'var(--prose-max)'
-                }}>
-                  {currentEntry.title}
-                </h1>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                </span>}
+                <div>
+                  {isMobile && <span style={{ fontSize: 'var(--type-caption)', color: c.muted, display: 'block', marginBottom: '4px' }}>
+                    {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}.{formatIndex(Object.keys(wikiData[selectedCategory]?.entries || {}).indexOf(selectedEntry) + 1)}
+                  </span>}
+                  <h1 style={{
+                    fontSize: 'var(--type-h1)',
+                    fontWeight: 400,
+                    color: c.text,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.15,
+                    maxWidth: 'var(--prose-max)'
+                  }}>
+                    {currentEntry.title}
+                  </h1>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: isMobile ? '12px' : 0 }}>
                   {/* READ button - only for book chapters */}
                   {selectedCategory === 'livros' && (
                     <button
@@ -18913,11 +18902,11 @@ export default function SethaelWiki() {
                 </div>
               ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'baseline', marginBottom: 'var(--space-section)' }}>
-                  <span style={{ 
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: isMobile ? 'start' : 'baseline', marginBottom: 'var(--space-section)' }}>
+                  {!isMobile && <span style={{ 
                     fontSize: 'var(--type-small)', 
                     color: c.muted
-                  }}>Content</span>
+                  }}>Content</span>}
                   <span style={{ 
                     fontSize: 'var(--type-small)', 
                     color: c.muted
@@ -18925,8 +18914,8 @@ export default function SethaelWiki() {
                     {Math.max(1, Math.ceil((currentEntry.content || '').split(/\s+/).length / 200))} min read
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
-                  <span></span>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)' }}>
+                  {!isMobile && <span></span>}
                   <div style={{ maxWidth: 'var(--prose-max)', lineHeight: 1.8, fontSize: 'var(--type-body)' }}>
                     {renderContentSimple(currentEntry.content, c)}
                   </div>
@@ -18938,8 +18927,8 @@ export default function SethaelWiki() {
             {/* Entry navigation */}
             <div style={{ borderTop: `1px solid ${c.border}` }} />
             <div style={{ padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr 1fr', gap: 'var(--gap-md)' }}>
-                <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>Navigate</span>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'var(--label-col) 1fr 1fr', gap: 'var(--gap-md)' }}>
+                {!isMobile && <span style={{ fontSize: 'var(--type-small)', color: c.muted }}>Navigate</span>}
                 <div>
                   {(() => {
                     const entries = Object.keys(wikiData[selectedCategory]?.entries || {});
@@ -19018,16 +19007,24 @@ export default function SethaelWiki() {
 
             {/* Hero */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted, 
                   lineHeight: 'var(--row-height)', 
                   paddingTop: '0.35em' 
                 }}>
                   {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}
-                </span>
+                </span>}
                 <div>
+                  {isMobile && <span style={{ 
+                    fontSize: 'var(--type-caption)', 
+                    color: c.muted,
+                    display: 'block',
+                    marginBottom: '4px'
+                  }}>
+                    {formatIndex(Object.keys(wikiData).indexOf(selectedCategory) + 1)}
+                  </span>}
                   <h1 style={{
                     fontSize: 'var(--type-display)',
                     fontWeight: 300,
@@ -19055,11 +19052,11 @@ export default function SethaelWiki() {
 
             {/* Description */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>About</span>
+                }}>About</span>}
                 <p style={{
                   fontSize: 'var(--type-h2)',
                   fontWeight: 400,
@@ -19078,11 +19075,11 @@ export default function SethaelWiki() {
 
             {/* Stats */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>Data</span>
+                }}>Data</span>}
                 <div style={{ 
                   display: 'grid', 
                   gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -19091,7 +19088,7 @@ export default function SethaelWiki() {
                   {wikiData[selectedCategory].landing.stats.map((stat, idx) => (
                     <div key={idx}>
                       <div style={{
-                        fontSize: 'var(--type-display)',
+                        fontSize: isMobile ? 'var(--type-h1)' : 'var(--type-display)',
                         fontWeight: 300,
                         color: c.text,
                         lineHeight: 1,
@@ -19118,11 +19115,11 @@ export default function SethaelWiki() {
 
             {/* Entries List - Special handling for Books */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                <span style={{ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
+                {!isMobile && <span style={{ 
                   fontSize: 'var(--type-small)', 
                   color: c.muted
-                }}>{selectedCategory === 'livros' ? 'Chapters' : 'Entries'}</span>
+                }}>{selectedCategory === 'livros' ? 'Chapters' : 'Entries'}</span>}
                 <div>
                   {/* Books category - organized by structure */}
                   {selectedCategory === 'livros' && wikiData[selectedCategory].structure ? (
@@ -19301,129 +19298,131 @@ export default function SethaelWiki() {
             </div>
           </div>
         ) : (
-          // Home view — New structure
+          // Home view — Full-width typographic layout
           <div className="sethael-stagger">
             
             {/* ═══════════════════════════════════════════════════════════════
-                1. PREMISE — What is this
+                1. PREMISE — Full width, label above
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                {!isMobile && <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted
-                }}>About</span>}
-                <div style={{ maxWidth: 'var(--prose-max)' }}>
-                  <p style={{
-                    fontSize: 'var(--type-h2)',
-                    fontWeight: 400,
-                    color: c.text,
-                    lineHeight: 1.5,
-                    marginBottom: 'var(--space-element)'
-                  }}>
-                    The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
-                  </p>
-                  <p style={{
-                    fontSize: 'var(--type-body)',
-                    color: c.muted,
-                    lineHeight: 1.7
-                  }}>
-                    A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
-                  </p>
-                </div>
-              </div>
+              {!isMobile && <span style={{ 
+                fontSize: 'var(--type-caption)', 
+                color: c.muted,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                display: 'block',
+                marginBottom: 'var(--space-element)'
+              }}>About</span>}
+              <p style={{
+                fontSize: 'var(--type-h2)',
+                fontWeight: 400,
+                color: c.text,
+                lineHeight: 1.4,
+                marginBottom: 'var(--space-element)',
+                maxWidth: '85ch'
+              }}>
+                The Silence of Sethael is an epic tragedy about what happens when a civilization stops asking whether it should change.
+              </p>
+              <p style={{
+                fontSize: 'var(--type-body)',
+                color: c.muted,
+                lineHeight: 1.7,
+                maxWidth: '75ch'
+              }}>
+                A librarian writes warnings no one reads. A king marches toward a war prepared for the wrong enemy. A fourteen-year-old boy inherits ruins. Literary fantasy disguised as epic — or perhaps the reverse.
+              </p>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                2. THE AXIOM — Central philosophy (hero style)
+                2. THE AXIOM — FULL WIDTH, no constraints
                ═══════════════════════════════════════════════════════════════ */}
-            <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                {!isMobile && <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted
-                }}>The Axiom</span>}
-                <div style={{ maxWidth: 'var(--prose-max)' }}>
-                  <p style={{
-                    fontSize: 'clamp(2rem, 5vw + 1rem, 5rem)',
-                    fontWeight: 300,
-                    color: c.text,
-                    lineHeight: 1.15,
-                    letterSpacing: '-0.02em'
-                  }}>
-                    Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
-                  </p>
-                </div>
-              </div>
+            <div style={{ padding: 'var(--space-page)', paddingTop: 'var(--space-section)', paddingBottom: 'var(--space-section)' }}>
+              {!isMobile && <span style={{ 
+                fontSize: 'var(--type-caption)', 
+                color: c.muted,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                display: 'block',
+                marginBottom: 'var(--space-element)'
+              }}>The Axiom</span>}
+              <p style={{
+                fontSize: 'clamp(1.75rem, 4vw + 0.5rem, 4.5rem)',
+                fontWeight: 300,
+                color: c.text,
+                lineHeight: 1.12,
+                letterSpacing: '-0.02em',
+                maxWidth: '100%'
+              }}>
+                Every creation is fruit of itself, which sunders from itself and creates until it depletes itself.
+              </p>
             </div>
 
             {/* Bleeding line */}
             <div style={{ borderBottom: `1px solid ${c.border}` }} />
 
             {/* ═══════════════════════════════════════════════════════════════
-                3. BEGIN READING — NYC Subway wayfinding style
+                3. BEGIN READING — Full width CTA
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
-                {!isMobile && <span style={{ 
-                  fontSize: 'var(--type-small)', 
-                  color: c.muted
-                }}>Begin</span>}
-                <div>
-                  <button
-                    onClick={() => {
-                      setExpandedCategories(prev => ({ ...prev, livros: true }));
-                      selectEntry('livros', 'vol4-opening');
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 'clamp(12px, 2vw, 20px)',
-                      transition: 'opacity 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
-                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              {!isMobile && <span style={{ 
+                fontSize: 'var(--type-caption)', 
+                color: c.muted,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                display: 'block',
+                marginBottom: 'var(--space-element)'
+              }}>Begin</span>}
+              <button
+                onClick={() => {
+                  setExpandedCategories(prev => ({ ...prev, livros: true }));
+                  selectEntry('livros', 'vol4-opening');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'clamp(12px, 2vw, 20px)',
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.6'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                {/* Circle arrow */}
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 'clamp(40px, 4vw, 52px)',
+                  height: 'clamp(40px, 4vw, 52px)',
+                  border: `1.5px solid ${c.text}`,
+                  borderRadius: '50%',
+                  flexShrink: 0
+                }}>
+                  <svg 
+                    width="clamp(14px, 1.5vw, 20px)" 
+                    height="clamp(14px, 1.5vw, 20px)" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke={c.text}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    {/* Circle arrow - NYC subway wayfinding */}
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 'clamp(40px, 5vw, 56px)',
-                      height: 'clamp(40px, 5vw, 56px)',
-                      border: `2px solid ${c.text}`,
-                      borderRadius: '50%',
-                      flexShrink: 0
-                    }}>
-                      <svg 
-                        width="clamp(16px, 2vw, 22px)" 
-                        height="clamp(16px, 2vw, 22px)" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke={c.text}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                      </svg>
-                    </span>
-                    <span style={{
-                      fontSize: 'var(--type-h1)',
-                      fontWeight: 400,
-                      color: c.text,
-                      fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
-                      letterSpacing: '-0.02em'
-                    }}>
-                      Read Chapter I
-                    </span>
-                  </button>
-                </div>
-              </div>
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+                <span style={{
+                  fontSize: 'var(--type-h1)',
+                  fontWeight: 400,
+                  color: c.text,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Read Chapter I
+                </span>
+              </button>
             </div>
 
             {/* Bleeding line */}
@@ -19452,63 +19451,52 @@ export default function SethaelWiki() {
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                5. CLOSING QUOTE
+                5. CLOSING QUOTE — Full width
                ═══════════════════════════════════════════════════════════════ */}
-            <div style={{ padding: 'var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'start' }}>
-                {!isMobile && <div />}
-                <div style={{ maxWidth: 'var(--prose-max)' }}>
-                  <blockquote style={{
-                    margin: 0,
-                    padding: 0
-                  }}>
-                    <p style={{
-                      fontSize: 'var(--type-h2)',
-                      fontStyle: 'italic',
-                      color: c.text,
-                      lineHeight: 1.5,
-                      marginBottom: '12px'
-                    }}>
-                      "The question is never whether we fall. The question is what remains when we do."
-                    </p>
-                    <cite style={{
-                      fontSize: 'var(--type-small)',
-                      color: c.muted,
-                      fontStyle: 'normal'
-                    }}>
-                      — Vaethor Zumax, Letter to the King
-                    </cite>
-                  </blockquote>
-                </div>
-              </div>
+            <div style={{ padding: 'var(--space-page)', paddingTop: 'var(--space-section)', paddingBottom: 'var(--space-section)' }}>
+              <blockquote style={{
+                margin: 0,
+                padding: 0,
+                maxWidth: '70ch'
+              }}>
+                <p style={{
+                  fontSize: 'var(--type-h2)',
+                  fontStyle: 'italic',
+                  color: c.text,
+                  lineHeight: 1.5,
+                  marginBottom: '12px'
+                }}>
+                  "The question is never whether we fall. The question is what remains when we do."
+                </p>
+                <cite style={{
+                  fontSize: 'var(--type-small)',
+                  color: c.muted,
+                  fontStyle: 'normal'
+                }}>
+                  — Vaethor Zumax, Letter to the King
+                </cite>
+              </blockquote>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                6. FOOTER
+                6. FOOTER — Simple full width
                ═══════════════════════════════════════════════════════════════ */}
             <div style={{ borderTop: `1px solid ${c.border}`, padding: 'var(--space-section) var(--space-page)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'var(--label-col) 1fr', gap: 'var(--gap-md)', alignItems: 'center' }}>
-                {!isMobile && <span style={{ 
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
+                <span style={{ 
                   fontSize: 'var(--type-caption)', 
                   color: c.muted, 
                   opacity: 0.5
-                }}>©</span>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--gap-sm)', alignItems: 'center' }}>
-                  <span style={{ 
-                    fontSize: 'var(--type-caption)', 
-                    color: c.muted, 
-                    opacity: 0.5
-                  }}>
-                    {isMobile ? '©' : ''} A work in progress. Literary fantasy.
-                  </span>
-                  <span style={{ 
-                    fontSize: 'var(--type-caption)', 
-                    color: c.muted, 
-                    opacity: 0.5
-                  }}>
-                    MMXXV
-                  </span>
-                </div>
+                }}>
+                  © A work in progress. Literary fantasy.
+                </span>
+                <span style={{ 
+                  fontSize: 'var(--type-caption)', 
+                  color: c.muted, 
+                  opacity: 0.5
+                }}>
+                  MMXXV
+                </span>
               </div>
             </div>
           </div>
