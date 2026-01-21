@@ -19499,11 +19499,12 @@ export default function SethaelWiki() {
                   </span>
                   <span style={{ 
                     fontSize: 'var(--type-caption)', 
-                  color: c.muted, 
-                  opacity: 0.5
-                }}>
-                  MMXXV
-                </span>
+                    color: c.muted, 
+                    opacity: 0.5
+                  }}>
+                    MMXXV
+                  </span>
+                </div>
               </div>
             </div>
           </div>
